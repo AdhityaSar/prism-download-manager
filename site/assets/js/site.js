@@ -375,6 +375,19 @@
   if (film) {
     var playBtn = $(".film-play", film);
     playBtn.addEventListener("click", function () {
+      var yt = film.getAttribute("data-youtube");
+      if (yt) {
+        // Privacy-enhanced embed, created only on click: nothing loads from YouTube before that.
+        var f = document.createElement("iframe");
+        f.src = "https://www.youtube-nocookie.com/embed/" + yt + "?autoplay=1&rel=0&playsinline=1";
+        f.title = "Prism — the film";
+        f.allow = "autoplay; encrypted-media; picture-in-picture; fullscreen";
+        f.allowFullscreen = true;
+        f.referrerPolicy = "strict-origin-when-cross-origin";
+        film.replaceChildren(f);
+        f.focus();
+        return;
+      }
       var src = film.getAttribute("data-src");
       var img = $("img", film);
       var v = document.createElement("video");
