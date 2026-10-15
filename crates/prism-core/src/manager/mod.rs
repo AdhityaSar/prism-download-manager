@@ -118,6 +118,8 @@ pub(crate) struct Inner {
     pub post_action_cancel: Mutex<Option<tokio_util::sync::CancellationToken>>,
     /// Last time the browser extension talked to us (ms since epoch, 0 = never).
     pub ext_seen: std::sync::atomic::AtomicI64,
+    /// ffmpeg resolved by the video service (managed or system), for the engine's remuxer.
+    pub ffmpeg_path: Mutex<Option<PathBuf>>,
 }
 
 /// Cheap, cloneable handle to the application core.
@@ -131,6 +133,7 @@ impl Core {
         std::fs::create_dir_all(&opts.data_dir).context("create data dir")?;
         std::fs::create_dir_all(opts.data_dir.join("logs")).ok();
         let db = Db::open(&opts.data_dir.join("prism.db")).context("open database")?;
+        restrict_permissions(&opts.data_dir);
 
         let settings: Settings = db
             .get_setting("settings")?
@@ -204,7 +207,13 @@ impl Core {
             ipc: Mutex::new(None),
             clipboard: Mutex::new(None),
             post_action_cancel: Mutex::new(None),
-            ext_seen: std::sync::atomic::AtomicI64::new(0),
+            ext_seen: std::sync::atomic::AtomicI64::new(
+                std::fs::read_to_string(opts.data_dir.join("extension-seen"))
+                    .ok()
+                    .and_then(|t| t.trim().parse().ok())
+                    .unwrap_or(0),
+            ),
+            ffmpeg_path: Mutex::new(None),
         }));
         core.apply_runtime_settings();
         core.spawn_background(outcome_rx);
@@ -241,6 +250,11 @@ impl Core {
                 }
             });
         }
+        // After an in-app update: continue what was running before the restart.
+        core.resume_after_restart();
+        // HLS/DASH need ffmpeg to join video and audio: find it now, not only after an update.
+        let c = core.clone();
+        tokio::spawn(async move { c.sync_ffmpeg_path().await });
         Ok(core)
     }
 
@@ -327,7 +341,7 @@ impl Core {
             0
         };
         self.0.engine.global_limiter().set_rate(global);
-        self.0.engine.update_config(jobs::engine_config(&s));
+        self.apply_engine_config();
         self.0.video.set_options(jobs::video_options(&s));
         if let Some(t) = self.0.torrent.get() {
             t.set_limits(global, global);
@@ -574,19 +588,29 @@ impl Core {
         let mut removed = Vec::new();
         for id in ids {
             let Some(item) = self.item(id) else { continue };
-            let job = self.0.state.lock().jobs.remove(id);
-            if let Some(job) = job {
-                job.cancel(delete_files);
-            }
-            if item.kind == ItemKind::Torrent
-                && let (Some(t), Some(hash)) = (self.0.torrent.get(), jobs::torrent_hash(&item))
-            {
-                let _ = t.remove(&hash, delete_files).await;
+            let leaving_list = !(use_trash && !item.trashed);
+            if leaving_list || delete_files {
+                let job = self.0.state.lock().jobs.remove(id);
+                if let Some(job) = job {
+                    job.cancel(delete_files);
+                }
+                if item.kind == ItemKind::Torrent
+                    && let (Some(t), Some(hash)) = (self.0.torrent.get(), jobs::torrent_hash(&item))
+                {
+                    let _ = t.remove(&hash, delete_files).await;
+                }
+            } else if let Some(job) = self.0.state.lock().jobs.get(id) {
+                // Into the trash: pause (not cancel) so the resume point is saved and the
+                // download continues where it stopped once it is restored.
+                job.pause();
             }
             if delete_files {
                 remove_item_files(&item);
+            } else if leaving_list && item.status != Status::Completed {
+                // A partial file can't be resumed once its item is gone: don't leave it behind.
+                remove_partial_files(&item);
             }
-            if use_trash && !item.trashed {
+            if !leaving_list {
                 self.with_item(id, |i| {
                     i.trashed = true;
                     if i.status.is_active() || i.status == Status::Queued {
@@ -826,6 +850,17 @@ impl Core {
                     } else {
                         i.status = Status::Completed;
                         i.error = None;
+                        // Browser cookies and passwords were only needed to fetch the file.
+                        forget_credentials(i);
+                        #[cfg(unix)]
+                        if i.kind == ItemKind::Video {
+                            // Tools can leave the output executable; a video never should be.
+                            use std::os::unix::fs::PermissionsExt;
+                            let _ = std::fs::set_permissions(
+                                &path,
+                                std::fs::Permissions::from_mode(0o644),
+                            );
+                        }
                     }
                     i.clone()
                 });
@@ -933,6 +968,51 @@ impl Core {
     }
 
     /// Flush everything before exit.
+    /// Shut down for an app restart (in-app update): remember what was downloading or waiting
+    /// in a queue, so [`Core::start`] continues it in the new version.
+    pub async fn shutdown_for_restart(&self) {
+        let running: Vec<(String, bool)> = {
+            let st = self.0.state.lock();
+            st.items
+                .values()
+                .filter(|i| !i.trashed && (i.status.is_active() || i.status == Status::Queued))
+                .map(|i| (i.id.clone(), i.status == Status::Queued))
+                .collect()
+        };
+        if let Ok(json) = serde_json::to_vec(&running) {
+            let _ = std::fs::write(self.0.data_dir.join(RESUME_FILE), json);
+        }
+        self.shutdown().await;
+    }
+
+    fn resume_after_restart(&self) {
+        let path = self.0.data_dir.join(RESUME_FILE);
+        let Ok(data) = std::fs::read(&path) else {
+            return;
+        };
+        let _ = std::fs::remove_file(&path);
+        let Ok(list) = serde_json::from_slice::<Vec<(String, bool)>>(&data) else {
+            return;
+        };
+        let mut start = Vec::new();
+        for (id, queued) in list {
+            let Some(item) = self.item(&id) else { continue };
+            if item.trashed || item.status == Status::Completed {
+                continue;
+            }
+            if queued {
+                // Waiting items go back to their queue, which admits them as before.
+                self.with_item(&id, |i| i.status = Status::Queued);
+            } else {
+                start.push(id);
+            }
+        }
+        if !start.is_empty() {
+            tracing::info!("continuing {} download(s) after restart", start.len());
+            self.start_items(&start);
+        }
+    }
+
     pub async fn shutdown(&self) {
         let ids: Vec<String> = self.0.state.lock().jobs.keys().cloned().collect();
         self.checkpoint().await;
@@ -950,6 +1030,8 @@ impl Core {
         }
         self.0.ipc.lock().take();
         platform::set_keep_awake(false);
+        // Fold the write-ahead log back into prism.db so the file on disk is complete.
+        self.0.db.checkpoint();
     }
 
     // ----- import / export -----------------------------------------------------------------------
@@ -1100,11 +1182,76 @@ fn move_file(from: &Path, to: &Path) -> std::io::Result<()> {
 }
 
 fn remove_item_files(item: &DownloadItem) {
-    let path = item.path();
-    let _ = std::fs::remove_file(&path);
-    let mut part = path.clone().into_os_string();
+    let _ = std::fs::remove_file(item.path());
+    remove_partial_files(item);
+}
+
+/// What was running before a restart for an update (see [`Core::shutdown_for_restart`]).
+const RESUME_FILE: &str = "resume-after-restart.json";
+
+/// Data folder 0700 and database files 0600 (they hold download history and settings).
+fn restrict_permissions(data_dir: &Path) {
+    #[cfg(unix)]
+    {
+        use std::os::unix::fs::PermissionsExt;
+        let _ = std::fs::set_permissions(data_dir, std::fs::Permissions::from_mode(0o700));
+        for f in ["prism.db", "prism.db-wal", "prism.db-shm", "settings.json"] {
+            let p = data_dir.join(f);
+            if p.exists() {
+                let _ = std::fs::set_permissions(&p, std::fs::Permissions::from_mode(0o600));
+            }
+        }
+    }
+    #[cfg(not(unix))]
+    let _ = data_dir;
+}
+
+/// Drops session cookies, passwords and auth headers from a finished item's saved request.
+fn forget_credentials(item: &mut DownloadItem) {
+    let Some(req) = item.request.as_mut().and_then(|r| r.as_object_mut()) else {
+        return;
+    };
+    for key in ["cookies", "auth"] {
+        req.remove(key);
+    }
+    if let Some(headers) = req.get_mut("headers").and_then(|h| h.as_array_mut()) {
+        headers.retain(|h| {
+            let name = h.get(0).and_then(|n| n.as_str()).unwrap_or_default();
+            !name.eq_ignore_ascii_case("cookie") && !name.eq_ignore_ascii_case("authorization")
+        });
+    }
+}
+
+/// Where the engine keeps the in-progress file (may differ from the item's current name).
+fn resume_part_path(item: &DownloadItem) -> Option<PathBuf> {
+    let r = item.resume.as_ref()?;
+    r.get("part_path")
+        .or_else(|| r.get("partPath"))
+        .and_then(|v| v.as_str())
+        .map(PathBuf::from)
+}
+
+/// The in-progress file, its sidecar directory and a video's temp folder.
+fn remove_partial_files(item: &DownloadItem) {
+    if let Some(part) = resume_part_path(item) {
+        // Only Prism's own partial files/folders (the path may come from an imported list).
+        let name = part
+            .file_name()
+            .map(|n| n.to_string_lossy().into_owned())
+            .unwrap_or_default();
+        if name.ends_with(".prismpart.d") && part.is_dir() {
+            let _ = std::fs::remove_dir_all(&part);
+        } else if name.ends_with(".prismpart") {
+            let _ = std::fs::remove_file(&part);
+        }
+    }
+    let mut part = item.path().into_os_string();
     part.push(".prismpart");
-    let _ = std::fs::remove_file(PathBuf::from(part));
+    let part = PathBuf::from(part);
+    let _ = std::fs::remove_file(&part);
+    let mut side = part.into_os_string();
+    side.push(".d");
+    let _ = std::fs::remove_dir_all(PathBuf::from(side));
     if item.kind == ItemKind::Video {
         let _ = std::fs::remove_dir_all(jobs::video_temp_dir(item));
     }

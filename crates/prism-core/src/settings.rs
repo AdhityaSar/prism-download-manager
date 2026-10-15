@@ -41,6 +41,8 @@ pub struct General {
     pub confirm_delete: bool,
     /// Move deleted items to Trash (restorable) instead of forgetting them.
     pub use_trash: bool,
+    /// Look for new Prism versions on start and every few hours.
+    pub check_updates: bool,
 }
 
 impl Default for General {
@@ -55,6 +57,7 @@ impl Default for General {
             notifications: true,
             confirm_delete: true,
             use_trash: true,
+            check_updates: true,
         }
     }
 }

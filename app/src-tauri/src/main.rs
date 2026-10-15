@@ -5,6 +5,7 @@
 mod commands;
 mod integration;
 mod tray;
+mod updates;
 mod windows;
 
 use prism_core::events::{CaptureSource, CoreEvent};
@@ -14,7 +15,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
 
-static QUITTING: AtomicBool = AtomicBool::new(false);
+pub(crate) static QUITTING: AtomicBool = AtomicBool::new(false);
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
@@ -42,6 +43,8 @@ fn main() {
             }
         }))
         .plugin(tauri_plugin_notification::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
+        .plugin(tauri_plugin_process::init())
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_autostart::init(
@@ -59,12 +62,19 @@ fn main() {
                 .map_err(|e| format!("Prism failed to start: {e:#}"))?;
             app.manage(core.clone());
             tray::create(&handle)?;
+            #[cfg(target_os = "macos")]
+            mac_menu(&handle)?;
             spawn_event_forwarder(handle.clone(), core.clone());
 
             let settings = core.settings();
             if let Some(main) = app.get_webview_window("main") {
                 apply_window_material(&main, &settings);
                 let show = !background && !settings.general.start_minimized;
+                #[cfg(target_os = "macos")]
+                if show {
+                    // WKWebView doesn't paint into a hidden window: show the (transparent) window now.
+                    let _ = main.show();
+                }
                 if show {
                     // The UI shows the window after its first paint; this is only a fallback.
                     let w = main.clone();
@@ -184,20 +194,49 @@ fn main() {
             commands::data_dir,
             commands::clipboard_read,
             commands::clipboard_write,
+            updates::check_update,
+            updates::install_update,
         ])
         .build(tauri::generate_context!())
         .expect("error while building Prism");
 
     app.run(|app, event| {
         // Prism lives in the tray: closing the last window must not exit.
-        if let RunEvent::ExitRequested { api, code, .. } = event
+        if let RunEvent::ExitRequested { api, code, .. } = &event
             && code.is_none()
             && !QUITTING.load(Ordering::SeqCst)
         {
             api.prevent_exit();
         }
-        let _ = app;
+        // macOS: clicking the Dock icon (or `open -a Prism`) brings back the hidden main window.
+        #[cfg(target_os = "macos")]
+        if let RunEvent::Reopen { .. } = &event {
+            windows::show_main(app);
+        }
+        let _ = (app, event);
     });
+}
+
+/// macOS app menu: the standard menu plus "Show Prism" (⌘0), so the main window can always be
+/// reached even when the menu-bar icon is hidden.
+#[cfg(target_os = "macos")]
+fn mac_menu(app: &AppHandle) -> tauri::Result<()> {
+    use tauri::menu::{Menu, MenuItem, PredefinedMenuItem};
+    let menu = Menu::default(app)?;
+    if let Some(first) = menu.items()?.into_iter().next()
+        && let Some(sub) = first.as_submenu()
+    {
+        let show = MenuItem::with_id(app, "show-main", "Show Prism", true, Some("CmdOrCtrl+0"))?;
+        sub.insert(&show, 1)?;
+        sub.insert(&PredefinedMenuItem::separator(app)?, 2)?;
+    }
+    app.set_menu(menu)?;
+    app.on_menu_event(|app, event| {
+        if event.id() == "show-main" {
+            windows::show_main(app);
+        }
+    });
+    Ok(())
 }
 
 /// Graceful exit: checkpoint every download, then quit.

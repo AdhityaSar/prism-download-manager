@@ -339,6 +339,168 @@ async fn trash_restore_and_permanent_delete() {
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn downloads_continue_after_restart_for_update() {
+    let server = TestServer::start(ServerConfig::default()).await.unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let size: u64 = 6 << 20;
+    let url = server.url(&format!(
+        "/file/upd.bin?size={size}&seed=14&throttle=524288"
+    ));
+    let (running, idle) = {
+        let core = core_in(tmp.path()).await;
+        let running = core
+            .add_items(
+                vec![NewItem {
+                    url,
+                    ..Default::default()
+                }],
+                StartMode::Now,
+            )
+            .unwrap()[0]
+            .id
+            .clone();
+        let idle = core
+            .add_items(
+                vec![NewItem {
+                    url: "https://example.invalid/later.zip".into(),
+                    ..Default::default()
+                }],
+                StartMode::Later,
+            )
+            .unwrap()[0]
+            .id
+            .clone();
+        tokio::time::sleep(Duration::from_millis(1500)).await;
+        core.shutdown_for_restart().await;
+        (running, idle)
+    };
+    // New version starts: the running download continues by itself, the idle one doesn't.
+    let core = core_in(tmp.path()).await;
+    let mut rx = core.subscribe();
+    let item = core.item(&running).unwrap();
+    assert_ne!(
+        item.status,
+        Status::Paused,
+        "should continue without a click"
+    );
+    let path = wait_completed(&mut rx, &running).await;
+    assert_eq!(sha256_file(&path), expected_sha256(14, size));
+    assert_ne!(core.item(&idle).unwrap().status, Status::Downloading);
+    // A normal restart afterwards doesn't start anything again.
+    assert!(
+        !tmp.path()
+            .join("data")
+            .join("resume-after-restart.json")
+            .exists()
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn running_download_survives_trash_and_restore() {
+    let server = TestServer::start(ServerConfig::default()).await.unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core_in(tmp.path()).await;
+    let size: u64 = 6 << 20;
+    let url = server.url(&format!(
+        "/file/trash.bin?size={size}&seed=12&throttle=524288"
+    ));
+    let items = core
+        .add_items(
+            vec![NewItem {
+                url,
+                ..Default::default()
+            }],
+            StartMode::Now,
+        )
+        .unwrap();
+    let id = items[0].id.clone();
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    // Trash it while it is downloading.
+    core.delete_items(std::slice::from_ref(&id), false, false)
+        .await
+        .unwrap();
+    let mut saved = false;
+    for _ in 0..100 {
+        let item = core.item(&id).unwrap();
+        if item.resume.is_some() && item.downloaded > 0 {
+            saved = true;
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let item = core.item(&id).unwrap();
+    assert!(item.trashed);
+    assert_eq!(item.status, Status::Paused);
+    assert!(saved, "trashing must keep the resume point");
+    let before = item.downloaded;
+    // Restore and continue: same file, not restarted.
+    core.restore_items(std::slice::from_ref(&id));
+    assert!(!core.item(&id).unwrap().trashed);
+    server.reset_stats();
+    let mut rx = core.subscribe();
+    core.start_items(std::slice::from_ref(&id));
+    let path = wait_completed(&mut rx, &id).await;
+    assert_eq!(path.file_name().unwrap(), "trash.bin");
+    assert_eq!(sha256_file(&path), expected_sha256(12, size));
+    let resent: u64 = server
+        .stats()
+        .connections
+        .iter()
+        .map(|c| c.bytes_sent)
+        .sum();
+    assert!(
+        resent < size - before / 2,
+        "resent {resent} bytes, had {before}"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn removing_an_unfinished_download_removes_its_partial_file() {
+    let server = TestServer::start(ServerConfig::default()).await.unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core_in(tmp.path()).await;
+    let size: u64 = 6 << 20;
+    let url = server.url(&format!(
+        "/file/gone.bin?size={size}&seed=13&throttle=524288"
+    ));
+    let id = core
+        .add_items(
+            vec![NewItem {
+                url,
+                ..Default::default()
+            }],
+            StartMode::Now,
+        )
+        .unwrap()[0]
+        .id
+        .clone();
+    tokio::time::sleep(Duration::from_millis(1500)).await;
+    core.pause_items(std::slice::from_ref(&id));
+    for _ in 0..100 {
+        if core.item(&id).unwrap().resume.is_some() {
+            break;
+        }
+        tokio::time::sleep(Duration::from_millis(50)).await;
+    }
+    let part = tmp.path().join("dl").join("gone.bin.prismpart");
+    assert!(part.exists(), "partial file expected at {}", part.display());
+    // Trash, then empty the trash ("delete files" not ticked).
+    core.delete_items(std::slice::from_ref(&id), false, false)
+        .await
+        .unwrap();
+    assert!(
+        part.exists(),
+        "the trash keeps the partial file for restoring"
+    );
+    core.empty_trash().await.unwrap();
+    assert!(core.item(&id).is_none());
+    assert!(
+        !part.exists(),
+        "an unfinished download's partial file must not be left behind"
+    );
+}
+
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
 async fn batch_pattern_expands() {
     let tmp = tempfile::tempdir().unwrap();
     let core = core_in(tmp.path()).await;

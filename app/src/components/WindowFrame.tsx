@@ -36,7 +36,17 @@ interface Props {
  */
 export function WindowFrame({ kind, title, icon, actions, onClose, minimizable, children, className, bare }: Props) {
   useEffect(() => {
-    requestAnimationFrame(() => requestAnimationFrame(() => void win.show()));
+    // After the first paint; the timer covers webviews that pause animation frames while hidden.
+    let shown = false;
+    const show = () => {
+      if (!shown) {
+        shown = true;
+        void win.show();
+      }
+    };
+    requestAnimationFrame(() => requestAnimationFrame(show));
+    const t = window.setTimeout(show, 120);
+    return () => window.clearTimeout(t);
   }, []);
 
   const close = onClose ?? (() => void win.close());

@@ -30,7 +30,7 @@ jobs:
             bundles: app,dmg
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: dtolnay/rust-toolchain@stable
         with:
           targets: ${{ matrix.target }}
@@ -42,7 +42,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libwebkit2gtk-4.1-dev libayatana-appindicator3-dev librsvg2-dev patchelf libxdo-dev rpm
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v5
         with:
           node-version: 24
       - name: Install dependencies
@@ -63,6 +63,9 @@ jobs:
           APPLE_ID: ${{ secrets.APPLE_ID }}
           APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          # Signs the in-app update bundles (.sig files next to them).
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         shell: bash
         run: |
           # Unset secrets that are not configured: an empty APPLE_CERTIFICATE would make the
@@ -71,7 +74,17 @@ jobs:
           for v in APPLE_CERTIFICATE APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
             [ -n "${!v}" ] || unset "$v"
           done
-          npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+          # Signed in-app update bundles only for official releases (needs the signing key).
+          npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }} --config '{"bundle":{"createUpdaterArtifacts":true}}'
+      - name: Name the macOS update bundle per architecture
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          M=target/${{ matrix.target }}/release/bundle/macos
+          V=$(node -p "require('./app/src-tauri/tauri.conf.json').version")
+          A=$([ "${{ matrix.target }}" = aarch64-apple-darwin ] && echo aarch64 || echo x64)
+          mv "$M/Prism.app.tar.gz" "$M/Prism_${V}_${A}.app.tar.gz"
+          mv "$M/Prism.app.tar.gz.sig" "$M/Prism_${V}_${A}.app.tar.gz.sig"
       - name: DMG with the browser extension next to the app (macOS)
         if: runner.os == 'macOS'
         run: |
@@ -92,7 +105,7 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./scripts/make-portable.ps1 -Target ${{ matrix.target }}
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         with:
           name: prism-${{ matrix.name }}
           path: |
@@ -102,9 +115,11 @@ jobs:
             target/${{ matrix.target }}/release/bundle/**/*.rpm
             target/${{ matrix.target }}/release/bundle/**/*.AppImage
             target/${{ matrix.target }}/release/bundle/**/*.dmg
+            target/${{ matrix.target }}/release/bundle/**/*.app.tar.gz
+            target/${{ matrix.target }}/release/bundle/**/*.sig
             packaging/out/*.zip
           if-no-files-found: ignore
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v5
         if: runner.os == 'Linux'
         with:
           name: prism-extension
@@ -118,16 +133,19 @@ jobs:
     permissions:
       contents: write
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/download-artifact@v4
+      - uses: actions/checkout@v5
+      - uses: actions/download-artifact@v5
         with:
           path: artifacts
       - name: Collect installers and checksums
         run: |
           mkdir -p out
           find artifacts -type f \( -name '*.exe' -o -name '*.msi' -o -name '*.dmg' -o -name '*.deb' \
-            -o -name '*.rpm' -o -name '*.AppImage' -o -name '*.zip' \) -exec cp {} out/ \;
-          cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+            -o -name '*.rpm' -o -name '*.AppImage' -o -name '*.zip' -o -name '*.app.tar.gz' \) -exec cp {} out/ \;
+          # Manifest for the in-app updater (signatures come from the .sig files).
+          python3 scripts/make-latest-json.py artifacts "${GITHUB_REF_NAME}" docs/RELEASE_NOTES.md > latest.json
+          cat latest.json
+          cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt && mv ../latest.json .
       - name: Create release
         uses: softprops/action-gh-release@v2
         with:

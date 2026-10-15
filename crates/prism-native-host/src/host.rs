@@ -102,7 +102,38 @@ pub fn run(caller: Option<String>) -> i32 {
         paths::app_executable(&host_exe),
     ));
     let out: Out = Arc::new(Mutex::new(Box::new(io::stdout())));
+    watch_for_update(host_exe, out.clone());
     run_with(client, io::stdin().lock(), out)
+}
+
+/// The browser keeps the host running for as long as the extension is connected. When an
+/// update replaces the executable, exit so the browser starts the new version on the next
+/// message (the extension reconnects by itself).
+fn watch_for_update(exe: PathBuf, out: Out) {
+    let stamp = |p: &PathBuf| {
+        std::fs::metadata(p)
+            .ok()
+            .map(|m| (m.len(), m.modified().ok()))
+    };
+    let initial = stamp(&exe);
+    if initial.is_none() {
+        return;
+    }
+    let _ = thread::Builder::new()
+        .name("update-watch".into())
+        .spawn(move || {
+            loop {
+                thread::sleep(std::time::Duration::from_secs(15));
+                if stamp(&exe) != initial {
+                    log_info!(
+                        "host executable was updated; exiting so the browser starts the new one"
+                    );
+                    // Never cut a reply in half: wait until no reply is being written.
+                    let _guard = out.lock();
+                    std::process::exit(0);
+                }
+            }
+        });
 }
 
 /// The loop, generic over its input (used by tests).

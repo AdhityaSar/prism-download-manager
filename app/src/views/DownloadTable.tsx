@@ -300,7 +300,9 @@ const Row = memo(function Row({ id, index, top, cols, selected, fresh, compact, 
       onDoubleClick={() => actions.activate(id)}
       onContextMenu={(e) => onContextMenu(e, id)}
     >
-      <div className="chk">
+      {/* The row selects on mouse-down; the checkbox toggles on click. Without stopping the
+          mouse-down here a click would select the row and then immediately unselect it. */}
+      <div className="chk" onMouseDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
         <Checkbox
           checked={selected}
           label={`Select ${item.fileName}`}

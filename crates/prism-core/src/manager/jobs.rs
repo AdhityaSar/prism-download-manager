@@ -1364,9 +1364,15 @@ impl Core {
     /// Point the engine's HLS/DASH remuxer at the ffmpeg the video service resolved.
     pub async fn sync_ffmpeg_path(&self) {
         let status = self.0.video.tool_status().await;
+        *self.0.ffmpeg_path.lock() = status.ffmpeg.path.clone();
+        self.apply_engine_config();
+    }
+
+    /// Engine settings from the user's settings plus the resolved ffmpeg (kept across changes).
+    pub(crate) fn apply_engine_config(&self) {
         let mut cfg = engine_config(&self.settings());
         if cfg.ffmpeg_path.is_none() {
-            cfg.ffmpeg_path = status.ffmpeg.path.clone();
+            cfg.ffmpeg_path = self.0.ffmpeg_path.lock().clone();
         }
         self.0.engine.update_config(cfg);
     }

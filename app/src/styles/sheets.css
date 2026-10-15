@@ -240,3 +240,7 @@
 .cbanner__txt { flex: 1; min-width: 0; }
 .cbanner__txt b { color: var(--text-primary); }
 .bstep__full { grid-column: 2 / -1; margin-top: 0 !important; }
+.banner-stack { display: grid; min-width: 0; }
+.link-btn { display: inline; padding: 0; color: var(--accent); font: inherit; text-decoration: underline; text-underline-offset: 2px; }
+.ubanner__bar { display: block; height: 4px; margin-top: 6px; border-radius: 2px; background: var(--track-bg); overflow: hidden; }
+.ubanner__bar > span { display: block; height: 100%; border-radius: 2px; background: var(--gradient-accent); transition: width 0.3s; }

@@ -17,6 +17,7 @@ import { Sheets } from "./Sheets";
 import { Sidebar } from "./Sidebar";
 import { StatusBar } from "./StatusBar";
 import { TitleRow } from "./TitleRow";
+import { UpdateBanner } from "./UpdateBanner";
 import { Toolbar } from "./Toolbar";
 import { listIds } from "./useListing";
 
@@ -72,7 +73,10 @@ export function MainWindow() {
       <main className="sheet" style={{ ["--bottom-h" as string]: bottomOpen ? `${bottomHeight}px` : "0px" }}>
         <Toolbar />
         <TitleRow />
-        <ConnectBanner onOpen={() => useUi.getState().openSheet({ kind: "settings", section: "browser" })} />
+        <div className="banner-stack">
+          <UpdateBanner />
+          <ConnectBanner onOpen={() => useUi.getState().openSheet({ kind: "settings", section: "browser" })} />
+        </div>
         <DownloadTable />
         <BottomPane />
         <StatusBar />

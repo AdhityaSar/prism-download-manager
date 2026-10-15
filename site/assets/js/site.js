@@ -380,7 +380,7 @@
     switch (kind) {
       case "win": return ["Open " + f + " from your Downloads.", "If Windows says <i>&ldquo;Windows protected your PC&rdquo;</i>, click <b>More info &rarr; Run anyway</b> (the installer isn&rsquo;t signed with a paid certificate).", guide];
       case "winzip": return ["Unzip " + f + " anywhere (a USB stick works).", "Run <code>prism.exe</code>. If SmartScreen appears: <b>More info &rarr; Run anyway</b>.", guide];
-      case "mac": return ["Open " + f + ", drag <b>Prism</b> into <b>Applications</b> and the <b>Browser Extension</b> folder into Documents.", "First start only: <b>right-click Prism &rarr; Open &rarr; Open</b> (the app isn&rsquo;t notarized by Apple).", guide];
+      case "mac": return ["Open " + f + ", drag <b>Prism</b> into <b>Applications</b> and the <b>Browser Extension</b> folder into Documents.", "First start only: in Terminal run <code>xattr -dr com.apple.quarantine /Applications/Prism.app</code> (or System Settings &rarr; Privacy &amp; Security &rarr; <b>Open Anyway</b>).", guide];
       case "deb": return ["Install it: <code>sudo apt install ./" + file + "</code>", "Start <b>Prism</b> from your applications menu.", guide];
       case "rpm": return ["Install it: <code>sudo dnf install ./" + file + "</code>", "Start <b>Prism</b> from your applications menu.", guide];
       default: return ["Make it executable: <code>chmod +x " + file + "</code>", "Run it: <code>./" + file + "</code>", guide];

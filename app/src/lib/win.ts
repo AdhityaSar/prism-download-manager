@@ -16,9 +16,13 @@ export const win = {
       await w.setFocus();
     }
   },
+  /** Closes this window for good (dialogs are destroyed, not kept hidden); the main window
+   * goes through the normal close request (to the tray, if enabled). */
   close: async () => {
     const w = await current();
-    if (w) await w.close();
+    if (!w) return;
+    if (w.label === "main") await w.close();
+    else await w.destroy();
   },
   minimize: async () => (await current())?.minimize(),
   toggleMaximize: async () => (await current())?.toggleMaximize(),

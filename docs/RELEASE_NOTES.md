@@ -1,33 +1,43 @@
-# Prism 1.0.2 — One beam. Many rays.
+# Prism 1.0.3 — One beam. Many rays.
 
 A fast, open-source download manager for Windows, Linux and macOS, with browser integration
 and video downloads.
 
-## What's new in 1.0.2
+## What's new in 1.0.3
 
-* **macOS: downloads from the browser work.** The "Download File" window could stay
-  invisible on macOS, so links handed over by the extension seemed to disappear. Dialogs now
-  always appear and come to the front.
-* **macOS: the browser extension is right in the DMG** — a "Browser Extension" folder next to
-  Prism, with a short how-to. Prism also keeps a copy outside the app bundle, so the guide in
-  Settings → Browser integration points to a folder the browser's file picker can open.
-* **Windows: updating works while the browser is open.** The installer stops the browser
-  helper (`prism-native-host.exe`) before replacing it instead of failing with
-  "Error opening file for writing".
-* **Rounded window corners** on Windows 11, macOS and Linux (square when maximized).
-* If a download dialog ever fails to open, the download starts anyway (with a notification)
-  instead of being lost, and the log says why.
+* **Updates from inside the app.** Prism checks for new versions by itself and shows
+  "Prism 1.x is ready — Restart & update". It downloads the signed update, restarts into the
+  new version and continues the downloads that were running. (Settings → General to turn the
+  check off; About → Check for updates.) Installer, macOS app and AppImage update themselves;
+  MSI, portable and deb/rpm installs get a link to the new version.
+* **macOS fixes from real-world testing:**
+  * Clicking Prism in the Dock brings back the window after it was closed; "Show Prism" (⌘0)
+    is in the app menu too.
+  * Dialogs (Download File, Download Complete, …) appear immediately and are freed when closed.
+  * Clearer first-start instructions for Gatekeeper (`xattr` or Open Anyway). In-app updates
+    don't need it again.
+* **Trash:** a download moved to the trash while running can be restored and continues where
+  it stopped (it used to start over). Emptying the trash no longer leaves `.prismpart` files.
+* **Video:** streams (HLS/DASH) always get their audio joined in — it could be saved as a
+  separate `.audio.m4a` after changing a setting. File names follow your name template
+  (`Title [id].mp4`).
+* **Selecting downloads with the checkboxes** works (a click selected and unselected at once).
+* **Privacy:** the clipboard is read only when it changes and password-manager entries are
+  skipped; browser cookies and passwords are removed from the database once a download is
+  finished; Prism's data folder is private to your user on macOS and Linux.
+* The browser helper restarts itself after an update, and Prism no longer says "Browser not
+  connected" for a minute after every start.
 
 ## Downloads
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.0.2_x64-setup.exe` (recommended) · `Prism_1.0.2_x64_en-US.msi` (all users) · `Prism-1.0.2-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.0.2_aarch64.dmg` |
-| macOS — Intel | `Prism_1.0.2_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.0.2_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.0.2-1.x86_64.rpm` |
-| Any Linux | `Prism_1.0.2_amd64.AppImage` |
+| Windows 10 / 11 | `Prism_1.0.3_x64-setup.exe` (recommended) · `Prism_1.0.3_x64_en-US.msi` (all users) · `Prism-1.0.3-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.0.3_aarch64.dmg` |
+| macOS — Intel | `Prism_1.0.3_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.0.3_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.0.3-1.x86_64.rpm` |
+| Any Linux | `Prism_1.0.3_amd64.AppImage` |
 | Browser extension | `prism-chromium.zip` (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·
@@ -54,8 +64,8 @@ Verify downloads with `SHA256SUMS.txt`.
 
 * The installers are **not code-signed** (signing certificates are paid):
   * Windows SmartScreen: click **More info → Run anyway**.
-  * macOS: **right-click Prism → Open** the first time (or
-    `xattr -dr com.apple.quarantine /Applications/Prism.app`).
+  * macOS: run `xattr -dr com.apple.quarantine /Applications/Prism.app` once (or System
+    Settings → Privacy & Security → **Open Anyway**). In-app updates don't need this again.
 * The extension is installed manually (Developer mode → *Load unpacked*); store listings
   are not available yet. Firefox keeps unsigned add-ons only until restart, except in
   Developer Edition / Nightly / ESR.

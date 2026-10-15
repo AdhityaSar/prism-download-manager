@@ -40,13 +40,17 @@ the `data` folder next to it.
 ## macOS
 
 1. Open the `.dmg` and drag **Prism** into **Applications**.
-2. The app is not notarized by Apple (that needs a paid developer account), so the first
-   start needs one extra step: in **Applications**, **right-click Prism → Open → Open**.
-   After that it opens normally.
-   * If macOS says the app *"is damaged and can't be opened"*, run once in Terminal:
+2. The app is not notarized by Apple (that needs a paid developer account), so macOS blocks
+   it the first time — it may refuse to open, say it *"is damaged"*, or close it after a few
+   seconds. Allow it once, either way:
+   * **Terminal (simplest):**
      ```bash
      xattr -dr com.apple.quarantine /Applications/Prism.app
      ```
+   * or open Prism once, then **System Settings → Privacy & Security** → scroll down →
+     **Open Anyway** next to "Prism was blocked" → confirm with your password.
+
+   Updates installed from inside Prism (it offers them by itself) don't need this again.
 3. Optional but recommended for video downloads: `brew install ffmpeg` (Prism can also fetch a
    verified ffmpeg build by itself — Settings → Video & streams → Check tools).
 

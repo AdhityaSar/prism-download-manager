@@ -25,6 +25,14 @@ impl Db {
         Self::init(conn)
     }
 
+    /// Writes the WAL back into the main database file (on shutdown).
+    pub fn checkpoint(&self) {
+        let conn = self.conn.lock();
+        if let Err(e) = conn.execute_batch("PRAGMA wal_checkpoint(TRUNCATE);") {
+            tracing::warn!("database checkpoint failed: {e}");
+        }
+    }
+
     pub fn open_in_memory() -> DbResult<Self> {
         Self::init(Connection::open_in_memory()?)
     }

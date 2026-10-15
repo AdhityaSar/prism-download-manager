@@ -41,7 +41,20 @@ export const actions = {
     await attempt(api.deleteItems(ids, deleteFiles, permanent), "Could not delete");
     useApp.getState().select([]);
   },
-  restore: (ids: string[]) => void attempt(api.restoreItems(ids), "Could not restore"),
+  restore: async (ids: string[]) => {
+    const unfinished = items(ids).filter((i) => i.status !== "completed").length;
+    try {
+      await api.restoreItems(ids);
+    } catch (e) {
+      toast("Could not restore", { kind: "error", body: e instanceof Error ? e.message : String(e) });
+      return;
+    }
+    toast(ids.length > 1 ? `${ids.length} downloads restored` : "Download restored", {
+      kind: "success",
+      body: unfinished ? "Press Resume to continue where it stopped." : undefined,
+      ms: 3500,
+    });
+  },
 
   open: (id: string) => void attempt(api.openItem(id), "Could not open the file"),
   reveal: (id: string) => void attempt(api.revealItem(id), "Could not open the folder"),

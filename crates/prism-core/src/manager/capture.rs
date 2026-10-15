@@ -570,7 +570,9 @@ impl Core {
                     page_url: Some(url.clone()),
                 };
                 let title = media.title.clone().unwrap_or_else(|| "Video".into());
-                let file_name = format!("{}.{}", super::sanitize_name(&title), jobs::video_ext(&d.choice, &d.options, &settings));
+                let ext = jobs::video_ext(&d.choice, &d.options, &settings);
+                let stem = render_name_template(&settings.video.file_template, &title, video_id(&url).as_deref());
+                let file_name = format!("{}.{ext}", super::sanitize_name(&stem));
                 NewItem {
                     url: url.clone(),
                     kind: Some(ItemKind::Video),
@@ -687,9 +689,16 @@ impl Core {
     /// Answer one browser message (protocol v1, see `extension/README.md`). Replies are
     /// immediate: dialogs open asynchronously so a captured browser download never waits.
     async fn handle_message(&self, msg: serde_json::Value) -> serde_json::Value {
-        self.0
+        let now = now_ms();
+        let before = self
+            .0
             .ext_seen
-            .store(now_ms(), std::sync::atomic::Ordering::Relaxed);
+            .swap(now, std::sync::atomic::Ordering::Relaxed);
+        // Remember it across restarts (at most once a minute), so the app doesn't claim the
+        // browser is disconnected until the extension's next hello.
+        if now - before > 60_000 {
+            let _ = std::fs::write(self.0.data_dir.join("extension-seen"), now.to_string());
+        }
         let ty = msg.get("type").and_then(|v| v.as_str()).unwrap_or("");
         let s = |key: &str| {
             msg.get(key)
@@ -1056,5 +1065,91 @@ mod tests {
         assert!(!is_video_page("https://example.com/video.mp4"));
         assert!(!is_video_page("https://cdn.vimeo.com/file.mp4"));
         assert!(!is_video_page("https://notyoutube.com/watch"));
+    }
+}
+
+/// Applies the user's yt-dlp style name template (`%(title)s [%(id)s].%(ext)s`) to the fields
+/// Prism knows; unknown fields and the brackets left empty by them are dropped.
+fn render_name_template(template: &str, title: &str, id: Option<&str>) -> String {
+    let tpl = template.trim();
+    let tpl = tpl.strip_suffix(".%(ext)s").unwrap_or(tpl);
+    if tpl.is_empty() {
+        return title.to_string();
+    }
+    let mut out = tpl
+        .replace("%(title)s", title)
+        .replace("%(id)s", id.unwrap_or(""));
+    // Fields Prism doesn't know (uploader, upload_date, ...).
+    while let Some(start) = out.find("%(") {
+        let Some(len) = out[start..].find(")s") else {
+            break;
+        };
+        out.replace_range(start..start + len + 2, "");
+    }
+    for empty in ["[]", "()", "{}"] {
+        out = out.replace(empty, "");
+    }
+    let out = out.split_whitespace().collect::<Vec<_>>().join(" ");
+    let out = out.trim_matches(|c: char| c == '-' || c == '_' || c.is_whitespace());
+    if out.is_empty() {
+        title.to_string()
+    } else {
+        out.to_string()
+    }
+}
+
+/// The site's video id where it is in the URL (YouTube watch/shorts/youtu.be links).
+fn video_id(page_url: &str) -> Option<String> {
+    let u = url::Url::parse(page_url).ok()?;
+    let host = u
+        .host_str()?
+        .trim_start_matches("www.")
+        .trim_start_matches("m.");
+    match host {
+        "youtube.com" | "music.youtube.com" => u
+            .query_pairs()
+            .find(|(k, _)| k == "v")
+            .map(|(_, v)| v.into_owned())
+            .or_else(|| {
+                let mut seg = u.path_segments()?;
+                matches!(seg.next(), Some("shorts" | "live" | "embed"))
+                    .then(|| seg.next().map(String::from))?
+            }),
+        "youtu.be" => u.path_segments()?.next().map(String::from),
+        _ => None,
+    }
+    .filter(|id| !id.is_empty())
+}
+
+#[cfg(test)]
+mod name_template_tests {
+    use super::*;
+
+    #[test]
+    fn renders_title_and_id() {
+        let t = "%(title)s [%(id)s].%(ext)s";
+        assert_eq!(
+            render_name_template(t, "Gearbox", Some("OcP-mCFhMZg")),
+            "Gearbox [OcP-mCFhMZg]"
+        );
+        assert_eq!(render_name_template(t, "Gearbox", None), "Gearbox");
+        assert_eq!(
+            render_name_template("%(uploader)s - %(title)s.%(ext)s", "Clip", None),
+            "Clip"
+        );
+        assert_eq!(render_name_template("", "Clip", None), "Clip");
+        assert_eq!(
+            video_id("https://www.youtube.com/watch?v=OcP-mCFhMZg&t=3").as_deref(),
+            Some("OcP-mCFhMZg")
+        );
+        assert_eq!(
+            video_id("https://youtu.be/abc123").as_deref(),
+            Some("abc123")
+        );
+        assert_eq!(
+            video_id("https://www.youtube.com/shorts/xyz").as_deref(),
+            Some("xyz")
+        );
+        assert_eq!(video_id("https://vimeo.com/123"), None);
     }
 }

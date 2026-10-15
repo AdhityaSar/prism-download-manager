@@ -68,7 +68,10 @@ pub fn open(app: &AppHandle, kind: &str, id: Option<&str>) -> tauri::Result<Webv
         .shadow(false)
         .always_on_top(sp.always_on_top)
         .skip_taskbar(matches!(kind, "mini" | "dropzone"))
-        .visible(false)
+        // Windows/Linux: hidden until the page has painted (no white flash). macOS: WKWebView
+        // doesn't render into a hidden window, so the transparent window is shown right away.
+        // (Corner windows are positioned first and shown below.)
+        .visible(cfg!(target_os = "macos") && !matches!(kind, "mini" | "dropzone"))
         // HTML5 drag & drop (links from the browser) instead of Tauri's file-only handler.
         .disable_drag_drop_handler()
         .focused(!matches!(kind, "mini" | "dropzone"));
@@ -80,6 +83,8 @@ pub fn open(app: &AppHandle, kind: &str, id: Option<&str>) -> tauri::Result<Webv
     let window = builder.build()?;
     if matches!(kind, "mini" | "dropzone") {
         place_bottom_right(&window, kind == "dropzone");
+        #[cfg(target_os = "macos")]
+        let _ = window.show();
     }
     bring_app_forward(app, kind);
     // The page calls `show()` itself once it has rendered (no white flash). A webview that

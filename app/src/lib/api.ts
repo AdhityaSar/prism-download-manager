@@ -48,6 +48,16 @@ export async function onCoreEvent(handler: (e: CoreEvent) => void): Promise<() =
   return mock.subscribe(handler);
 }
 
+/** Subscribe to a named app event emitted by the shell (e.g. `update-progress`). */
+export async function onAppEvent<T>(name: string, handler: (payload: T) => void): Promise<() => void> {
+  if (inTauri) {
+    const { listen } = await import("@tauri-apps/api/event");
+    return listen<T>(name, (e) => handler(e.payload));
+  }
+  const mock = await import("./mock");
+  return mock.subscribeApp(name, handler as (p: unknown) => void);
+}
+
 export interface CaptureDecision {
   id: string;
   fileName?: string;
@@ -151,6 +161,10 @@ export const api = {
   openItem: (id: string) => invoke<void>("open_item", { id }),
   revealItem: (id: string) => invoke<void>("reveal_item", { id }),
   openPath: (path: string) => invoke<void>("open_path", { path }),
+  /** A newer Prism release, or null when up to date. */
+  checkUpdate: () => invoke<UpdateInfo | null>("check_update"),
+  /** Downloads, installs and restarts into the update (progress: `update-progress` events). */
+  installUpdate: () => invoke<void>("install_update"),
   /** The folder to pick in the browser's "Load unpacked" dialog. */
   extensionFolder: (firefox: boolean) => invoke<string | null>("extension_folder", { firefox }),
   /** Starts (or focuses) the browser. It can't be sent to `chrome://extensions` directly. */
@@ -223,6 +237,14 @@ export interface BrowserIntegration {
   registered: boolean;
   manifestPath?: string | null;
   pointsToThisHost: boolean;
+}
+
+export interface UpdateInfo {
+  version: string;
+  current: string;
+  notes?: string | null;
+  /** false for deb/rpm/portable installs: point to the website instead. */
+  canInstall: boolean;
 }
 
 export interface IntegrationStatus {

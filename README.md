@@ -70,7 +70,8 @@ Grab the file for your system from the **[latest release](https://github.com/For
 | **Any Linux** | `Prism_<version>_amd64.AppImage` |
 
 > **First start:** the installers are not code-signed (certificates cost money).
-> Windows: *More info → Run anyway*. macOS: *right-click Prism → Open*.
+> Windows: *More info → Run anyway*. macOS: run `xattr -dr com.apple.quarantine /Applications/Prism.app`
+> once (or *System Settings → Privacy & Security → Open Anyway*).
 > Step-by-step for every system: **[Installation guide](docs/guide/installation.md)**.
 
 ## 🌐 Browser extension (2 minutes)

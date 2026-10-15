@@ -1,3 +1,4 @@
+import { checkForUpdates } from "../UpdateBanner";
 import { BrowserConnect, useExtensionStatus } from "../BrowserConnect";
 import { type ReactNode, useEffect, useState } from "react";
 import { ListField, NumberField, RateField, Row, Segmented, Select, Slider, Switch, TextField } from "../../components/Controls";
@@ -112,6 +113,7 @@ function SectionBody({ id, s }: { id: string; s: Settings }) {
           <Group title="Deleting">
             <Toggle title="Confirm before deleting" value={s.general.confirmDelete} onChange={(v) => save({ general: { confirmDelete: v } })} />
             <Toggle title="Use the trash" hint="Deleted downloads can be restored until you empty the trash" value={s.general.useTrash} onChange={(v) => save({ general: { useTrash: v } })} />
+            <Toggle title="Check for updates automatically" hint="Prism asks before installing; it restarts by itself and your downloads continue" value={s.general.checkUpdates} onChange={(v) => save({ general: { checkUpdates: v } })} />
           </Group>
           <Group title="Clipboard">
             <Toggle title="Watch the clipboard for links" value={s.clipboard.monitor} onChange={(v) => save({ clipboard: { monitor: v } })} />
@@ -817,6 +819,11 @@ function About() {
       <BrandTile size={72} />
       <h2>Prism</h2>
       <p className="text-secondary">Version {version}</p>
+      <div className="inline" style={{ justifyContent: "center" }}>
+        <button type="button" className="btn" onClick={() => void checkForUpdates(true)}>
+          <Icon name="refresh-url" size={15} /> Check for updates
+        </button>
+      </div>
       <p className="lead">One beam, many rays. A fast multi-connection download manager with browser integration, video downloading, queues, a scheduler and a site grabber.</p>
       <p className="t-small text-tertiary">Inter and JetBrains Mono are used under the SIL Open Font License. yt-dlp, ffmpeg and librqbit are separate projects under their own licenses.</p>
     </div>

@@ -702,7 +702,7 @@
             <span class="m" data-file>Prism_1.0.2_x64.dmg · 15.8 MB</span>
             <svg class="i" aria-hidden="true"><use href="#i-download"/></svg></a></li>
         </ul>
-        <p class="dl-tip"><strong>First run:</strong> the app isn’t notarized by Apple yet, so Gatekeeper asks once. In Applications, <strong>right-click Prism → Open → Open</strong>. Not sure which Mac you have? Apple menu → About This Mac → <em>Chip</em>.</p>
+        <p class="dl-tip"><strong>First run:</strong> the app isn’t notarized by Apple yet, so macOS blocks it once. Run <code>xattr -dr com.apple.quarantine /Applications/Prism.app</code> in Terminal, or use <strong>System Settings → Privacy &amp; Security → Open Anyway</strong>. Not sure which Mac you have? Apple menu → About This Mac → <em>Chip</em>.</p>
         <p class="dl-tip"><strong>Browser extension included:</strong> the DMG has a <em>Browser Extension</em> folder next to Prism — drag it to Documents, then load it in Chrome (Prism guides you on first start).</p>
       </article>
 
@@ -806,8 +806,7 @@ sha256sum -c SHA256SUMS.txt --ignore-missing</pre><button class="copy-btn" type=
           <div class="panel-grid">
             <ol class="steps">
               <li><div><h4>Open the <code>.dmg</code> and drag Prism into Applications</h4><p>Apple Silicon (M1–M4): <code>Prism_&lt;version&gt;_aarch64.dmg</code>. Intel: <code>Prism_&lt;version&gt;_x64.dmg</code>.</p></div></li>
-              <li><div><h4>First start: right-click Prism → <strong>Open</strong> → <strong>Open</strong></h4><p>Prism isn’t notarized by Apple yet (that needs a paid developer account). After this one time it opens normally.</p></div></li>
-              <li><div><h4>“Prism is damaged and can’t be opened”?</h4><p>That’s the quarantine flag on unsigned downloads. Clear it once in Terminal:</p>
+              <li><div><h4>Allow Prism once</h4><p>Prism isn’t notarized by Apple yet (that needs a paid developer account), so macOS blocks it the first time — it may refuse to open, say it’s “damaged”, or close after a few seconds. Clear the quarantine flag once in Terminal (or use <strong>System Settings → Privacy &amp; Security → Open Anyway</strong>):</p>
                 <div class="code"><pre>xattr -dr com.apple.quarantine /Applications/Prism.app</pre><button class="copy-btn" type="button" aria-label="Copy command"><svg class="i i-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="i i-check" aria-hidden="true"><use href="#i-check"/></svg></button></div></div></li>
               <li><div><h4>Optional: ffmpeg for video downloads</h4><p>Prism can fetch a verified build itself (Settings → Video &amp; streams → Check tools), or use Homebrew:</p>
                 <div class="code"><pre>brew install ffmpeg</pre><button class="copy-btn" type="button" aria-label="Copy command"><svg class="i i-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="i i-check" aria-hidden="true"><use href="#i-check"/></svg></button></div></div></li>
@@ -828,7 +827,7 @@ sha256sum -c SHA256SUMS.txt --ignore-missing</pre><button class="copy-btn" type=
                   </div>
                 </div>
               </div>
-              <p class="illo-caption">Illustration: drag to Applications, then right-click → Open the first time.</p>
+              <p class="illo-caption">Illustration: drag to Applications, then allow Prism once.</p>
             </div>
           </div>
         </div>
@@ -1051,7 +1050,7 @@ sha256sum -c SHA256SUMS.txt --ignore-missing</pre><button class="copy-btn" type=
       <details class="acc"><summary>Is there a Flatpak? What about Snap browsers?<svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
         <div class="acc-body"><p>Prism ships as deb, rpm and AppImage. There’s no Flatpak yet: browser integration relies on a native helper, which a sandboxed app can’t register without extra work. Flatpak <em>browsers</em> can’t start native helpers at all, so for full integration use a browser from a deb/rpm package; Snap Firefox works after a one-time permission prompt.</p></div></details>
       <details class="acc"><summary>Why does macOS say the app can’t be opened?<svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
-        <div class="acc-body"><p>The macOS build isn’t notarized by Apple yet. Right-click Prism in Applications → <strong>Open</strong> → <strong>Open</strong> once. If it says the app “is damaged”, clear the quarantine flag:</p>
+        <div class="acc-body"><p>The macOS build isn’t notarized by Apple yet, so macOS blocks it the first time (it may also close it after a few seconds). Allow it once with <strong>System Settings → Privacy &amp; Security → Open Anyway</strong>, or clear the quarantine flag in Terminal. Updates installed from inside Prism don’t need this again.</p>
           <div class="code"><pre>xattr -dr com.apple.quarantine /Applications/Prism.app</pre><button class="copy-btn" type="button" aria-label="Copy command"><svg class="i i-copy" aria-hidden="true"><use href="#i-copy"/></svg><svg class="i i-check" aria-hidden="true"><use href="#i-check"/></svg></button></div></div></details>
       <details class="acc"><summary>Which sites can it download videos from?<svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
         <div class="acc-body"><p>Every site yt-dlp supports — more than a thousand, including YouTube, Vimeo, Twitch, X, Instagram, TikTok, Reddit and SoundCloud. Prism installs yt-dlp, ffmpeg and deno for you, verifies them by SHA-256 and keeps yt-dlp updated. Only download content you have the right to.</p></div></details>

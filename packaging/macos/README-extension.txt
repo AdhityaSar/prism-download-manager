@@ -1,3 +1,12 @@
+First start of Prism
+====================
+Prism isn't notarized by Apple (that needs a paid developer account), so macOS blocks it
+the first time. Allow it once: in Terminal run
+
+    xattr -dr com.apple.quarantine /Applications/Prism.app
+
+or open Prism, then System Settings -> Privacy & Security -> "Open Anyway".
+
 Prism browser extension
 =======================
 

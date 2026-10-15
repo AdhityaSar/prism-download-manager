@@ -60,11 +60,24 @@ impl ClipboardMonitor {
                 };
                 // Ignore whatever is on the clipboard at startup.
                 let mut last = clipboard.get_text().unwrap_or_default();
+                let mut stamp = change_stamp();
                 while !flag.load(Ordering::Relaxed) {
                     std::thread::sleep(Duration::from_millis(700));
+                    // Only read the contents after the system says they changed, and never
+                    // read what password managers mark as concealed.
+                    let now = change_stamp();
+                    if now.is_some() && now == stamp {
+                        continue;
+                    }
+                    if is_concealed() {
+                        stamp = now;
+                        continue;
+                    }
+                    // Another app may hold the clipboard for a moment: retry on the next tick.
                     let Ok(text) = clipboard.get_text() else {
                         continue;
                     };
+                    stamp = now;
                     if text == last {
                         continue;
                     }
@@ -80,6 +93,60 @@ impl ClipboardMonitor {
             .expect("spawn clipboard thread");
         Self { stop }
     }
+}
+
+/// A counter the OS bumps on every clipboard change (`None`: not available, read every time).
+#[cfg(windows)]
+fn change_stamp() -> Option<i64> {
+    // SAFETY: no arguments; returns 0 when the caller has no window station access.
+    let n = unsafe { windows_sys::Win32::System::DataExchange::GetClipboardSequenceNumber() };
+    (n != 0).then_some(n as i64)
+}
+
+#[cfg(target_os = "macos")]
+#[allow(unused_unsafe)]
+fn change_stamp() -> Option<i64> {
+    let pb = unsafe { objc2_app_kit::NSPasteboard::generalPasteboard() };
+    Some(unsafe { pb.changeCount() } as i64)
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
+fn change_stamp() -> Option<i64> {
+    None
+}
+
+/// Content marked secret by password managers (nspasteboard.org / Windows exclusion format).
+#[cfg(windows)]
+fn is_concealed() -> bool {
+    use windows_sys::Win32::System::DataExchange::{
+        IsClipboardFormatAvailable, RegisterClipboardFormatW,
+    };
+    let name: Vec<u16> = "ExcludeClipboardContentFromMonitorProcessing\0"
+        .encode_utf16()
+        .collect();
+    // SAFETY: NUL-terminated UTF-16 string; both calls only query clipboard metadata.
+    unsafe {
+        let fmt = RegisterClipboardFormatW(name.as_ptr());
+        fmt != 0 && IsClipboardFormatAvailable(fmt) != 0
+    }
+}
+
+#[cfg(target_os = "macos")]
+#[allow(unused_unsafe)]
+fn is_concealed() -> bool {
+    let pb = unsafe { objc2_app_kit::NSPasteboard::generalPasteboard() };
+    let Some(types) = (unsafe { pb.types() }) else {
+        return false;
+    };
+    types.iter().any(|t| {
+        let t = t.to_string();
+        t == "org.nspasteboard.ConcealedType" || t == "org.nspasteboard.TransientType"
+    })
+}
+
+#[cfg(not(any(windows, target_os = "macos")))]
+fn is_concealed() -> bool {
+    false
 }
 
 impl Drop for ClipboardMonitor {

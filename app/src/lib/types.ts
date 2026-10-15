@@ -175,6 +175,7 @@ export interface Settings {
     notifications: boolean;
     confirmDelete: boolean;
     useTrash: boolean;
+    checkUpdates: boolean;
   };
   appearance: {
     theme: Theme;

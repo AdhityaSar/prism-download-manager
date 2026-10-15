@@ -28,6 +28,14 @@ let mockExtSeen = /[?&]ext=1/.test(location.search) ? Date.now() : 0;
 const listeners = new Set<(e: CoreEvent) => void>();
 const emit = (e: CoreEvent) => listeners.forEach((l) => l(e));
 
+const appListeners = new Map<string, Set<(p: unknown) => void>>();
+const emitApp = (name: string, payload: unknown) => appListeners.get(name)?.forEach((l) => l(payload));
+export function subscribeApp(name: string, handler: (p: unknown) => void): () => void {
+  if (!appListeners.has(name)) appListeners.set(name, new Set());
+  appListeners.get(name)!.add(handler);
+  return () => appListeners.get(name)?.delete(handler);
+}
+
 export function subscribe(handler: (e: CoreEvent) => void): () => void {
   listeners.add(handler);
   return () => listeners.delete(handler);
@@ -145,7 +153,7 @@ function demoParam(name: string): string | null {
 }
 
 const settings: Settings = {
-  general: { launchAtStartup: true, startMinimized: false, closeToTray: true, showCaptureDialog: true, showProgressWindow: false, showCompletionDialog: true, notifications: true, confirmDelete: true, useTrash: true },
+  general: { launchAtStartup: true, startMinimized: false, closeToTray: true, showCaptureDialog: true, showProgressWindow: false, showCompletionDialog: true, notifications: true, confirmDelete: true, useTrash: true, checkUpdates: true },
   appearance: { theme: (demoParam("theme") as "dark" | "light" | null) ?? "system", accent: "prism", density: demoParam("density") === "compact" ? "compact" : "comfortable", motion: "system", reduceTransparency: false, windowMaterial: false, visibleColumns: ["name", "size", "status", "progress", "speed", "eta", "added"] },
   downloads: { defaultDir: "C:\\Users\\you\\Downloads", useCategoryFolders: true, defaultConnections: 8, maxConnections: 32, conflict: "ask", maxRetries: 20, speedLimit: 5 * MB, speedLimiterEnabled: false, verifyChecksums: true, autoStart: true },
   connection: { userAgent: "", connectTimeoutSecs: 15, readTimeoutSecs: 30, httpVersion: "http1", maxConnectionsPerHost: 0 },
@@ -607,6 +615,13 @@ const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
   repair_integration: async () => {
     await sleep(500);
     return commands.integration_status({});
+  },
+  check_update: () => (demoParam("update") ? { version: "1.0.3", current: "1.0.2", notes: "Faster, friendlier, fewer bugs.", canInstall: true } : null),
+  install_update: async () => {
+    for (let i = 1; i <= 20; i++) {
+      await sleep(120);
+      emitApp("update-progress", [i * 800_000, 16_000_000]);
+    }
   },
   extension_dir: () => "C:\\Program Files\\Prism\\extension",
   extension_folder: ({ firefox }) => `C:\\Users\\you\\AppData\\Local\\Prism\\extension\\${firefox ? "firefox" : "chromium"}`,
