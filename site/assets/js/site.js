@@ -298,7 +298,7 @@
   refineArch.then(function () {
     renderPrimary(null);
     highlightPlatform();
-    getJSON(API + "/releases/latest", "prism-release", 20).then(function (rel) {
+    getJSON(API + "/releases/latest", "prism-release-v2", 5).then(function (rel) {
       if (!rel || !rel.assets) return;
       var slim = { tag_name: rel.tag_name, assets: rel.assets.map(function (a) { return { name: a.name, size: a.size, browser_download_url: a.browser_download_url }; }) };
       renderRelease(slim);
