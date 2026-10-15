@@ -527,6 +527,16 @@ pub async fn extension_dir(app: AppHandle) -> CmdResult<Option<PathBuf>> {
     Ok(crate::integration::extension_dir(&app))
 }
 
+#[tauri::command]
+pub async fn extension_folder(app: AppHandle, firefox: bool) -> CmdResult<Option<PathBuf>> {
+    Ok(crate::integration::extension_folder(&app, firefox))
+}
+
+#[tauri::command]
+pub async fn open_browser(browser: String) -> CmdResult<()> {
+    crate::integration::open_browser(&browser)
+}
+
 // ----- shell / windows ---------------------------------------------------------------------
 
 #[tauri::command]

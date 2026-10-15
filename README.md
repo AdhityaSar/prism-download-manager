@@ -20,13 +20,13 @@
 <p align="center">
   <a href="https://github.com/FortoGraphy/prism-download-manager/releases/latest"><b>⬇ Download</b></a> ·
   <a href="https://prismdl.site/"><b>Website</b></a> ·
-  <a href="https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.0/prism-promo-2min.mp4"><b>▶ Watch the film</b></a> ·
+  <a href="https://youtu.be/IkZu0XN2lLQ"><b>▶ Watch the film</b></a> ·
   <a href="docs/guide/installation.md">Install guide</a> ·
   <a href="docs/guide/browser-extension.md">Browser extension</a>
 </p>
 
 <p align="center">
-  <a href="https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.0/prism-promo-2min.mp4">
+  <a href="https://youtu.be/IkZu0XN2lLQ">
     <img src="docs/media/teaser.gif" width="860" alt="Prism in motion: one beam splits into many connections">
   </a>
 </p>
@@ -74,6 +74,10 @@ Grab the file for your system from the **[latest release](https://github.com/For
 > Step-by-step for every system: **[Installation guide](docs/guide/installation.md)**.
 
 ## 🌐 Browser extension (2 minutes)
+
+Prism walks you through this on first start (and any time from **Settings → Browser integration**):
+it copies the right address, opens your browser and turns green the moment the extension connects.
+By hand:
 
 1. Download **`prism-chromium.zip`** (or `prism-firefox.zip`) from the
    [latest release](https://github.com/FortoGraphy/prism-download-manager/releases/latest) and

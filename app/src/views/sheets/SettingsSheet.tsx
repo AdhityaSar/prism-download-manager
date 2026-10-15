@@ -1,3 +1,4 @@
+import { BrowserConnect, useExtensionStatus } from "../BrowserConnect";
 import { type ReactNode, useEffect, useState } from "react";
 import { ListField, NumberField, RateField, Row, Segmented, Select, Slider, Switch, TextField } from "../../components/Controls";
 import { BrandTile } from "../../components/LogoMark";
@@ -535,7 +536,8 @@ export function IntegrationList({ status }: { status: IntegrationStatus | null }
 }
 
 function BrowserIntegration() {
-  const { status, dir, busy, repair } = useIntegration();
+  const { status, busy, repair } = useIntegration();
+  const live = useExtensionStatus();
   return (
     <>
       <p className="lead">The Prism extension hands downloads and videos to this app through a native messaging host.</p>
@@ -551,38 +553,14 @@ function BrowserIntegration() {
         </button>
       </div>
       <div className="group">
+        <div className="group__t">Install the extension</div>
+        <BrowserConnect status={live.status ?? status} connected={live.connected} />
+      </div>
+      <div className="group">
         <div className="group__t">Browsers</div>
         <IntegrationList status={status} />
       </div>
-      <ExtensionHowTo dir={dir} id={status?.extensionId} />
     </>
-  );
-}
-
-export function ExtensionHowTo({ dir, id }: { dir: string | null; id?: string }) {
-  return (
-    <Group title="Install the extension">
-      <ol className="howto">
-        <li>
-          Open <code>chrome://extensions</code> (or <code>edge://extensions</code>) and turn on <b>Developer mode</b>.
-        </li>
-        <li>
-          Click <b>Load unpacked</b> and choose the <code>chromium</code> folder in:
-          <div className="howto__path">
-            <span className="t-mono ellipsis selectable">{dir ?? "…"}</span>
-            {dir && (
-              <button type="button" className="btn btn--sm" onClick={() => void attempt(api.openPath(dir))}>
-                <Icon name="folder-open" size={14} /> Open
-              </button>
-            )}
-          </div>
-        </li>
-        <li>
-          The extension id must be <code className="selectable">{id ?? "mmcdeiglkbfbicdjboocmhehodogilfl"}</code> — then press <b>Repair</b> above.
-        </li>
-        <li>Firefox: open <code>about:debugging</code> → This Firefox → Load Temporary Add-on → pick <code>firefox/manifest.json</code>.</li>
-      </ol>
-    </Group>
   );
 }
 

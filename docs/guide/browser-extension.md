@@ -13,6 +13,11 @@ The extension is what makes Prism feel like magic in the browser:
 > helper that the installer registers. Prism → **Settings → Browser integration** shows the
 > status of every browser and repairs it with one click.
 
+> **Easiest way:** Prism guides you through this on first start, and any time from
+> **Settings → Browser integration**. It copies the extensions-page address, opens your
+> browser, shows exactly which folder to pick, and turns green when the extension connects.
+> The steps below are the same thing by hand.
+
 ## Get the extension files
 
 Download **`prism-chromium.zip`** (Chrome, Edge, Brave, Opera, Vivaldi, Chromium) and/or

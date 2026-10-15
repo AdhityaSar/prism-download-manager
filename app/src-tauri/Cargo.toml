@@ -39,3 +39,6 @@ arboard = { version = "3.6", default-features = false }
 
 [features]
 default = []
+
+[target.'cfg(windows)'.dependencies]
+winreg = "0.56"

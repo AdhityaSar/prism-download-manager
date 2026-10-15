@@ -151,6 +151,10 @@ export const api = {
   openItem: (id: string) => invoke<void>("open_item", { id }),
   revealItem: (id: string) => invoke<void>("reveal_item", { id }),
   openPath: (path: string) => invoke<void>("open_path", { path }),
+  /** The folder to pick in the browser's "Load unpacked" dialog. */
+  extensionFolder: (firefox: boolean) => invoke<string | null>("extension_folder", { firefox }),
+  /** Starts (or focuses) the browser. It can't be sent to `chrome://extensions` directly. */
+  openBrowser: (browser: string) => invoke<void>("open_browser", { browser }),
 
   assignToQueue: (ids: string[], queueId: string | null) => invoke<void>("assign_to_queue", { ids, queueId }),
   moveInQueue: (ids: string[], delta: number) => invoke<void>("move_in_queue", { ids, delta }),

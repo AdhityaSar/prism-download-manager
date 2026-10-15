@@ -76,3 +76,95 @@ pub fn extension_dir(app: &AppHandle) -> Option<PathBuf> {
     let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("../../extension/build");
     dev.exists().then(|| dev.canonicalize().unwrap_or(dev))
 }
+
+/// The folder a user picks in the browser's "Load unpacked" dialog (`.../extension/chromium`,
+/// or the Firefox build), as a plain path that can be pasted into a file dialog.
+pub fn extension_folder(app: &AppHandle, firefox: bool) -> Option<PathBuf> {
+    let dir = extension_dir(app)?.join(if firefox { "firefox" } else { "chromium" });
+    let s = dir.to_string_lossy();
+    // `canonicalize` on Windows yields `\?\C:\...`, which file dialogs don't accept.
+    Some(PathBuf::from(s.strip_prefix(r"\?\").unwrap_or(&s)))
+}
+
+/// Starts (or focuses) the browser with a new window. Browsers refuse to open their internal
+/// pages (`chrome://extensions`) from the command line, so the UI copies that address for the
+/// user to paste.
+pub fn open_browser(browser: &str) -> Result<(), String> {
+    launch(browser).map_err(|e| format!("Could not start the browser: {e}"))
+}
+
+#[cfg(windows)]
+fn launch(browser: &str) -> std::io::Result<()> {
+    use winreg::RegKey;
+    use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
+    let exe = match browser {
+        "edge" => "msedge.exe",
+        "brave" => "brave.exe",
+        "vivaldi" => "vivaldi.exe",
+        "opera" => "opera.exe",
+        "firefox" => "firefox.exe",
+        _ => "chrome.exe",
+    };
+    // Browsers register their executable under "App Paths" (what the Run dialog uses).
+    let key = format!(r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\{exe}");
+    let path = [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE]
+        .into_iter()
+        .find_map(|root| {
+            let v: String = RegKey::predef(root).open_subkey(&key).ok()?.get_value("").ok()?;
+            let p = PathBuf::from(v.trim_matches('"'));
+            p.exists().then_some(p)
+        })
+        .ok_or_else(|| std::io::Error::other(format!("{exe} is not installed")))?;
+    std::process::Command::new(path).spawn().map(|_| ())
+}
+
+#[cfg(target_os = "macos")]
+fn launch(browser: &str) -> std::io::Result<()> {
+    let app = match browser {
+        "edge" => "Microsoft Edge",
+        "brave" => "Brave Browser",
+        "vivaldi" => "Vivaldi",
+        "opera" => "Opera",
+        "chromium" => "Chromium",
+        "firefox" => "Firefox",
+        _ => "Google Chrome",
+    };
+    let status = std::process::Command::new("open")
+        .args(["-a", app])
+        .status()?;
+    if status.success() {
+        Ok(())
+    } else {
+        Err(std::io::Error::other(format!("{app} not found")))
+    }
+}
+
+#[cfg(all(unix, not(target_os = "macos")))]
+fn launch(browser: &str) -> std::io::Result<()> {
+    let candidates: &[&str] = match browser {
+        "edge" => &["microsoft-edge", "microsoft-edge-stable"],
+        "brave" => &["brave-browser", "brave"],
+        "vivaldi" => &["vivaldi", "vivaldi-stable"],
+        "opera" => &["opera"],
+        "chromium" => &["chromium", "chromium-browser"],
+        "firefox" => &["firefox"],
+        _ => &["google-chrome", "google-chrome-stable"],
+    };
+    let mut last = std::io::Error::from(std::io::ErrorKind::NotFound);
+    for exe in candidates {
+        match std::process::Command::new(exe)
+            .stdin(std::process::Stdio::null())
+            .stdout(std::process::Stdio::null())
+            .stderr(std::process::Stdio::null())
+            .spawn()
+        {
+            Ok(mut child) => {
+                // Reap it (a browser that hands the URL to a running instance exits at once).
+                std::thread::spawn(move || child.wait());
+                return Ok(());
+            }
+            Err(e) => last = e,
+        }
+    }
+    Err(last)
+}

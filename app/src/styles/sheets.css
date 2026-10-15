@@ -185,3 +185,58 @@
 .howto__path { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .howto__path > .ellipsis { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .howto code { overflow-wrap: anywhere; }
+
+/* ---- browser connect guide (onboarding + settings) -------------------------------- */
+.bconnect { display: grid; gap: 12px; min-width: 0; }
+.bconnect__pick { display: flex; flex-wrap: wrap; gap: 6px; }
+.bchip {
+  display: inline-flex; align-items: center; gap: 6px; height: 28px; padding: 0 12px; border-radius: var(--radius-full);
+  background: var(--control-bg); border: 1px solid var(--control-border); color: var(--text-secondary); font-size: 12.5px; font-weight: 500;
+  transition: background var(--dur-base), color var(--dur-base), border-color var(--dur-base);
+}
+.bchip:hover { background: var(--control-bg-hover); color: var(--text-primary); }
+.bchip.on { background: var(--accent-soft); border-color: var(--accent-border); color: var(--text-primary); }
+.bsteps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.bstep {
+  display: grid; grid-template-columns: 26px minmax(0, 1fr) auto; align-items: center; gap: 12px; padding: 12px 14px;
+  border-radius: var(--radius-lg); background: var(--surface-raised); border: 1px solid var(--border-subtle);
+}
+.bstep--wide { align-items: start; }
+.bstep__n {
+  width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; font-size: 12.5px; font-weight: 700;
+  color: var(--accent-contrast); background: var(--gradient-accent); box-shadow: 0 4px 12px -4px var(--accent-glow);
+}
+.bstep__txt { min-width: 0; display: grid; gap: 3px; }
+.bstep__t { font-size: 13.5px; font-weight: 600; color: var(--text-primary); }
+.bstep__d { font-size: 12.5px; line-height: 1.5; color: var(--text-secondary); }
+.bstep__d code { font-size: 11.5px; padding: 1px 5px; border-radius: 5px; background: var(--control-bg); }
+.bstep .howto__path { margin-top: 6px; }
+.bmini {
+  display: inline-flex; align-items: center; gap: 8px; padding: 6px 10px; border-radius: 9px; background: var(--surface-sunken);
+  border: 1px dashed var(--border-default); font-size: 11.5px; color: var(--text-secondary); white-space: nowrap; user-select: none;
+}
+.bmini__toggle { position: relative; width: 28px; height: 16px; border-radius: 8px; background: var(--accent-solid); }
+.bmini__toggle::after { content: ""; position: absolute; top: 2px; right: 2px; width: 12px; height: 12px; border-radius: 50%; background: #fff; }
+.bmini__btn { padding: 3px 9px; border-radius: 6px; border: 1px solid var(--accent-border); color: var(--accent); font-weight: 600; }
+.bstatus {
+  display: flex; align-items: flex-start; gap: 10px; padding: 11px 14px; border-radius: var(--radius-lg); font-size: 12.5px; line-height: 1.5;
+  background: var(--control-bg); color: var(--text-secondary);
+}
+.bstatus b { color: var(--text-primary); }
+.bstatus__sub { margin-top: 2px; font-size: 11.5px; color: var(--text-tertiary); }
+.bstatus__spin {
+  flex: none; width: 16px; height: 16px; margin-top: 2px; border-radius: 50%; border: 2px solid var(--track-bg); border-top-color: var(--accent);
+  animation: prism-spin 0.9s linear infinite;
+}
+.bstatus--ok { background: rgb(var(--success-rgb) / 0.12); box-shadow: inset 0 0 0 1px rgb(var(--success-rgb) / 0.35); }
+.bstatus__icon { flex: none; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; color: #fff; background: var(--success); }
+@media (max-width: 560px) { .bstep { grid-template-columns: 26px minmax(0, 1fr); } .bstep > .bmini, .bstep > .btn { grid-column: 2; justify-self: start; } }
+.cbanner { overflow: hidden; }
+.cbanner__inner {
+  display: flex; align-items: center; gap: 10px; margin: 0 12px 8px; padding: 8px 10px 8px 12px; border-radius: var(--radius-lg);
+  background: var(--accent-softer); box-shadow: inset 0 0 0 1px var(--accent-border); font-size: 12.5px; color: var(--text-secondary);
+}
+.cbanner__icon { flex: none; width: 26px; height: 26px; border-radius: 8px; display: grid; place-items: center; color: var(--accent-contrast); background: var(--gradient-accent); }
+.cbanner__txt { flex: 1; min-width: 0; }
+.cbanner__txt b { color: var(--text-primary); }
+.bstep__full { grid-column: 2 / -1; margin-top: 0 !important; }

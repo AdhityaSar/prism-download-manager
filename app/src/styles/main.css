@@ -62,7 +62,7 @@
   background: var(--surface-base);
   box-shadow: var(--shadow-sheet);
   display: grid;
-  grid-template-rows: 52px 60px minmax(0, 1fr) auto;
+  grid-template-rows: 52px 60px auto minmax(0, 1fr) auto;
 }
 
 .toolbar {

@@ -6,7 +6,7 @@ import { Icon } from "../design/icons";
 import { patchSettings } from "../lib/actions";
 import { useApp } from "../lib/store";
 import { pickFolder } from "../lib/win";
-import { ExtensionHowTo, IntegrationList, useIntegration } from "./sheets/SettingsSheet";
+import { BrowserConnect, useExtensionStatus } from "./BrowserConnect";
 
 const STEPS = ["Welcome", "Browser", "Preferences", "Done"];
 
@@ -16,7 +16,7 @@ export function Onboarding() {
   const [step, setStep] = useState(0);
   const finish = () => void patchSettings({ onboardingDone: true });
   return (
-    <Modal open={!done} onClose={finish} width={680} height={540} variant="sheet" className="onboard">
+    <Modal open={!done} onClose={finish} width={720} height={660} variant="sheet" className="onboard">
       <div className="onboard__steps" aria-hidden="true">
         {STEPS.map((s, i) => (
           <span key={s} className={i <= step ? "on" : undefined} />
@@ -71,18 +71,12 @@ function Welcome() {
 }
 
 function Browser() {
-  const { status, dir, busy, repair } = useIntegration();
+  const { status, connected } = useExtensionStatus();
   return (
     <>
       <h2>Connect your browser</h2>
-      <p className="text-secondary">With the extension, clicking a download link — or the “Download video” button on a page — hands it straight to Prism.</p>
-      <div className="onboard__row">
-        <IntegrationList status={status} />
-        <button type="button" className="btn" disabled={busy} onClick={repair}>
-          <Icon name="refresh-url" size={15} /> {busy ? "Repairing…" : "Repair integration"}
-        </button>
-      </div>
-      <ExtensionHowTo dir={dir} id={status?.extensionId} />
+      <p className="text-secondary">Add the Prism extension to your browser once — then clicking a download link, or the “Download video” button on a page, sends it straight to Prism. It takes about a minute.</p>
+      <BrowserConnect status={status} connected={connected} />
     </>
   );
 }

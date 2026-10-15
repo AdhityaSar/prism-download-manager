@@ -8,6 +8,7 @@ import { api } from "../lib/api";
 import { useApp } from "../lib/store";
 import { toast, useUi } from "../lib/ui";
 import { BottomPane } from "./BottomPane";
+import { ConnectBanner } from "./BrowserConnect";
 import { Dialogs } from "./dialogs/Dialogs";
 import { DownloadTable } from "./DownloadTable";
 import { Onboarding } from "./Onboarding";
@@ -60,6 +61,7 @@ export function MainWindow() {
       <main className="sheet" style={{ ["--bottom-h" as string]: bottomOpen ? `${bottomHeight}px` : "0px" }}>
         <Toolbar />
         <TitleRow />
+        <ConnectBanner onOpen={() => useUi.getState().openSheet({ kind: "settings", section: "browser" })} />
         <DownloadTable />
         <BottomPane />
         <StatusBar />

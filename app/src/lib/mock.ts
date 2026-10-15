@@ -23,6 +23,8 @@ import type {
 const MB = 1024 * 1024;
 const GB = 1024 * MB;
 const now = Date.now();
+/** Demo: when the browser extension last said hello (0 = never; `?ext=1` = already connected). */
+let mockExtSeen = /[?&]ext=1/.test(location.search) ? Date.now() : 0;
 const listeners = new Set<(e: CoreEvent) => void>();
 const emit = (e: CoreEvent) => listeners.forEach((l) => l(e));
 
@@ -607,6 +609,11 @@ const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
     return commands.integration_status({});
   },
   extension_dir: () => "C:\\Program Files\\Prism\\extension",
+  extension_folder: ({ firefox }) => `C:\\Users\\you\\AppData\\Local\\Prism\\extension\\${firefox ? "firefox" : "chromium"}`,
+  open_browser: () => {
+    // Demo: pretend the user installs the extension a few seconds after the page opens.
+    if (!mockExtSeen) setTimeout(() => (mockExtSeen = Date.now()), 6000);
+  },
   cancel_post_action: () => undefined,
   item_details: ({ id }) => details(id as string),
   grabber_projects: () => grabberProjects,
@@ -671,17 +678,19 @@ const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
   }),
   integration_status: () => ({
     hostPath: "C:\\Program Files\\Prism\\prism-native-host.exe",
-    extensionConnected: true,
-    lastSeen: Date.now() - 4000,
-    browsers: [
-      ["Chrome", true, true],
-      ["Edge", true, true],
-      ["Brave", true, true],
-      ["Firefox", true, false],
-      ["Opera", false, false],
-      ["Vivaldi", false, false],
-      ["Chromium", false, false],
-    ].map(([browser, installed, registered]) => ({ browser, installed, registered, pointsToThisHost: registered, manifestPath: null })),
+    extensionConnected: mockExtSeen > 0,
+    lastSeen: mockExtSeen || null,
+    browsers: (
+      [
+        ["chrome", "Google Chrome", true, true],
+        ["edge", "Microsoft Edge", true, true],
+        ["brave", "Brave", true, true],
+        ["firefox", "Firefox", true, false],
+        ["opera", "Opera", false, false],
+        ["vivaldi", "Vivaldi", false, false],
+        ["chromium", "Chromium", false, false],
+      ] as const
+    ).map(([browser, name, installed, registered]) => ({ browser, name, installed, supported: true, registered, pointsToThisHost: registered, manifestPath: null })),
   }),
   free_space: () => 412 * GB,
   data_dir: () => "C:\\Users\\you\\AppData\\Roaming\\Prism",

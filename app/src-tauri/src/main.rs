@@ -171,6 +171,8 @@ fn main() {
             commands::integration_status,
             commands::repair_integration,
             commands::extension_dir,
+            commands::extension_folder,
+            commands::open_browser,
             commands::open_details,
             commands::open_window,
             commands::toggle_mini,

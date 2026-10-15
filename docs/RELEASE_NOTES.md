@@ -1,18 +1,27 @@
-# Prism 1.0.0 — One beam. Many rays.
+# Prism 1.0.1 — One beam. Many rays.
 
-The first public release of Prism: a fast, open-source download manager for Windows, Linux
-and macOS, with browser integration and video downloads.
+A fast, open-source download manager for Windows, Linux and macOS, with browser integration
+and video downloads.
+
+## What's new in 1.0.1
+
+* **Connecting your browser is now guided.** On first start (and in Settings → Browser
+  integration) Prism shows three simple steps for your browser: it copies the extensions-page
+  address and opens the browser, shows where the Developer-mode switch is, gives you the folder
+  to pick with one-click copy — and turns green the moment the extension connects.
+* A slim reminder in the main window until the extension is connected (dismissable).
+* Speed limits are more precise: no duplicate "tail racing" while a limit is active.
 
 ## Downloads
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.0.0_x64-setup.exe` (recommended) · `Prism_1.0.0_x64_en-US.msi` (all users) · `Prism-1.0.0-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.0.0_aarch64.dmg` |
-| macOS — Intel | `Prism_1.0.0_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.0.0_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.0.0-1.x86_64.rpm` |
-| Any Linux | `Prism_1.0.0_amd64.AppImage` |
+| Windows 10 / 11 | `Prism_1.0.1_x64-setup.exe` (recommended) · `Prism_1.0.1_x64_en-US.msi` (all users) · `Prism-1.0.1-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.0.1_aarch64.dmg` |
+| macOS — Intel | `Prism_1.0.1_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.0.1_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.0.1-1.x86_64.rpm` |
+| Any Linux | `Prism_1.0.1_amd64.AppImage` |
 | Browser extension | `prism-chromium.zip` (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·
