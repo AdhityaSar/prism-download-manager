@@ -1,0 +1,26 @@
+import { Modal } from "../components/Modal";
+import { Icon } from "../design/icons";
+import { useUi } from "../lib/ui";
+import { GrabberSheet } from "./sheets/GrabberSheet";
+import { SchedulerSheet } from "./sheets/SchedulerSheet";
+import { SettingsSheet } from "./sheets/SettingsSheet";
+
+/** Large in-window tool surfaces: Settings, Scheduler, Site grabber. */
+export function Sheets() {
+  const sheet = useUi((s) => s.sheet);
+  const close = useUi((s) => s.closeSheet);
+  const key = sheet ? `${sheet.kind}:${sheet.kind === "settings" ? sheet.section : sheet.kind === "scheduler" ? sheet.queueId : sheet.projectId}` : "none";
+  return (
+    <>
+      <Modal open={sheet?.kind === "settings"} onClose={close} variant="sheet" width={1040} height={720} title="Settings" icon={<Icon name="settings" size={18} className="text-accent" />} className="sheet--settings">
+        {sheet?.kind === "settings" && <SettingsSheet key={key} section={sheet.section} />}
+      </Modal>
+      <Modal open={sheet?.kind === "scheduler"} onClose={close} variant="sheet" width={880} height={700} title="Scheduler" icon={<Icon name="scheduler" size={18} className="text-accent" />}>
+        {sheet?.kind === "scheduler" && <SchedulerSheet key={key} initial={sheet.queueId} />}
+      </Modal>
+      <Modal open={sheet?.kind === "grabber"} onClose={close} variant="sheet" width={900} height={700} title="Site grabber" icon={<Icon name="grabber" size={18} className="text-accent" />}>
+        {sheet?.kind === "grabber" && <GrabberSheet key={key} projectId={sheet.projectId} />}
+      </Modal>
+    </>
+  );
+}

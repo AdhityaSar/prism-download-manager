@@ -1,0 +1,321 @@
+// Typed bridge to the Rust side. When the UI runs outside Tauri (plain browser
+// during development, design reviews, marketing screenshots) calls are served by
+// an in-memory demo backend instead.
+
+import type {
+  BatchInfo,
+  Bootstrap,
+  CaptureInfo,
+  Category,
+  CoreEvent,
+  DownloadItem,
+  GrabberConfig,
+  GrabberProject,
+  ItemDetails,
+  Queue,
+  Settings,
+  SniffedStream,
+  StartMode,
+  VideoCapture,
+} from "./types";
+
+export const inTauri = typeof window !== "undefined" && "__TAURI_INTERNALS__" in window;
+
+type InvokeFn = <T>(cmd: string, args?: Record<string, unknown>) => Promise<T>;
+
+let invokeImpl: InvokeFn | null = null;
+
+async function invoke<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  if (!invokeImpl) {
+    if (inTauri) {
+      const core = await import("@tauri-apps/api/core");
+      invokeImpl = core.invoke as InvokeFn;
+    } else {
+      const mock = await import("./mock");
+      invokeImpl = mock.invoke as InvokeFn;
+    }
+  }
+  return invokeImpl<T>(cmd, args);
+}
+
+/** Subscribe to core events. Returns an unsubscribe function. */
+export async function onCoreEvent(handler: (e: CoreEvent) => void): Promise<() => void> {
+  if (inTauri) {
+    const { listen } = await import("@tauri-apps/api/event");
+    return listen<CoreEvent>("core", (e) => handler(e.payload));
+  }
+  const mock = await import("./mock");
+  return mock.subscribe(handler);
+}
+
+export interface CaptureDecision {
+  id: string;
+  fileName?: string;
+  saveDir?: string;
+  category?: string;
+  description?: string;
+  mode: StartMode;
+  username?: string;
+  password?: string;
+  rememberDir?: boolean;
+  conflict?: "rename" | "overwrite";
+}
+
+export interface ItemPatch {
+  fileName?: string;
+  saveDir?: string;
+  description?: string;
+  category?: string;
+  queueId?: string | null;
+  url?: string;
+  connections?: number;
+  speedLimit?: number;
+  checksum?: string | null;
+  username?: string;
+  password?: string;
+}
+
+export interface VideoDecision {
+  captureId: string;
+  pageUrl: string;
+  choice: VideoChoice;
+  options: VideoOutputOptions;
+  saveDir?: string;
+  title?: string;
+  thumbnail?: string;
+  duration?: number;
+  entries: string[];
+  mode: StartMode;
+}
+
+export interface TorrentMeta {
+  infoHash: string;
+  name: string;
+  totalSize: number;
+  files: { index: number; path: string; size: number }[];
+}
+
+export type TorrentSource = { type: "url"; value: string } | { type: "file"; value: string };
+
+export const api = {
+  bootstrap: () => invoke<Bootstrap>("bootstrap"),
+  updateSettings: (patch: unknown) => invoke<Settings>("update_settings", { patch }),
+  toggleSpeedLimiter: () => invoke<boolean>("toggle_speed_limiter"),
+
+  addUrl: (args: { url: string; referer?: string; username?: string; password?: string; fileName?: string }) =>
+    invoke<CaptureInfo>("add_url", { args }),
+  getCapture: (id: string) => invoke<CaptureInfo | null>("get_capture", { id }),
+  confirmCapture: (decision: CaptureDecision) => invoke<DownloadItem>("confirm_capture", { decision }),
+  cancelCapture: (id: string) => invoke<void>("cancel_capture", { id }),
+  reprobeCapture: (id: string, username?: string, password?: string) =>
+    invoke<void>("reprobe_capture", { id, username, password }),
+
+  batchFromPattern: (pattern: string) => invoke<BatchInfo>("batch_from_pattern", { pattern }),
+  batchFromText: (text: string) => invoke<BatchInfo>("batch_from_text", { text }),
+  getBatch: (id: string) => invoke<BatchInfo | null>("get_batch", { id }),
+  confirmBatch: (decision: { id: string; urls: string[]; saveDir?: string; mode: StartMode }) =>
+    invoke<number>("confirm_batch", { decision }),
+  cancelBatch: (id: string) => invoke<void>("cancel_batch", { id }),
+
+  getVideo: (id: string) => invoke<VideoCapture | null>("get_video", { id }),
+  openVideoUrl: (url: string) => invoke<VideoCapture>("open_video_url", { url }),
+  probeVideo: (url: string) => invoke<VideoProbe>("probe_video", { url }),
+  confirmVideo: (decision: VideoDecision) => invoke<number>("confirm_video", { decision }),
+  cancelVideo: (id: string) => invoke<void>("cancel_video", { id }),
+  addStream: (stream: SniffedStream, pageUrl?: string, title?: string) =>
+    invoke<DownloadItem>("add_stream", { args: { stream, pageUrl, title } }),
+
+  inspectTorrent: (source: TorrentSource) => invoke<TorrentMeta>("inspect_torrent", { source }),
+  readTorrentFile: (path: string) => invoke<TorrentSource>("read_torrent_file", { path }),
+  addTorrent: (args: {
+    source: TorrentSource;
+    name: string;
+    size?: number;
+    onlyFiles?: number[] | null;
+    saveDir?: string;
+    mode?: StartMode;
+  }) => invoke<DownloadItem>("add_torrent", { args }),
+
+  startItems: (ids: string[]) => invoke<void>("start_items", { ids }),
+  pauseItems: (ids: string[]) => invoke<void>("pause_items", { ids }),
+  pauseAll: () => invoke<void>("pause_all"),
+  resumeAll: () => invoke<void>("resume_all"),
+  deleteItems: (ids: string[], deleteFiles: boolean, permanent: boolean) =>
+    invoke<void>("delete_items", { ids, deleteFiles, permanent }),
+  restoreItems: (ids: string[]) => invoke<void>("restore_items", { ids }),
+  emptyTrash: () => invoke<void>("empty_trash"),
+  removeCompleted: () => invoke<void>("remove_completed"),
+  redownload: (id: string) => invoke<void>("redownload", { id }),
+  updateItem: (id: string, patch: ItemPatch) => invoke<DownloadItem>("update_item", { id, patch }),
+  itemDetails: (id: string) => invoke<ItemDetails | null>("item_details", { id }),
+  openItem: (id: string) => invoke<void>("open_item", { id }),
+  revealItem: (id: string) => invoke<void>("reveal_item", { id }),
+  openPath: (path: string) => invoke<void>("open_path", { path }),
+
+  assignToQueue: (ids: string[], queueId: string | null) => invoke<void>("assign_to_queue", { ids, queueId }),
+  moveInQueue: (ids: string[], delta: number) => invoke<void>("move_in_queue", { ids, delta }),
+  upsertQueue: (queue: Queue) => invoke<Queue[]>("upsert_queue", { queue }),
+  deleteQueue: (id: string) => invoke<Queue[]>("delete_queue", { id }),
+  startQueue: (id: string) => invoke<void>("start_queue", { id }),
+  stopQueue: (id: string) => invoke<void>("stop_queue", { id }),
+  nextScheduleRuns: () => invoke<[string, string | null][]>("next_schedule_runs"),
+  cancelPostAction: () => invoke<void>("cancel_post_action"),
+  upsertCategory: (category: Category) => invoke<Category[]>("upsert_category", { category }),
+  deleteCategory: (id: string) => invoke<Category[]>("delete_category", { id }),
+
+  grabberProjects: () => invoke<GrabberProject[]>("grabber_projects"),
+  startGrabber: (projectId: string | null, name: string, config: GrabberConfig) =>
+    invoke<GrabberProject>("start_grabber", { projectId, name, config }),
+  stopGrabber: (projectId: string) => invoke<void>("stop_grabber", { projectId }),
+  deleteGrabberProject: (projectId: string) => invoke<void>("delete_grabber_project", { projectId }),
+  downloadGrabbed: (projectId: string, urls: string[], saveDir: string | null, keepStructure: boolean) =>
+    invoke<number>("download_grabbed", { projectId, urls, saveDir, keepStructure }),
+
+  exportList: (path: string) => invoke<void>("export_list", { path }),
+  importList: (path: string) => invoke<number>("import_list", { path }),
+  exportSettings: (path: string) => invoke<void>("export_settings", { path }),
+  importSettings: (path: string) => invoke<Settings>("import_settings", { path }),
+  exportDiagnostics: (path: string) => invoke<void>("export_diagnostics", { path }),
+
+  toolStatus: () => invoke<ToolStatus>("tool_status"),
+  ensureTools: () => invoke<ToolStatus>("ensure_tools"),
+  updateYtdlp: () => invoke<unknown>("update_ytdlp"),
+  integrationStatus: () => invoke<IntegrationStatus>("integration_status"),
+  repairIntegration: () => invoke<IntegrationStatus>("repair_integration"),
+  extensionDir: () => invoke<string | null>("extension_dir"),
+
+  openDetails: (id: string) => invoke<void>("open_details", { id }),
+  openWindow: (kind: string, id?: string) => invoke<void>("open_window", { kind, id }),
+  toggleMini: () => invoke<boolean>("toggle_mini"),
+  toggleDropzone: () => invoke<boolean>("toggle_dropzone"),
+  showMain: () => invoke<void>("show_main"),
+  setAutostart: (enabled: boolean) => invoke<boolean>("set_autostart", { enabled }),
+  quit: () => invoke<void>("quit_app"),
+  freeSpace: (path: string) => invoke<number | null>("free_space", { path }),
+};
+
+export interface ToolInfo {
+  tool?: string;
+  path?: string | null;
+  version?: string | null;
+  source: "managed" | "system" | "custom" | "missing" | string;
+  message?: string | null;
+}
+
+export interface ToolStatus {
+  ytDlp?: ToolInfo;
+  ffmpeg?: ToolInfo;
+  ffprobe?: ToolInfo;
+  deno?: ToolInfo;
+}
+
+export interface BrowserIntegration {
+  browser: string;
+  /** Display name ("Microsoft Edge"); `browser` is the id. */
+  name?: string;
+  supported?: boolean;
+  note?: string | null;
+  installed: boolean;
+  registered: boolean;
+  manifestPath?: string | null;
+  pointsToThisHost: boolean;
+}
+
+export interface IntegrationStatus {
+  hostPath?: string | null;
+  hostExists?: boolean;
+  extensionId?: string;
+  firefoxExtensionId?: string;
+  browsers: BrowserIntegration[];
+  extensionConnected?: boolean;
+  lastSeen?: number | null;
+}
+
+/** One entry of the quality picker (`prism_video::Choice`, camelCase). Echo it back unchanged in confirmVideo. */
+export interface VideoChoice {
+  id: string;
+  kind: "video" | "audio";
+  /** e.g. "2160p60 · HDR · AV1" */
+  label: string;
+  /** e.g. "MP4 · ~743 MB" */
+  subLabel: string;
+  height?: number | null;
+  width?: number | null;
+  fps?: number | null;
+  hdr: boolean;
+  dynamicRange?: string | null;
+  vcodec?: string | null;
+  acodec?: string | null;
+  estSize?: number | null;
+  videoFormatId?: string | null;
+  audioFormatId?: string | null;
+  formatId?: string | null;
+  container: "mp4" | "mkv" | "webm";
+  audioFormat?: "mp3" | "m4a" | "opus" | "flac" | "wav" | null;
+  audioBitrateKbps?: number | null;
+  accelerable: boolean;
+}
+
+export interface SubtitleTrack {
+  name?: string | null;
+  auto: boolean;
+  [k: string]: unknown;
+}
+
+export interface VideoInfo {
+  kind: "video";
+  id: string;
+  title: string;
+  uploader?: string | null;
+  channel?: string | null;
+  duration?: number | null;
+  uploadDate?: string | null;
+  description?: string | null;
+  thumbnail?: string | null;
+  webpageUrl?: string | null;
+  extractor?: string | null;
+  isLive: boolean;
+  liveStatus?: string | null;
+  chapters: unknown[];
+  subtitles: Record<string, SubtitleTrack | SubtitleTrack[] | unknown>;
+  formats: unknown[];
+  choices: VideoChoice[];
+  hasDrm: boolean;
+}
+
+export interface PlaylistEntry {
+  id: string;
+  url: string;
+  title?: string | null;
+  duration?: number | null;
+  thumbnail?: string | null;
+  uploader?: string | null;
+}
+
+export interface PlaylistInfo {
+  kind: "playlist";
+  id?: string | null;
+  title?: string | null;
+  uploader?: string | null;
+  webpageUrl?: string | null;
+  extractor?: string | null;
+  entries: PlaylistEntry[];
+}
+
+/** Raw `prism_video::Probe` (internally tagged by `kind`). */
+export type VideoProbe = VideoInfo | PlaylistInfo;
+
+/** Partial `prism_video::OutputOptions`; missing fields use the video settings. */
+export interface VideoOutputOptions {
+  container?: "mp4" | "mkv" | "webm";
+  audioFormat?: "mp3" | "m4a" | "opus" | "flac" | "wav";
+  embedSubtitles?: boolean;
+  subLangs?: string[];
+  autoSubtitles?: boolean;
+  writeSubtitles?: boolean;
+  embedThumbnail?: boolean;
+  writeThumbnail?: boolean;
+  embedMetadata?: boolean;
+  embedChapters?: boolean;
+  sponsorblock?: { mode: "off" | "mark" | "remove"; categories: string[] };
+}
