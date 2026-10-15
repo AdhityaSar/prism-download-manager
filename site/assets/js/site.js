@@ -172,14 +172,14 @@
     linux: { key: "appimage", name: "Linux", what: ".AppImage (any distro)" }
   };
   // Direct links used until (or if) the GitHub API answers — clicking always downloads.
-  var FALLBACK_DL = "https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.1/";
+  var FALLBACK_DL = "https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.2/";
   var FALLBACK_FILES = {
-    "win-setup": "Prism_1.0.1_x64-setup.exe",
-    "mac-arm": "Prism_1.0.1_aarch64.dmg",
-    "mac-x64": "Prism_1.0.1_x64.dmg",
-    "deb": "Prism_1.0.1_amd64.deb",
-    "rpm": "Prism-1.0.1-1.x86_64.rpm",
-    "appimage": "Prism_1.0.1_amd64.AppImage"
+    "win-setup": "Prism_1.0.2_x64-setup.exe",
+    "mac-arm": "Prism_1.0.2_aarch64.dmg",
+    "mac-x64": "Prism_1.0.2_x64.dmg",
+    "deb": "Prism_1.0.2_amd64.deb",
+    "rpm": "Prism-1.0.2-1.x86_64.rpm",
+    "appimage": "Prism_1.0.2_amd64.AppImage"
   };
 
   var ASSETS = {
@@ -380,7 +380,7 @@
     switch (kind) {
       case "win": return ["Open " + f + " from your Downloads.", "If Windows says <i>&ldquo;Windows protected your PC&rdquo;</i>, click <b>More info &rarr; Run anyway</b> (the installer isn&rsquo;t signed with a paid certificate).", guide];
       case "winzip": return ["Unzip " + f + " anywhere (a USB stick works).", "Run <code>prism.exe</code>. If SmartScreen appears: <b>More info &rarr; Run anyway</b>.", guide];
-      case "mac": return ["Open " + f + " and drag <b>Prism</b> into <b>Applications</b>.", "First start only: <b>right-click Prism &rarr; Open &rarr; Open</b> (the app isn&rsquo;t notarized by Apple).", guide];
+      case "mac": return ["Open " + f + ", drag <b>Prism</b> into <b>Applications</b> and the <b>Browser Extension</b> folder into Documents.", "First start only: <b>right-click Prism &rarr; Open &rarr; Open</b> (the app isn&rsquo;t notarized by Apple).", guide];
       case "deb": return ["Install it: <code>sudo apt install ./" + file + "</code>", "Start <b>Prism</b> from your applications menu.", guide];
       case "rpm": return ["Install it: <code>sudo dnf install ./" + file + "</code>", "Start <b>Prism</b> from your applications menu.", guide];
       default: return ["Make it executable: <code>chmod +x " + file + "</code>", "Run it: <code>./" + file + "</code>", guide];
