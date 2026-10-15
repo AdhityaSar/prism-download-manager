@@ -171,6 +171,17 @@
     mac: { key: "mac-arm", name: "macOS", what: "Apple Silicon .dmg" },
     linux: { key: "appimage", name: "Linux", what: ".AppImage (any distro)" }
   };
+  // Direct links used until (or if) the GitHub API answers — clicking always downloads.
+  var FALLBACK_DL = "https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.0/";
+  var FALLBACK_FILES = {
+    "win-setup": "Prism_1.0.0_x64-setup.exe",
+    "mac-arm": "Prism_1.0.0_aarch64.dmg",
+    "mac-x64": "Prism_1.0.0_x64.dmg",
+    "deb": "Prism_1.0.0_amd64.deb",
+    "rpm": "Prism-1.0.0-1.x86_64.rpm",
+    "appimage": "Prism_1.0.0_amd64.AppImage"
+  };
+
   var ASSETS = {
     "win-setup": /_x64-setup\.exe$/i,
     "win-msi": /\.msi$/i,
@@ -215,7 +226,7 @@
       }
       label.textContent = "Download for " + c.name;
       var asset = release && findAsset(release, c.key);
-      a.setAttribute("href", asset ? asset.browser_download_url : GH + "/releases/latest");
+      a.setAttribute("href", asset ? asset.browser_download_url : FALLBACK_DL + FALLBACK_FILES[c.key]);
     });
     if (!meta) return;
     meta.textContent = "";
