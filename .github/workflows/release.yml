@@ -72,6 +72,22 @@ jobs:
             [ -n "${!v}" ] || unset "$v"
           done
           npx tauri build --target ${{ matrix.target }} --bundles ${{ matrix.bundles }}
+      - name: DMG with the browser extension next to the app (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          set -euo pipefail
+          B=target/${{ matrix.target }}/release/bundle
+          DMG=$(ls "$B"/dmg/*.dmg)
+          STAGE=$(mktemp -d)/Prism
+          mkdir -p "$STAGE/Browser Extension"
+          cp -R "$B/macos/Prism.app" "$STAGE/"
+          ln -s /Applications "$STAGE/Applications"
+          cp -R extension/build/chromium "$STAGE/Browser Extension/Chrome, Edge, Brave"
+          cp -R extension/build/firefox "$STAGE/Browser Extension/Firefox"
+          cp packaging/macos/README-extension.txt "$STAGE/Browser Extension/How to install.txt"
+          rm -f "$DMG"
+          hdiutil create -volname "Prism" -srcfolder "$STAGE" -ov -format UDZO "$DMG"
+          hdiutil imageinfo "$DMG" | head -5
       - name: Portable zip (Windows)
         if: runner.os == 'Windows'
         shell: pwsh

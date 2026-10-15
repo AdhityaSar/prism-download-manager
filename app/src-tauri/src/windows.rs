@@ -43,6 +43,7 @@ pub fn open(app: &AppHandle, kind: &str, id: Option<&str>) -> tauri::Result<Webv
         None => kind.to_string(),
     };
     if let Some(w) = app.get_webview_window(&label) {
+        bring_app_forward(app, kind);
         let _ = w.unminimize();
         let _ = w.show();
         let _ = w.set_focus();
@@ -80,8 +81,33 @@ pub fn open(app: &AppHandle, kind: &str, id: Option<&str>) -> tauri::Result<Webv
     if matches!(kind, "mini" | "dropzone") {
         place_bottom_right(&window, kind == "dropzone");
     }
-    // The page calls `show()` itself once it has rendered (no white flash).
+    bring_app_forward(app, kind);
+    // The page calls `show()` itself once it has rendered (no white flash). A webview that
+    // never paints while hidden (WKWebView can pause animation frames for invisible windows)
+    // must not leave the dialog invisible, so show it anyway after a moment.
+    let fallback = window.clone();
+    let what = label.clone();
+    std::thread::spawn(move || {
+        std::thread::sleep(std::time::Duration::from_millis(1500));
+        if !fallback.is_visible().unwrap_or(true) {
+            tracing::warn!("window {what} did not show itself; showing it");
+            let _ = fallback.show();
+            let _ = fallback.set_focus();
+        }
+    });
+    tracing::info!("opened window {label}");
     Ok(window)
+}
+
+/// On macOS a background app's new window opens behind the browser; activate the app so
+/// dialogs (Download File, video picker, …) come to the front.
+fn bring_app_forward(app: &AppHandle, kind: &str) {
+    #[cfg(target_os = "macos")]
+    if !matches!(kind, "mini" | "dropzone") {
+        let _ = app.show();
+    }
+    #[cfg(not(target_os = "macos"))]
+    let _ = (app, kind);
 }
 
 fn place_bottom_right(window: &WebviewWindow, higher: bool) {

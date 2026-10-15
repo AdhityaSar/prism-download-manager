@@ -249,3 +249,27 @@ button.input:focus-visible { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3p
   -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor; mask-composite: exclude;
 }
 .burst > span { position: relative; z-index: 1; width: 61px; height: 61px; border-radius: 50%; display: grid; place-items: center; background: var(--surface-overlay); color: var(--success); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.1); animation: prism-pop-in var(--dur-slower) var(--ease-spring) both; }
+
+/* ---- main window shape ------------------------------------------------------
+   The main window is undecorated and transparent: it paints its own rounded shell
+   (square again when maximized or fullscreen, like native windows). */
+:root { --win-radius: 12px; }
+:root[data-os="windows"] { --win-radius: 8px; }
+:root[data-os="mac"] { --win-radius: 11px; }
+html[data-window="main"],
+html[data-window="main"] body { background: transparent; }
+html[data-window="main"] .win {
+  border-radius: var(--win-radius);
+  isolation: isolate;
+}
+html[data-window="main"] .win::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  box-shadow: inset 0 0 0 1px var(--border-subtle);
+  pointer-events: none;
+  z-index: 2147483000;
+}
+html[data-window="main"] .modal-scrim { border-radius: var(--win-radius); }
+html[data-window="main"][data-maximized] { --win-radius: 0px; }

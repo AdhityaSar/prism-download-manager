@@ -232,6 +232,22 @@ pub fn apply_shell_settings(app: &AppHandle, settings: &Settings) {
 fn apply_window_material(window: &tauri::WebviewWindow, settings: &Settings) {
     #[cfg(target_os = "windows")]
     {
+        // Windows 11 rounds undecorated windows (and their shadow) only when asked to.
+        if let Ok(hwnd) = window.hwnd() {
+            use windows_sys::Win32::Graphics::Dwm::{
+                DWMWA_WINDOW_CORNER_PREFERENCE, DWMWCP_ROUND, DwmSetWindowAttribute,
+            };
+            let pref = DWMWCP_ROUND;
+            // SAFETY: valid window handle; the attribute value is a 4-byte enum.
+            unsafe {
+                DwmSetWindowAttribute(
+                    hwnd.0 as _,
+                    DWMWA_WINDOW_CORNER_PREFERENCE as u32,
+                    &pref as *const _ as *const core::ffi::c_void,
+                    std::mem::size_of_val(&pref) as u32,
+                );
+            }
+        }
         if settings.appearance.window_material {
             let dark = !matches!(
                 settings.appearance.theme,
@@ -330,13 +346,24 @@ fn side_effects(
     };
     match event {
         CoreEvent::CaptureRequested(info) => {
-            let _ = windows::open(app, "capture", Some(&info.id));
+            if let Err(e) = windows::open(app, "capture", Some(&info.id)) {
+                // Never lose a download because its dialog could not open: start it directly.
+                tracing::error!("could not open the Download File window: {e}");
+                match core.confirm_capture_default(&info.id) {
+                    Ok(name) => notify("Download added", &name),
+                    Err(e) => tracing::error!("could not start captured download: {e:#}"),
+                }
+            }
         }
         CoreEvent::BatchRequested(info) => {
-            let _ = windows::open(app, "batch", Some(&info.id));
+            if let Err(e) = windows::open(app, "batch", Some(&info.id)) {
+                tracing::error!("could not open the Download Links window: {e}");
+            }
         }
         CoreEvent::VideoRequested(info) => {
-            let _ = windows::open(app, "video", Some(&info.id));
+            if let Err(e) = windows::open(app, "video", Some(&info.id)) {
+                tracing::error!("could not open the Download Video window: {e}");
+            }
         }
         CoreEvent::Completed(item) => {
             if settings.general.show_completion_dialog {

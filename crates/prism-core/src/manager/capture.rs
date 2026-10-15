@@ -365,6 +365,18 @@ impl Core {
         self.0.state.lock().captures.remove(id);
     }
 
+    /// Accepts a pending capture with its suggested name and folder and starts it (used when
+    /// the dialog cannot be shown). Returns the file name.
+    pub fn confirm_capture_default(&self, id: &str) -> Result<String> {
+        let item = self.confirm_capture(CaptureDecision {
+            id: id.to_string(),
+            mode: StartMode::Now,
+            conflict: Some(ConflictAction::Rename),
+            ..Default::default()
+        })?;
+        Ok(item.file_name)
+    }
+
     pub fn confirm_capture(&self, d: CaptureDecision) -> Result<DownloadItem> {
         let pending = self
             .0
@@ -699,6 +711,14 @@ impl Core {
                 serde_json::json!({"ok": true})
             }
             "download" => {
+                tracing::info!(
+                    "browser download request from {}",
+                    s("url")
+                        .as_deref()
+                        .and_then(|u| url::Url::parse(u).ok())
+                        .and_then(|u| u.host_str().map(str::to_string))
+                        .unwrap_or_default()
+                );
                 let Some(url) = s("url").or_else(|| s("finalUrl")) else {
                     return fail("bad_request", "missing url".into());
                 };

@@ -80,7 +80,21 @@ pub fn extension_dir(app: &AppHandle) -> Option<PathBuf> {
 /// The folder a user picks in the browser's "Load unpacked" dialog (`.../extension/chromium`,
 /// or the Firefox build), as a plain path that can be pasted into a file dialog.
 pub fn extension_folder(app: &AppHandle, firefox: bool) -> Option<PathBuf> {
-    let dir = extension_dir(app)?.join(if firefox { "firefox" } else { "chromium" });
+    let sub = if firefox { "firefox" } else { "chromium" };
+    let dir = extension_dir(app)?.join(sub);
+    // macOS: a folder inside Prism.app can't be picked comfortably in the browser's file
+    // dialog, so keep a copy in Application Support (refreshed when the app updates it).
+    #[cfg(target_os = "macos")]
+    let dir = {
+        let copy = prism_core::paths::data_dir().join("extension").join(sub);
+        match sync_dir(&dir, &copy) {
+            Ok(()) => copy,
+            Err(e) => {
+                tracing::warn!("could not copy the extension to {}: {e}", copy.display());
+                dir
+            }
+        }
+    };
     let s = dir.to_string_lossy();
     // `canonicalize` on Windows yields `\?\C:\...`, which file dialogs don't accept.
     Some(PathBuf::from(s.strip_prefix(r"\?\").unwrap_or(&s)))
@@ -110,7 +124,11 @@ fn launch(browser: &str) -> std::io::Result<()> {
     let path = [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE]
         .into_iter()
         .find_map(|root| {
-            let v: String = RegKey::predef(root).open_subkey(&key).ok()?.get_value("").ok()?;
+            let v: String = RegKey::predef(root)
+                .open_subkey(&key)
+                .ok()?
+                .get_value("")
+                .ok()?;
             let p = PathBuf::from(v.trim_matches('"'));
             p.exists().then_some(p)
         })
@@ -167,4 +185,36 @@ fn launch(browser: &str) -> std::io::Result<()> {
         }
     }
     Err(last)
+}
+
+/// Mirrors `src` into `dst` when the extension build differs (new app version).
+#[cfg(target_os = "macos")]
+fn sync_dir(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    let stamp = |d: &std::path::Path| {
+        ["manifest.json", "background.js"].map(|f| std::fs::read(d.join(f)).ok())
+    };
+    let current = stamp(src);
+    if current[0].is_some() && current == stamp(dst) {
+        return Ok(());
+    }
+    let tmp = dst.with_extension("tmp");
+    let _ = std::fs::remove_dir_all(&tmp);
+    copy_dir(src, &tmp)?;
+    let _ = std::fs::remove_dir_all(dst);
+    std::fs::rename(&tmp, dst)
+}
+
+#[cfg(target_os = "macos")]
+fn copy_dir(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    std::fs::create_dir_all(dst)?;
+    for entry in std::fs::read_dir(src)? {
+        let entry = entry?;
+        let to = dst.join(entry.file_name());
+        if entry.file_type()?.is_dir() {
+            copy_dir(&entry.path(), &to)?;
+        } else {
+            std::fs::copy(entry.path(), &to)?;
+        }
+    }
+    Ok(())
 }

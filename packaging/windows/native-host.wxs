@@ -22,7 +22,13 @@
     <CustomAction Id="PrismUnregisterHost" Directory="INSTALLDIR"
                   ExeCommand="&quot;[INSTALLDIR]prism-native-host.exe&quot; unregister"
                   Execute="deferred" Impersonate="yes" Return="ignore" />
+    <!-- The browser keeps prism-native-host.exe running while the extension is connected;
+         stop it so the file can be replaced or removed (the extension reconnects by itself). -->
+    <CustomAction Id="PrismStopHost" Directory="TARGETDIR"
+                  ExeCommand="&quot;[SystemFolder]taskkill.exe&quot; /F /IM prism-native-host.exe"
+                  Execute="immediate" Return="ignore" />
     <InstallExecuteSequence>
+      <Custom Action="PrismStopHost" Before="InstallValidate" />
       <Custom Action="PrismRegisterHost" Before="InstallFinalize">NOT REMOVE</Custom>
       <Custom Action="PrismUnregisterHost" Before="RemoveFiles">REMOVE="ALL"</Custom>
     </InstallExecuteSequence>

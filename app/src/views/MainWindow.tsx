@@ -34,6 +34,17 @@ export function MainWindow() {
     requestAnimationFrame(() => requestAnimationFrame(() => void win.show()));
   }, []);
 
+  // Square corners while maximized / fullscreen, rounded otherwise (see shell.css).
+  useEffect(() => {
+    const root = document.documentElement;
+    root.dataset.os = /Mac/i.test(navigator.userAgent) ? "mac" : /Windows/i.test(navigator.userAgent) ? "windows" : "linux";
+    const sync = () => void win.isMaximized().then((m) => root.toggleAttribute("data-maximized", m));
+    sync();
+    let off: (() => void) | undefined;
+    void win.onResized(sync).then((u) => (off = u));
+    return () => off?.();
+  }, []);
+
   useGlobalShortcuts();
   useCoreNotifications();
 
