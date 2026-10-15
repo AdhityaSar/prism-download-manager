@@ -1044,3 +1044,35 @@ td.num { text-align: right; }
 @media print {
   .nav-wrap, .hero-bg, .film, .showcase { display: none !important; }
 }
+
+/* --------------------------------------------------------------------------
+   After-download "next steps" card
+   -------------------------------------------------------------------------- */
+.next-card {
+  position: fixed; z-index: 60; right: 1.25rem; bottom: 1.25rem; width: min(25rem, calc(100vw - 2rem));
+  padding: 1.25rem 1.35rem 1.1rem; border-radius: var(--r-lg);
+  background: var(--surface-overlay); color: var(--text-secondary); font-size: 0.92rem; line-height: 1.5;
+  box-shadow: inset 0 0 0 1px var(--card-border-strong), 0 30px 80px -20px rgb(0 0 0 / 0.55), 0 0 60px -30px rgb(var(--accent-rgb) / 0.8);
+  -webkit-backdrop-filter: blur(24px) saturate(160%); backdrop-filter: blur(24px) saturate(160%);
+  opacity: 0; transform: translateY(14px) scale(0.98); transition: opacity 0.3s, transform 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+.next-card.in { opacity: 1; transform: none; }
+.next-card h3 { margin: 0.1rem 0 0.7rem; font-size: 1.15rem; color: var(--text-primary); letter-spacing: -0.01em; }
+.next-eyebrow { margin: 0; font-size: 0.78rem; font-weight: 600; text-transform: uppercase; letter-spacing: 0.08em; color: var(--accent); }
+.next-card ol { margin: 0; padding: 0; list-style: none; counter-reset: n; display: grid; gap: 0.6rem; }
+.next-card li { counter-increment: n; position: relative; padding-left: 2.1rem; }
+.next-card li::before {
+  content: counter(n); position: absolute; left: 0; top: 0.05rem; width: 1.45rem; height: 1.45rem; border-radius: 50%;
+  display: grid; place-items: center; font-size: 0.78rem; font-weight: 700; color: #fff; background: var(--accent-solid);
+}
+.next-card b { color: var(--text-primary); }
+.next-card code { overflow-wrap: anywhere; }
+.next-foot { margin: 0.9rem 0 0; font-size: 0.85rem; }
+.next-foot a { color: var(--accent); }
+.next-close {
+  position: absolute; top: 0.55rem; right: 0.6rem; width: 2rem; height: 2rem; border-radius: 50%; font-size: 1.3rem; line-height: 1;
+  color: var(--text-tertiary); background: transparent;
+}
+.next-close:hover { color: var(--text-primary); background: var(--state-hover); }
+@media (max-width: 560px) { .next-card { right: 1rem; left: 1rem; bottom: 1rem; width: auto; } }
+@media (prefers-reduced-motion: reduce) { .next-card { transition: opacity 0.2s; transform: none; } }

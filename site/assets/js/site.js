@@ -172,14 +172,14 @@
     linux: { key: "appimage", name: "Linux", what: ".AppImage (any distro)" }
   };
   // Direct links used until (or if) the GitHub API answers — clicking always downloads.
-  var FALLBACK_DL = "https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.0/";
+  var FALLBACK_DL = "https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.1/";
   var FALLBACK_FILES = {
-    "win-setup": "Prism_1.0.0_x64-setup.exe",
-    "mac-arm": "Prism_1.0.0_aarch64.dmg",
-    "mac-x64": "Prism_1.0.0_x64.dmg",
-    "deb": "Prism_1.0.0_amd64.deb",
-    "rpm": "Prism-1.0.0-1.x86_64.rpm",
-    "appimage": "Prism_1.0.0_amd64.AppImage"
+    "win-setup": "Prism_1.0.1_x64-setup.exe",
+    "mac-arm": "Prism_1.0.1_aarch64.dmg",
+    "mac-x64": "Prism_1.0.1_x64.dmg",
+    "deb": "Prism_1.0.1_amd64.deb",
+    "rpm": "Prism-1.0.1-1.x86_64.rpm",
+    "appimage": "Prism_1.0.1_amd64.AppImage"
   };
 
   var ASSETS = {
@@ -368,6 +368,56 @@
         ta.remove();
       }
     });
+  });
+
+
+  /* ------------------------------------------------- after-download next steps */
+  // A small card (never a blocker) that tells people what to do once the file is on disk.
+  var NEXT_KIND = { "win-setup": "win", "win-msi": "win", "win-zip": "winzip", "mac-arm": "mac", "mac-x64": "mac", "deb": "deb", "rpm": "rpm", "appimage": "appimage" };
+  function nextSteps(kind, file) {
+    var f = "<code>" + file + "</code>";
+    var guide = "Prism starts and <b>walks you through connecting your browser</b> &mdash; about a minute.";
+    switch (kind) {
+      case "win": return ["Open " + f + " from your Downloads.", "If Windows says <i>&ldquo;Windows protected your PC&rdquo;</i>, click <b>More info &rarr; Run anyway</b> (the installer isn&rsquo;t signed with a paid certificate).", guide];
+      case "winzip": return ["Unzip " + f + " anywhere (a USB stick works).", "Run <code>prism.exe</code>. If SmartScreen appears: <b>More info &rarr; Run anyway</b>.", guide];
+      case "mac": return ["Open " + f + " and drag <b>Prism</b> into <b>Applications</b>.", "First start only: <b>right-click Prism &rarr; Open &rarr; Open</b> (the app isn&rsquo;t notarized by Apple).", guide];
+      case "deb": return ["Install it: <code>sudo apt install ./" + file + "</code>", "Start <b>Prism</b> from your applications menu.", guide];
+      case "rpm": return ["Install it: <code>sudo dnf install ./" + file + "</code>", "Start <b>Prism</b> from your applications menu.", guide];
+      default: return ["Make it executable: <code>chmod +x " + file + "</code>", "Run it: <code>./" + file + "</code>", guide];
+    }
+  }
+  function showNext(kind, href) {
+    var file = decodeURIComponent((href.split("?")[0].split("/").pop() || "Prism"));
+    var old = $(".next-card");
+    if (old) old.remove();
+    var card = document.createElement("aside");
+    card.className = "next-card";
+    card.setAttribute("role", "status");
+    card.innerHTML =
+      '<button class="next-close" type="button" aria-label="Close">&times;</button>' +
+      '<p class="next-eyebrow">Your download has started</p>' +
+      "<h3>Next steps</h3>" +
+      "<ol>" + nextSteps(kind, file).map(function (t) { return "<li>" + t + "</li>"; }).join("") + "</ol>" +
+      '<p class="next-foot"><a href="#guide">Full install guide</a> &middot; <a class="next-again" href="' + href + '">Download didn&rsquo;t start?</a></p>';
+    document.body.appendChild(card);
+    requestAnimationFrame(function () { card.classList.add("in"); });
+    var close = function () { card.classList.remove("in"); setTimeout(function () { card.remove(); }, 300); };
+    $(".next-close", card).addEventListener("click", close);
+    $('a[href="#guide"]', card).addEventListener("click", close);
+    document.addEventListener("keydown", function esc(e) { if (e.key === "Escape") { close(); document.removeEventListener("keydown", esc); } });
+  }
+  document.addEventListener("click", function (e) {
+    var a = e.target.closest && e.target.closest("a[data-dl-primary], a[data-asset]");
+    if (!a || a.classList.contains("next-again")) return;
+    var href = a.getAttribute("href") || "";
+    if (!/\/releases\/download\//.test(href)) return;
+    var key = a.getAttribute("data-asset");
+    if (!key) {
+      var c = choice();
+      key = c && c.key;
+    }
+    var kind = NEXT_KIND[key];
+    if (kind) showNext(kind, href);
   });
 
   /* -------------------------------------------------------------------- film */
