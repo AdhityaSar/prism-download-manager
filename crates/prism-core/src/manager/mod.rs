@@ -111,6 +111,8 @@ pub(crate) struct Inner {
     pub video: prism_video::VideoService,
     pub torrent: tokio::sync::OnceCell<prism_torrent::TorrentEngine>,
     pub queue_limiters: Mutex<HashMap<String, Arc<prism_engine::RateLimiter>>>,
+    /// Held while queue admission counts free slots and starts items (see `admit`).
+    pub admission: Mutex<()>,
     pub outcomes: mpsc::UnboundedSender<JobOutcome>,
     pub data_dir: PathBuf,
     pub ipc: Mutex<Option<crate::ipc::IpcServer>>,
@@ -122,8 +124,11 @@ pub(crate) struct Inner {
     pub ffmpeg_path: Mutex<Option<PathBuf>>,
     /// One `probe_video` per page at a time: a second request waits for the first's result.
     pub probe_locks: Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
-    /// Version the browser extension reported in its last hello (kept across restarts).
+    /// Version the browser extension reported in its last hello, and how the browser installed
+    /// it (`management.getSelf().installType`, sent since 1.0.7); kept across restarts in
+    /// `extension-version` (version, then install type on a second line).
     pub ext_version: Mutex<Option<String>>,
+    pub ext_install_type: Mutex<Option<String>>,
 }
 
 /// Cheap, cloneable handle to the application core.
@@ -181,6 +186,13 @@ impl Core {
         );
         let (outcome_tx, outcome_rx) = mpsc::unbounded_channel();
         let (events, _) = broadcast::channel(1024);
+        let ext_seen =
+            std::fs::read_to_string(opts.data_dir.join("extension-version")).unwrap_or_default();
+        let mut ext_seen = ext_seen
+            .lines()
+            .map(|l| Some(l.trim().to_string()).filter(|l| !l.is_empty()));
+        let (ext_version, ext_install_type) =
+            (ext_seen.next().flatten(), ext_seen.next().flatten());
 
         let state = State {
             settings,
@@ -206,6 +218,7 @@ impl Core {
             video,
             torrent: tokio::sync::OnceCell::new(),
             queue_limiters: Mutex::new(HashMap::new()),
+            admission: Mutex::new(()),
             outcomes: outcome_tx,
             data_dir: opts.data_dir.clone(),
             ipc: Mutex::new(None),
@@ -219,12 +232,8 @@ impl Core {
             ),
             ffmpeg_path: Mutex::new(None),
             probe_locks: Mutex::new(HashMap::new()),
-            ext_version: Mutex::new(
-                std::fs::read_to_string(opts.data_dir.join("extension-version"))
-                    .ok()
-                    .map(|t| t.trim().to_string())
-                    .filter(|t| !t.is_empty()),
-            ),
+            ext_version: Mutex::new(ext_version),
+            ext_install_type: Mutex::new(ext_install_type),
         }));
         core.apply_runtime_settings();
         core.spawn_background(outcome_rx);
@@ -292,11 +301,24 @@ impl Core {
         self.0.ext_version.lock().clone()
     }
 
+    /// How the browser installed the extension that last said hello: "development" (loaded
+    /// unpacked), "normal" (from a store), "admin" (by policy)... `None` before 1.0.7.
+    pub fn extension_install_type(&self) -> Option<String> {
+        self.0.ext_install_type.lock().clone()
+    }
+
     /// The browser runs an extension older than the one this app ships: browsers don't reload
-    /// an unpacked extension's files by themselves after an update.
+    /// an unpacked extension's files by themselves after an update. One installed from a store
+    /// or by policy is updated by the browser (and may well lag behind the app for a while).
     pub fn extension_outdated(&self) -> bool {
-        self.extension_version()
-            .is_some_and(|v| capture::version_older(&v, crate::APP_VERSION))
+        let managed = matches!(
+            self.extension_install_type().as_deref(),
+            Some("normal" | "admin")
+        );
+        !managed
+            && self
+                .extension_version()
+                .is_some_and(|v| capture::version_older(&v, crate::APP_VERSION))
     }
 
     pub fn ipc_port(&self) -> Option<u16> {

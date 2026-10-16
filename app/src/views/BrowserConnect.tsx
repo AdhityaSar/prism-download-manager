@@ -293,7 +293,7 @@ export function ConnectBanner({ onOpen }: { onOpen: () => void }) {
               </span>
               {outdated ? (
                 <span className="cbanner__txt">
-                  <b>Your browser still runs an older Prism extension</b> ({status?.extensionVersion}, Prism is {status?.appVersion}). Reload it: on {OS === "mac" ? "chrome://extensions" : "chrome://extensions or edge://extensions"} click ↻ next to Prism.
+                  <b>Your browser still runs an older Prism extension</b> ({status?.extensionVersion}, Prism is {status?.appVersion}). Reload it: on {OS === "mac" ? "chrome://extensions" : "chrome://extensions or edge://extensions"} click ↻ next to Prism{status?.extensionInstallType === "development" ? "" : ", or restart the browser"}.
                 </span>
               ) : (
                 <span className="cbanner__txt">

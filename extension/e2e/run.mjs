@@ -140,8 +140,10 @@ try {
     assert.equal(msg.protocol, 1);
     assert.equal(msg.noLaunch, true);
     assert.ok(msg.id && msg.version && msg.browser && msg.userAgent);
+    // Loaded with --load-extension: the browser reports it as unpacked.
+    assert.equal(msg.installType, 'development');
     await until(() => sw.evaluate(() => globalThis.__prism.getConnection().state === 'connected'), 5000, 'connected state');
-    return `browser=${msg.browser}`;
+    return `browser=${msg.browser}, installType=${msg.installType}`;
   });
 
   const page = await context.newPage();
@@ -362,6 +364,33 @@ try {
         if (sel === '#post') await p.close();
       }
       assert.deepEqual(probed, ['/reel/R1abc', '/feed/update/urn:li:activity:7000000000000000002']);
+      // LinkedIn's newer UI, served as www.linkedin.com/search/...: the id comes from the text
+      // block in the video's own card, never from a neighbouring card; in a repost the original
+      // post (closest to the video); without any text the page itself.
+      const li = await context.newPage();
+      await li.route('https://www.linkedin.com/**', async (route) => {
+        const path = new URL(route.request().url()).pathname;
+        await route.fulfill({ response: await route.fetch({ url: `${site.origin}${path.startsWith('/search/') ? '/cards.html' : path}` }) });
+      });
+      await li.goto('https://www.linkedin.com/search/results/content/?keywords=demo');
+      const fromCards = [];
+      for (const sel of ['#nv2', '#nv1', '#nv3']) {
+        await li.keyboard.press('Escape');
+        await li.mouse.move(2, 2);
+        await sleep(1000);
+        await li.locator(sel).scrollIntoViewIfNeeded();
+        const b = await li.locator(sel).boundingBox();
+        const t = Date.now();
+        await li.mouse.move(b.x + 100, b.y + 100);
+        await li.mouse.move(b.x + 120, b.y + 110);
+        const pl = li.locator('[data-prism-video-button] .pill');
+        await pl.waitFor({ state: 'visible', timeout: 3000 });
+        await pl.click();
+        const { msg: pr } = await mock.waitFor((m) => m.type === 'probeVideo', 3000, { since: t });
+        fromCards.push(pr.pageUrl.replace('https://www.linkedin.com', ''));
+      }
+      await li.close();
+      assert.deepEqual(fromCards, ['/feed/update/urn:li:share:7500000000000000033', '/feed/update/urn:li:ugcPost:7500000000000000011', '/search/results/content/?keywords=demo']);
       // While a slow post is being read, "Best quality" is offered at once and sends `best`.
       const slow = await context.newPage();
       await slow.goto(`${site.origin}/home`);
@@ -382,7 +411,7 @@ try {
       assert.equal(bestMsg.pageUrl, `${site.origin}/carol/status/333`);
       assert.equal(loading, 1, 'still loading the list when Best quality was offered');
       await slow.close();
-      return `probed and sent ${msg.pageUrl.replace(site.origin, '')}; tile → ${probed[0]}; LinkedIn post → ${probed[1]}; Best quality shown after ${shownAfter} ms (list still loading) → sent formatId "best"`;
+      return `probed and sent ${msg.pageUrl.replace(site.origin, '')}; tile → ${probed[0]}; LinkedIn post → ${probed[1]}; LinkedIn cards → ${fromCards.join(', ')}; Best quality shown after ${shownAfter} ms (list still loading) → sent formatId "best"`;
     } finally {
       await tl.close();
       await sw.evaluate(() => globalThis.__prism.hello(true, true));

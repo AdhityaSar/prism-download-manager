@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type MediaItem, addMedia, classifyMedia, elementMedia, elementSources, humanSize, isIgnoredMediaUrl, linkedinPostPath, mediaDetail, mediaKey, mediaLabel, postUrl, qualityFromUrl, totalSize, visibleMedia } from '../src/shared/media';
+import { type MediaItem, addMedia, classifyMedia, elementMedia, elementSources, humanSize, isIgnoredMediaUrl, linkedinCommentaryPath, linkedinPostPath, mediaDetail, mediaKey, mediaLabel, postUrl, qualityFromUrl, totalSize, visibleMedia } from '../src/shared/media';
 
 const LI = 'https://dms.licdn.com/playlist/vid/v2/D5610AQFKo9M0zqY2_g';
 
@@ -217,5 +217,30 @@ describe('linkedinPostPath (LinkedIn feed posts)', () => {
   });
   it('the paths count as single posts', () => {
     expect(postUrl('/feed/update/urn:li:ugcPost:6850898786781339649/', 'https://www.linkedin.com/feed/')).toBe('https://www.linkedin.com/feed/update/urn:li:ugcPost:6850898786781339649');
+  });
+});
+
+describe('linkedinCommentaryPath (LinkedIn newer UI: the post text block)', () => {
+  const key = (variant: string) =>
+    `translatable-commentary-FeTranslationUrn(contentUrnCommentUrn=null, contentUrnGroupPostUrn=null, ${variant}, detectedLocale=, targetLocale=cs)`;
+  it('reads a ugcPost or share id from the variant that is set', () => {
+    expect(linkedinCommentaryPath(key('contentUrnShareUrn=null, contentUrnUgcPostUrn=ContentUrnUgcPostUrn(userGeneratedContentPostUrn=UserGeneratedContentPostUrn(userGeneratedContentId=7516114814234959872))'))).toBe(
+      '/feed/update/urn:li:ugcPost:7516114814234959872/',
+    );
+    expect(linkedinCommentaryPath(key('contentUrnShareUrn=ContentUrnShareUrn(shareUrn=ShareUrn(shareId=7400000000000000123)), contentUrnUgcPostUrn=null'))).toBe(
+      '/feed/update/urn:li:share:7400000000000000123/',
+    );
+  });
+  it('skips other kinds, null variants and short numbers', () => {
+    expect(
+      linkedinCommentaryPath('translatable-commentary-FeTranslationUrn(contentUrnCommentUrn=null, contentUrnGroupPostUrn=ContentUrnGroupPostUrn(groupPostId=7400000000000000999), contentUrnShareUrn=null, contentUrnUgcPostUrn=null)'),
+    ).toBeUndefined();
+    expect(linkedinCommentaryPath(key('contentUrnShareUrn=null, contentUrnUgcPostUrn=null'))).toBeUndefined();
+    expect(linkedinCommentaryPath(key('contentUrnShareUrn=null, contentUrnUgcPostUrn=ContentUrnUgcPostUrn(id=12345)'))).toBeUndefined();
+    expect(linkedinCommentaryPath('update-card-focus3f9aFeedType_FLAGSHIP_SEARCH')).toBeUndefined();
+    expect(linkedinCommentaryPath(null)).toBeUndefined();
+  });
+  it('the paths count as single posts', () => {
+    expect(postUrl('/feed/update/urn:li:share:7400000000000000123/', 'https://www.linkedin.com/search/results/content/')).toBe('https://www.linkedin.com/feed/update/urn:li:share:7400000000000000123');
   });
 });

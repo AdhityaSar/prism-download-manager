@@ -105,7 +105,7 @@ const POST_PATHS: RegExp[] = [
   /^\/talks\/[\w-]+/, // ted.com
   /^\/@[^/]+\/[^/]+:[0-9a-z]+/i, // odysee.com
   /^\/track\/[\w-]+/, // bandcamp.com
-  /^\/feed\/update\/urn:li:(?:activity|ugcPost):\d+/, // linkedin.com (its /posts/<slug> match the pattern above)
+  /^\/feed\/update\/urn:li:(?:activity|ugcPost|share):\d+/, // linkedin.com (its /posts/<slug> match the pattern above)
 ];
 
 const siteKey = (host: string): string => {
@@ -147,6 +147,24 @@ export function linkedinPostPath(values: Array<string | null | undefined>): stri
   for (const v of values) {
     const m = v ? /urn:li:(activity|ugcPost):(\d{6,})/.exec(v) : null;
     if (m) return `/feed/update/urn:li:${m[1]}:${m[2]}/`;
+  }
+  return undefined;
+}
+
+/**
+ * LinkedIn's newer feed / search / company pages: the post id sits only in the `componentkey`
+ * of the post's text block, e.g. `translatable-commentary-FeTranslationUrn(contentUrnCommentUrn=null,
+ * ..., contentUrnUgcPostUrn=ContentUrnUgcPostUrn(userGeneratedContentPostUrn=...(userGeneratedContentId=751...)), ...)`.
+ * The variant that isn't `null` says the kind: ugcPost or share (others are skipped).
+ */
+export function linkedinCommentaryPath(key: string | null | undefined): string | undefined {
+  if (!key) return undefined;
+  const kinds = new Map([['UgcPost', 'ugcPost'], ['Share', 'share']]);
+  for (const part of key.split(/(?=contentUrn\w+?Urn=)/)) {
+    const m = /^contentUrn(\w+?)Urn=(?!null)([\s\S]*)$/.exec(part);
+    const kind = m?.[1] ? kinds.get(m[1]) : undefined;
+    const id = kind ? /\d{15,20}/.exec(m?.[2] ?? '')?.[0] : undefined;
+    if (kind && id) return `/feed/update/urn:li:${kind}:${id}/`;
   }
   return undefined;
 }

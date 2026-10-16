@@ -5,7 +5,7 @@
  */
 import { sendInternal } from '../shared/api';
 import { icons, prismMark } from '../shared/icons';
-import { type ElementSource, elementSources, linkedinPostPath, postUrl } from '../shared/media';
+import { type ElementSource, elementSources, linkedinCommentaryPath, linkedinPostPath, postUrl } from '../shared/media';
 import { siteMatches } from '../shared/rules';
 import type { ActionResult, VideoOption, VideoOptionsResult } from '../shared/messages';
 import { VIDEO_BUTTON_CSS } from './styles';
@@ -67,6 +67,8 @@ function postUrlOf(v: HTMLVideoElement, pageUrl: string): string | undefined {
       const root = n.getRootNode();
       n = n.parentElement ?? (root instanceof ShadowRoot ? root.host : null);
     }
+    const path = linkedinCardPost(v);
+    if (path) return postUrl(path, pageUrl);
   }
   const post = composedClosest(v, 'article, [role="article"], shreddit-post');
   if (!post) return undefined;
@@ -74,6 +76,41 @@ function postUrlOf(v: HTMLVideoElement, pageUrl: string): string | undefined {
   for (const href of links) {
     const u = postUrl(href, pageUrl);
     if (u) return u;
+  }
+  return undefined;
+}
+
+/**
+ * LinkedIn's newer UI: no link or id around the video; the post's text block next to it (not
+ * above it) carries the id in its `componentkey`. Only within the post's card (`role=listitem`):
+ * the list around it holds the neighbouring posts. Several ids in the card (a repost with its
+ * own text): the one closest to the video. Without a card, the nearest container with exactly
+ * one id, and not past one that holds another video.
+ */
+function linkedinCardPost(v: HTMLVideoElement): string | undefined {
+  const keyed = (scope: Element) =>
+    [...scope.querySelectorAll('[componentkey*="Urn("]')]
+      .map((el) => ({ el, path: linkedinCommentaryPath(el.getAttribute('componentkey')) }))
+      .filter((k): k is { el: Element; path: string } => !!k.path);
+  const card = composedClosest(v, '[role="listitem"]');
+  if (card) {
+    const keys = keyed(card);
+    if (keys.length < 2) return keys[0]?.path;
+    const up: Element[] = [];
+    for (let n: Element | null = v; n && n !== card.parentElement; n = n.parentElement) up.push(n);
+    const depth = (el: Element) => {
+      for (let n: Element | null = el; n; n = n.parentElement) {
+        const i = up.indexOf(n);
+        if (i >= 0) return i;
+      }
+      return up.length;
+    };
+    return keys.reduce((best, k) => (depth(k.el) < depth(best.el) ? k : best)).path;
+  }
+  for (let n = v.parentElement, i = 0; n && i < 30; n = n.parentElement, i++) {
+    if (n.querySelectorAll('video').length > 1) return undefined;
+    const keys = keyed(n);
+    if (keys.length) return keys.length === 1 ? keys[0]?.path : undefined;
   }
   return undefined;
 }

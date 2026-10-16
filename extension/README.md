@@ -58,7 +58,8 @@ of them can win, so disable them while using Prism.
   Navigation API and DOM mutations). On `videoSites` (YouTube, Vimeo, …) the menu shows the app's
   `probeVideo` formats — on a feed, profile or listing (X, Instagram, Facebook, Reddit, TikTok,
   LinkedIn…) for the hovered post (the tile's link, the single-post link of its `<article>`, or
-  LinkedIn's post id in the attributes of its container), not the page (the app refuses
+  LinkedIn's post id in the attributes of its container, or in LinkedIn's newer pages the
+  `componentkey` of the post's text block inside the video's `[role=listitem]` card), not the page (the app refuses
   LinkedIn / Instagram list pages at once, without yt-dlp). The probe starts once the pointer rests on a video (~0.4 s; one at a time) and is
   kept 10 minutes; while it runs, single post / video pages offer *Best quality* at once
   (`formatId: "best"`: the app picks the best format within the preferred quality). Elsewhere first *This video* — what the hovered element itself plays
@@ -99,8 +100,11 @@ Sent on worker start, browser start, install, every minute (all with `noLaunch: 
 *Sync from Prism* (without `noLaunch`).
 ```json
 { "id": "…", "type": "hello", "noLaunch": true, "protocol": 1, "version": "1.0.0",
-  "browser": "chrome|edge|brave|opera|vivaldi|chromium|firefox", "userAgent": "Mozilla/5.0 …" }
+  "browser": "chrome|edge|brave|opera|vivaldi|chromium|firefox", "userAgent": "Mozilla/5.0 …",
+  "installType": "development|normal|admin|…" }
 ```
+`installType` (since 1.0.7) is `management.getSelf().installType`: the app reminds about an older
+extension only when the browser doesn't update it by itself (not for `normal` / `admin`).
 Reply:
 ```json
 { "ok": true, "app": { "name": "Prism", "version": "1.0.0" }, "protocol": 1,

@@ -32,6 +32,32 @@ const feed = () => `<!doctype html>
   <p style="height:600px">filler</p>
 </body></html>`;
 
+// Like LinkedIn's newer UI (search, company and feed pages): the page scrolls inside
+// main#workspace; a post is a [role=listitem] card with no link or id around its video; the id
+// is only in the componentkey of the post's text block, a sibling branch of the video. Card 2 is
+// a repost with its own text around the original post; card 3 has no text (no id at all).
+const commentary = (kind, id) =>
+  `translatable-commentary-FeTranslationUrn(contentUrnCommentUrn=null, contentUrnGroupPostUrn=null, contentUrnShareUrn=${kind === 'share' ? `ContentUrnShareUrn(shareUrn=ShareUrn(shareId=${id}))` : 'null'}, contentUrnUgcPostUrn=${kind === 'ugc' ? `ContentUrnUgcPostUrn(userGeneratedContentPostUrn=UserGeneratedContentPostUrn(userGeneratedContentId=${id}))` : 'null'}, detectedLocale=, targetLocale=en)`;
+const cards = () => `<!doctype html>
+<html><head><meta charset="utf-8"><title>Search | Prism e2e</title>
+<style>body{margin:0;font:15px system-ui} main{position:fixed;inset:0;overflow:auto;padding:24px} [role=listitem]{background:#fff;margin:0 0 40px;padding:12px;width:640px} video{display:block;background:#123}</style></head>
+<body><main id="workspace"><div role="list">
+  <div role="listitem" componentkey="update-card-focusa1FeedType_FLAGSHIP_SEARCH">
+    <div><div><a href="/company/example-one/">Company one</a></div><div><span componentkey="${commentary('ugc', '7500000000000000011')}">Post text</span></div></div>
+    <div><div><video id="nv1" src="/media/clip.mp4" width="640" height="360" muted playsinline preload="auto"></video></div></div>
+  </div>
+  <div role="listitem" componentkey="update-card-focusb2FeedType_FLAGSHIP_SEARCH">
+    <div><a href="/in/example-two/">Person two</a></div>
+    <div><span componentkey="${commentary('ugc', '7500000000000000022')}">Repost text</span></div>
+    <div class="shared"><div><span componentkey="${commentary('share', '7500000000000000033')}">Original text</span></div>
+      <div><div><video id="nv2" src="/media/post-360p.mp4" width="640" height="360" muted playsinline preload="auto"></video></div></div></div>
+  </div>
+  <div role="listitem" componentkey="update-card-focusc3FeedType_FLAGSHIP_SEARCH">
+    <div><a href="/company/example-three/">Company three</a></div>
+    <div><div><video id="nv3" src="/media/post-640p.mp4" width="640" height="360" muted playsinline preload="auto"></video></div></div>
+  </div>
+</div><p style="height:600px">filler</p></main></body></html>`;
+
 // Like an X timeline (a "video site" in step 2c): each post is an <article> with links to the
 // author's profile and to the post itself; the page URL names no single video.
 const timeline = () => `<!doctype html>
@@ -72,6 +98,10 @@ export async function startSite() {
     if (url.pathname === '/feed.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(feed());
+    }
+    if (url.pathname === '/cards.html') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(cards());
     }
     if (url.pathname === '/about.html') {
       res.writeHead(200, { 'Content-Type': 'text/html' });

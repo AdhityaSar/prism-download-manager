@@ -555,7 +555,9 @@ function BrowserIntegration() {
           </b>
           <div className="t-small">
             {status?.extensionOutdated
-              ? "Browsers don't reload an unpacked extension's files by themselves. Click ↻ Reload next to Prism on the extensions page; if it stays old, remove it and load it again from the folder below."
+              ? status.extensionInstallType === "development"
+                ? "Browsers don't reload an unpacked extension's files by themselves. Click ↻ Reload next to Prism on the extensions page; if it stays old, remove it and load it again from the folder below."
+                : "Browsers don't reload an unpacked extension's files by themselves. Click ↻ Reload next to Prism on the extensions page, or restart the browser; if it stays old, remove it and load it again from the folder below."
               : status?.lastSeen
                 ? `Last message ${formatDate(status.lastSeen)}`
                 : "Install the extension, then open any web page."}

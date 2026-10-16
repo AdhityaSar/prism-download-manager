@@ -99,24 +99,16 @@ async fn throttled_server_benefits_from_connections() {
     let url = srv.url(&format!("/file/t.bin?size={size}&seed=3&throttle=2M"));
     let dir1 = tempfile::tempdir().unwrap();
     let t = Instant::now();
-    let d1 = wait(
-        &engine().start(request(&url, dir1.path(), 1), None, vec![]),
-        60,
-    )
-    .await
-    .unwrap();
-    let single = t.elapsed();
+    let h1 = engine().start(request(&url, dir1.path(), 1), None, vec![]);
+    let single = transfer_time(&h1, t, 60).await;
+    let d1 = wait(&h1, 60).await.unwrap();
     assert_eq!(sha256_file(&d1.path), expected_sha256(3, size));
     srv.reset_stats();
     let dir8 = tempfile::tempdir().unwrap();
     let t = Instant::now();
-    let d8 = wait(
-        &engine().start(request(&url, dir8.path(), 8), None, vec![]),
-        60,
-    )
-    .await
-    .unwrap();
-    let multi = t.elapsed();
+    let h8 = engine().start(request(&url, dir8.path(), 8), None, vec![]);
+    let multi = transfer_time(&h8, t, 60).await;
+    let d8 = wait(&h8, 60).await.unwrap();
     assert_eq!(sha256_file(&d8.path), expected_sha256(3, size));
     assert!(
         srv.stats().max_concurrent >= 6,
@@ -509,12 +501,26 @@ fn crash_and_resume_from_checkpoint() {
         .unwrap();
     let checkpoint = crash_rt.block_on(async {
         let h = engine().start(request(&url, dir.path(), 4), None, vec![]);
-        let mut last = None;
-        for _ in 0..6 {
-            tokio::time::sleep(Duration::from_millis(250)).await;
-            last = h.checkpoint().await;
-        }
-        last.expect("checkpoint")
+        // There is nothing to checkpoint until the job has probed and created its file, which
+        // can take a while on a busy runner; from then on every checkpoint must succeed.
+        tokio::time::timeout(Duration::from_secs(60), async {
+            let mut taken = 0;
+            loop {
+                tokio::time::sleep(Duration::from_millis(250)).await;
+                match h.checkpoint().await {
+                    Some(c) => {
+                        taken += 1;
+                        if taken >= 3 && c.downloaded() > 0 {
+                            assert!(!h.is_finished(), "finished before the crash");
+                            return c;
+                        }
+                    }
+                    None => assert_eq!(taken, 0, "checkpoint failed mid-download"),
+                }
+            }
+        })
+        .await
+        .expect("no checkpoint with data")
     });
     crash_rt.shutdown_background();
     assert!(checkpoint.downloaded() > 0);
@@ -563,21 +569,27 @@ async fn change_url_mid_download() {
         h.change_url(bad).await.unwrap_err(),
         EngineError::ValidatorMismatch
     );
-    // ...the same file elsewhere is accepted.
+    // ...the same file elsewhere is accepted. Connections reopen on it at once, possibly
+    // before `change_url` has returned here.
     let new = Url::parse(&srv.url(&format!("/file/new.bin?{q}"))).unwrap();
+    let before = srv.stats().requests.len();
     h.change_url(new.clone()).await.unwrap();
     let mark = srv.stats().requests.len();
     let done = wait(&h, 60).await.unwrap();
     assert_eq!(sha256_file(&done.path), expected_sha256(20, size));
-    let after: Vec<_> = srv.stats().requests[mark..]
-        .iter()
-        .map(|r| r.uri.clone())
-        .collect();
+    let requests = srv.stats().requests;
+    let after: Vec<_> = requests[mark..].iter().map(|r| r.uri.clone()).collect();
     assert!(
         after.iter().all(|u| !u.starts_with("/file/old.bin")),
         "old URL used after change: {after:?}"
     );
-    assert!(after.iter().any(|u| u.starts_with("/file/new.bin")));
+    // Data requests, not the validation probe of the first byte.
+    assert!(
+        requests[before..]
+            .iter()
+            .any(|r| r.uri.starts_with("/file/new.bin") && r.range.as_deref() != Some("bytes=0-0")),
+        "new URL not used"
+    );
     assert!(
         events
             .lock()
@@ -595,6 +607,10 @@ async fn mirrors_are_validated_and_used() {
     let size = 32 * MIB;
     let q = format!("size={size}&seed=21&throttle=4M");
     let mut req = request(&srv.url(&format!("/file/primary.bin?{q}")), dir.path(), 8);
+    // Mirrors are validated in the background and join the rotation when a worker issues its
+    // next request. Small requests make every worker pick a source many times; with whole
+    // segments a late validation (busy machine) would leave the mirror unused.
+    req.max_request_size = Some(512 * 1024);
     req.mirrors = vec![
         Url::parse(&srv.url(&format!("/file/mirror.bin?{q}"))).unwrap(),
         Url::parse(&srv.url(&format!("/file/wrong.bin?size={}&seed=21", size / 2))).unwrap(),
@@ -610,11 +626,7 @@ async fn mirrors_are_validated_and_used() {
             .filter(|r| r.uri.starts_with(p) && r.range.as_deref() != Some("bytes=0-0"))
             .count()
     };
-    // Which connection lands on the mirror depends on scheduling; on a starved CI runner the
-    // primary can finish first. Locally the mirror must take part.
-    if std::env::var_os("CI").is_none() {
-        assert!(ranged("/file/mirror.bin") >= 1, "mirror unused");
-    }
+    assert!(ranged("/file/mirror.bin") >= 1, "mirror unused");
     assert!(ranged("/file/primary.bin") >= 1);
     assert_eq!(ranged("/file/wrong.bin"), 0, "invalid mirror used");
 }
@@ -697,8 +709,8 @@ async fn global_and_queue_limiters_apply() {
         None,
         vec![queue],
     );
+    let secs = transfer_time(&h, t, 60).await.as_secs_f64();
     wait(&h, 60).await.unwrap();
-    let secs = t.elapsed().as_secs_f64();
     assert!(
         (1.7..=2.6).contains(&secs),
         "queue limit (2 MiB/s) not applied: {secs:.2}s"
@@ -906,31 +918,30 @@ async fn set_connections_and_cancel() {
     let srv = default_server().await;
     let dir = tempfile::tempdir().unwrap();
     let size = 32 * MIB;
-    let h = engine().start(
-        request(
-            &srv.url(&format!("/file/sc.bin?size={size}&seed=27&throttle=1M")),
-            dir.path(),
-            2,
-        ),
-        None,
-        vec![],
+    let mut req = request(
+        &srv.url(&format!("/file/sc.bin?size={size}&seed=27&throttle=1M")),
+        dir.path(),
+        2,
     );
-    tokio::time::sleep(Duration::from_millis(800)).await;
+    // Surplus workers retire between requests; at 1 MiB/s a default (≥ 4 MiB) request would
+    // keep all 8 connections busy long enough to finish the file before they are lowered.
+    req.max_request_size = Some(512 * 1024);
+    let h = engine().start(req, None, vec![]);
+    wait_for_progress(&h, 256 * 1024).await;
     h.set_connections(8);
-    tokio::time::sleep(Duration::from_millis(1500)).await;
-    let snap = h.snapshot();
-    assert!(
-        snap.active_connections >= 6,
-        "connections not raised: {}",
-        snap.active_connections
-    );
+    let snap = wait_until(&h, "connections raised to 6+", |s| {
+        s.active_connections >= 6
+    })
+    .await;
     assert_eq!(snap.target_connections, 8);
     h.set_connections(2);
-    tokio::time::sleep(Duration::from_millis(3000)).await;
+    wait_until(&h, "connections lowered to 3-", |s| {
+        s.active_connections <= 3
+    })
+    .await;
     assert!(
-        h.snapshot().active_connections <= 3,
-        "connections not lowered: {}",
-        h.snapshot().active_connections
+        !h.is_finished(),
+        "finished before the connections were lowered"
     );
     let part = h.snapshot().path.unwrap().with_extension("bin.prismpart");
     assert!(part.exists());

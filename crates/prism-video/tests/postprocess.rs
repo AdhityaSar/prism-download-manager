@@ -253,17 +253,14 @@ fn make_media() -> Media {
         "128k",
         audio.to_str().unwrap(),
     ]);
-    ff(&[
-        "-f",
-        "lavfi",
-        "-i",
-        "testsrc=size=640x360",
-        "-frames:v",
-        "1",
-        "-c:v",
-        "libwebp",
-        thumb.to_str().unwrap(),
-    ]);
+    // A real WebP like yt-dlp's thumbnails. Every ffmpeg decodes WebP natively, but encoding
+    // needs libwebp (Homebrew's ffmpeg has none), so the image is a checked-in fixture, made with
+    // `ffmpeg -f lavfi -i testsrc=size=640x360 -frames:v 1 -c:v libwebp -q:v 75 thumbnail.webp`.
+    std::fs::copy(
+        Path::new(env!("CARGO_MANIFEST_DIR")).join("tests/fixtures/thumbnail.webp"),
+        &thumb,
+    )
+    .unwrap();
     std::fs::write(&subs, "WEBVTT\n\n00:00:00.000 --> 00:00:02.000\nHello Prism\n\n00:00:02.000 --> 00:00:04.000\nSecond cue\n").unwrap();
     Media {
         dir,

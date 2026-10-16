@@ -711,10 +711,14 @@ impl Core {
         match ty {
             "hello" => {
                 if let Some(v) = s("version") {
+                    let kind = s("installType");
                     let mut cur = self.0.ext_version.lock();
-                    if cur.as_deref() != Some(v.as_str()) {
-                        let _ = std::fs::write(self.0.data_dir.join("extension-version"), &v);
+                    let mut cur_kind = self.0.ext_install_type.lock();
+                    if cur.as_deref() != Some(v.as_str()) || *cur_kind != kind {
+                        let text = format!("{v}\n{}", kind.as_deref().unwrap_or(""));
+                        let _ = std::fs::write(self.0.data_dir.join("extension-version"), text);
                         *cur = Some(v);
+                        *cur_kind = kind;
                     }
                 }
                 serde_json::json!({"ok": true, "app": app, "protocol": 1, "settings": self.capture_rules()})
@@ -1009,8 +1013,10 @@ pub(crate) fn not_a_single_video(url: &str) -> Option<&'static str> {
                 | "my-items"
         )
     {
+        // Also what a post without its own id gets (LinkedIn's newer pages name a post only in
+        // its text block, so a post without text has none).
         return Some(
-            "This LinkedIn page lists posts. Point at the video inside a post, or open the post.",
+            "Prism can't tell which LinkedIn post this video belongs to here. Open the post itself (··· › Copy link to post) and try there.",
         );
     }
     if site("instagram.com")

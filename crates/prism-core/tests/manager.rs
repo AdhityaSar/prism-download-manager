@@ -5,7 +5,7 @@
 use prism_core::events::{CaptureSource, CoreEvent};
 use prism_core::ipc::IpcHandler;
 use prism_core::manager::{CaptureDecision, Core, CoreOptions, NewItem, StartMode};
-use prism_core::model::{Queue, Status};
+use prism_core::model::{DownloadItem, Queue, Status};
 use prism_testserver::{ServerConfig, TestServer, expected_sha256, sha256_hex};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
@@ -63,6 +63,40 @@ async fn wait_completed(rx: &mut broadcast::Receiver<CoreEvent>, id: &str) -> Pa
         _ => None,
     })
     .await
+}
+
+/// Wait until a running download has received at least `bytes` (a fixed sleep is too short
+/// on a busy CI runner and lets a fast machine get too far).
+async fn wait_downloaded(core: &Core, id: &str, bytes: u64) {
+    tokio::time::timeout(Duration::from_secs(30), async {
+        while core.item(id).unwrap().downloaded < bytes {
+            tokio::time::sleep(Duration::from_millis(20)).await;
+        }
+    })
+    .await
+    .expect("no progress");
+}
+
+/// Wait until the item's job has really stopped and left it paused with a resume point.
+/// Pausing (or trashing) only asks the job to stop: it flushes and reports back in its own
+/// time, and until then a periodic checkpoint can already have stored a resume point.
+async fn wait_paused(core: &Core, id: &str) -> DownloadItem {
+    let deadline = tokio::time::Instant::now() + Duration::from_secs(30);
+    loop {
+        let details = core.item_details(id).expect("item exists");
+        let running = details.progress.is_some();
+        let item = details.item;
+        if !running && item.status == Status::Paused && item.resume.is_some() {
+            return item;
+        }
+        assert!(
+            tokio::time::Instant::now() < deadline,
+            "not paused with a resume point: status {:?}, job running {running}, resume {}",
+            item.status,
+            item.resume.is_some()
+        );
+        tokio::time::sleep(Duration::from_millis(20)).await;
+    }
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]
@@ -152,16 +186,9 @@ async fn pause_then_resume_after_app_restart() {
             )
             .unwrap();
         let id = items[0].id.clone();
-        tokio::time::sleep(Duration::from_millis(1500)).await;
+        wait_downloaded(&core, &id, 512 * 1024).await;
         core.pause_items(std::slice::from_ref(&id));
-        for _ in 0..100 {
-            if core.item(&id).unwrap().status == Status::Paused {
-                break;
-            }
-            tokio::time::sleep(Duration::from_millis(50)).await;
-        }
-        let item = core.item(&id).unwrap();
-        assert_eq!(item.status, Status::Paused);
+        let item = wait_paused(&core, &id).await;
         assert!(
             item.downloaded > 0 && item.downloaded < size,
             "downloaded {}",
@@ -414,24 +441,14 @@ async fn running_download_survives_trash_and_restore() {
         )
         .unwrap();
     let id = items[0].id.clone();
-    tokio::time::sleep(Duration::from_millis(1500)).await;
-    // Trash it while it is downloading.
+    wait_downloaded(&core, &id, 512 * 1024).await;
+    // Trash it while it is downloading: the job pauses (not cancels) and keeps its resume point.
     core.delete_items(std::slice::from_ref(&id), false, false)
         .await
         .unwrap();
-    let mut saved = false;
-    for _ in 0..100 {
-        let item = core.item(&id).unwrap();
-        if item.resume.is_some() && item.downloaded > 0 {
-            saved = true;
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
-    let item = core.item(&id).unwrap();
+    let item = wait_paused(&core, &id).await;
     assert!(item.trashed);
-    assert_eq!(item.status, Status::Paused);
-    assert!(saved, "trashing must keep the resume point");
+    assert!(item.downloaded > 0, "trashing must keep the resume point");
     let before = item.downloaded;
     // Restore and continue: same file, not restarted.
     core.restore_items(std::slice::from_ref(&id));
@@ -474,14 +491,9 @@ async fn removing_an_unfinished_download_removes_its_partial_file() {
         .unwrap()[0]
         .id
         .clone();
-    tokio::time::sleep(Duration::from_millis(1500)).await;
+    wait_downloaded(&core, &id, 512 * 1024).await;
     core.pause_items(std::slice::from_ref(&id));
-    for _ in 0..100 {
-        if core.item(&id).unwrap().resume.is_some() {
-            break;
-        }
-        tokio::time::sleep(Duration::from_millis(50)).await;
-    }
+    wait_paused(&core, &id).await;
     let part = tmp.path().join("dl").join("gone.bin.prismpart");
     assert!(part.exists(), "partial file expected at {}", part.display());
     // Trash, then empty the trash ("delete files" not ticked).
@@ -510,4 +522,50 @@ async fn batch_pattern_expands() {
     assert_eq!(batch.entries.len(), 12);
     assert_eq!(batch.entries[0].file_name, "file01.zip");
     assert_eq!(batch.entries[0].category, "compressed");
+}
+
+#[tokio::test]
+async fn stale_extension_reminder_follows_the_install_type() {
+    let tmp = tempfile::tempdir().unwrap();
+    // As Prism 1.0.6 left it: the version alone.
+    std::fs::create_dir_all(tmp.path().join("data")).unwrap();
+    std::fs::write(tmp.path().join("data").join("extension-version"), "1.0.0").unwrap();
+    let core = core_in(tmp.path()).await;
+    assert_eq!(core.extension_version().as_deref(), Some("1.0.0"));
+    assert_eq!(core.extension_install_type(), None);
+    assert!(core.extension_outdated());
+
+    let hello = |version: &str, kind: Option<&str>| {
+        let mut m = serde_json::json!({"id": "1", "type": "hello", "protocol": 1, "version": version, "browser": "chrome"});
+        if let Some(k) = kind {
+            m["installType"] = serde_json::json!(k);
+        }
+        m
+    };
+    // From a store or by policy: the browser updates it by itself (later than the app).
+    for kind in ["normal", "admin"] {
+        assert_eq!(core.handle(hello("1.0.0", Some(kind))).await["ok"], true);
+        assert!(!core.extension_outdated(), "{kind}");
+    }
+    // Loaded unpacked, or an extension that doesn't say (before 1.0.7): it has to be reloaded.
+    core.handle(hello("1.0.0", Some("development"))).await;
+    assert!(core.extension_outdated());
+    core.handle(hello("1.0.0", None)).await;
+    assert_eq!(core.extension_install_type(), None);
+    assert!(core.extension_outdated());
+    // The app's own version is never outdated; what was seen last is kept across a restart.
+    core.handle(hello(prism_core::APP_VERSION, Some("development")))
+        .await;
+    assert!(!core.extension_outdated());
+    core.shutdown().await;
+    let core = core_in(tmp.path()).await;
+    assert_eq!(
+        core.extension_version().as_deref(),
+        Some(prism_core::APP_VERSION)
+    );
+    assert_eq!(
+        core.extension_install_type().as_deref(),
+        Some("development")
+    );
+    core.shutdown().await;
 }

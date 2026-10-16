@@ -154,7 +154,7 @@ Extension → host → app messages are JSON objects `{ "type": ..., ... }`:
 
 | type | Payload | Effect |
 |---|---|---|
-| `hello` | `{version, browser}` | Returns app version + capture settings (extension list, MIME list, min size, excluded sites, bypass key). |
+| `hello` | `{version, browser, installType}` | Returns app version + capture settings (extension list, MIME list, min size, excluded sites, bypass key). |
 | `download` | `{url, referrer, cookies, userAgent, filename?, fileSize?, mime?, method?, postData?, headers?}` | App shows the **Download File** dialog (or adds silently per settings). |
 | `batch` | `{items: [download...], pageUrl}` | "Download all links/images/videos" → selection dialog. |
 | `video` | `{pageUrl, title?, streams: [{url, kind: hls|dash|direct, mime?, headers}], cookies, userAgent}` | Video panel / quality picker (yt-dlp for supported sites; sniffed streams otherwise). |

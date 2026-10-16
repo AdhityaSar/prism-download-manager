@@ -33,6 +33,7 @@ Prism → Settings → Browser integration → **Open folder**:
 | Windows (setup.exe) | `%LOCALAPPDATA%\Prism\extension\chromium` |
 | Windows (MSI) | `C:\Program Files\Prism\extension\chromium` |
 | Linux (deb / rpm) | `/usr/lib/Prism/extension/chromium` |
+| Linux (AppImage) | `~/.local/share/prism/extension/chromium` (a copy Prism keeps up to date) |
 | macOS | `~/Library/Application Support/Prism/extension/chromium` (a copy Prism keeps up to date) |
 
 ## Google Chrome (Windows, macOS, Linux)

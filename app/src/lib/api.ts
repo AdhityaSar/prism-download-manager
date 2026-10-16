@@ -257,6 +257,8 @@ export interface IntegrationStatus {
   lastSeen?: number | null;
   /** Version the extension reported; older than `appVersion` = the browser runs old files. */
   extensionVersion?: string | null;
+  /** How the browser installed it (`management.getSelf().installType`; extensions before 1.0.7 don't say). */
+  extensionInstallType?: string | null;
   extensionOutdated?: boolean;
   appVersion?: string;
 }

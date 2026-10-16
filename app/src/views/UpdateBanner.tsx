@@ -5,10 +5,10 @@ import { Icon } from "../design/icons";
 import { api, inTauri, onAppEvent, type UpdateInfo } from "../lib/api";
 import { useApp } from "../lib/store";
 import { toast } from "../lib/ui";
+import { scheduleUpdateChecks, windowEnv } from "../lib/update-schedule";
 
 const SITE = "https://prismdl.site/#download";
 const RELEASES = "https://github.com/FortoGraphy/prism-download-manager/releases";
-const EVERY_MS = 6 * 60 * 60 * 1000;
 
 interface UpdateState {
   info: UpdateInfo | null;
@@ -20,8 +20,12 @@ interface UpdateState {
 
 const useUpdate = create<UpdateState>(() => ({ info: null, later: null, phase: "idle", progress: 0 }));
 
+/** When the latest check started (counted from the app's start until the first one). */
+let lastCheckAt = Date.now();
+
 /** Looks for a newer release; `manual` reports "up to date" and errors as toasts. */
 export async function checkForUpdates(manual = false): Promise<void> {
+  lastCheckAt = Date.now();
   try {
     const info = await api.checkUpdate();
     useUpdate.setState({ info, ...(manual ? { later: null } : {}) });
@@ -62,12 +66,8 @@ export function UpdateBanner() {
 
   useEffect(() => {
     if (!enabled) return;
-    const first = window.setTimeout(() => void checkForUpdates(), 5000);
-    const every = window.setInterval(() => void checkForUpdates(), EVERY_MS);
-    return () => {
-      window.clearTimeout(first);
-      window.clearInterval(every);
-    };
+    // 5 s after start, every hour, and on coming back to the window after 30 min.
+    return scheduleUpdateChecks(() => void checkForUpdates(), () => lastCheckAt, windowEnv);
   }, [enabled]);
 
   const show = !!info && later !== info.version;

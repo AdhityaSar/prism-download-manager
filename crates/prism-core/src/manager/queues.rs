@@ -279,6 +279,9 @@ impl Core {
 
     /// Start queued items while their queue has free slots.
     fn admit(&self) {
+        // Counting free slots and starting the items is one step: `start_queue` and the 1 s
+        // tick can admit at the same moment and would otherwise both fill the same slots.
+        let _admission = self.0.admission.lock();
         let to_start: Vec<String> = {
             let st = self.0.state.lock();
             let mut out = Vec::new();

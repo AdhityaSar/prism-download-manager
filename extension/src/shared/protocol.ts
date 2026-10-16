@@ -58,6 +58,12 @@ export interface HelloRequest {
   version: string;
   browser: BrowserName;
   userAgent: string;
+  /**
+   * How the browser installed the extension (`management.getSelf().installType`): "development"
+   * = loaded unpacked (the browser keeps old files after an update until it is reloaded),
+   * "normal" = from a store, "admin" = by policy (both updated by the browser).
+   */
+  installType?: string;
 }
 
 export interface AppInfo {

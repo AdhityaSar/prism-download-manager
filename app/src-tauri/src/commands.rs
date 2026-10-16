@@ -521,6 +521,7 @@ fn with_extension_state(mut status: serde_json::Value, core: &Core) -> serde_jso
         serde_json::json!(seen.is_some_and(|t| now_ms() - t < 10 * 60 * 1000));
     // The browser keeps running an unpacked extension's old files until it is reloaded.
     status["extensionVersion"] = serde_json::json!(core.extension_version());
+    status["extensionInstallType"] = serde_json::json!(core.extension_install_type());
     status["extensionOutdated"] = serde_json::json!(core.extension_outdated());
     status["appVersion"] = serde_json::json!(prism_core::APP_VERSION);
     status

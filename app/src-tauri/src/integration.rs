@@ -82,33 +82,45 @@ pub fn extension_dir(app: &AppHandle) -> Option<PathBuf> {
 pub fn extension_folder(app: &AppHandle, firefox: bool) -> Option<PathBuf> {
     let sub = if firefox { "firefox" } else { "chromium" };
     let dir = extension_dir(app)?.join(sub);
-    // macOS: a folder inside Prism.app can't be picked comfortably in the browser's file
-    // dialog, so keep a copy in Application Support (refreshed when the app updates it).
-    #[cfg(target_os = "macos")]
-    let dir = {
-        let copy = prism_core::paths::data_dir().join("extension").join(sub);
-        match sync_dir(&dir, &copy) {
-            Ok(()) => copy,
-            Err(e) => {
-                tracing::warn!("could not copy the extension to {}: {e}", copy.display());
-                dir
+    let dir = match extension_copy_root() {
+        Some(root) => {
+            let copy = root.join(sub);
+            match sync_dir(&dir, &copy) {
+                Ok(()) => copy,
+                Err(e) => {
+                    tracing::warn!("could not copy the extension to {}: {e}", copy.display());
+                    dir
+                }
             }
         }
+        None => dir,
     };
     let s = dir.to_string_lossy();
     // `canonicalize` on Windows yields `\?\C:\...`, which file dialogs don't accept.
     Some(PathBuf::from(s.strip_prefix(r"\?\").unwrap_or(&s)))
 }
 
-/// macOS: the browser loads the extension from the copy in Application Support (see
-/// `extension_folder`), which an app update doesn't touch. Refresh the copies that exist on
-/// every start so an update brings the new extension along (the browser loads it on its next
-/// start). Elsewhere the browser loads it straight from the app's resources.
-#[cfg(target_os = "macos")]
+/// Where the browser loads the extension from when not straight from the app's resources:
+/// * macOS: a folder inside Prism.app can't be picked comfortably in the browser's file dialog;
+/// * AppImage: the resources sit under the AppImage's mount point (`/tmp/.mount_XXXXXX`), which
+///   changes on every run, so the browser would lose the extension once Prism restarts.
+///
+/// Both keep a copy in the data dir that the app refreshes when an update changes it.
+fn extension_copy_root() -> Option<PathBuf> {
+    let copy = cfg!(target_os = "macos")
+        || (cfg!(target_os = "linux") && std::env::var_os("APPIMAGE").is_some());
+    copy.then(|| prism_core::paths::data_dir().join("extension"))
+}
+
+/// Refresh the extension copies that exist (see `extension_copy_root`) on every start, so an
+/// update brings the new extension along (the browser loads it on its next start).
 pub fn refresh_extension_copies(app: &AppHandle) {
+    let Some(root) = extension_copy_root() else {
+        return;
+    };
     for firefox in [false, true] {
         let sub = if firefox { "firefox" } else { "chromium" };
-        if prism_core::paths::data_dir().join("extension").join(sub).exists() {
+        if root.join(sub).exists() {
             let _ = extension_folder(app, firefox);
         }
     }
@@ -202,7 +214,6 @@ fn launch(browser: &str) -> std::io::Result<()> {
 }
 
 /// Mirrors `src` into `dst` when the extension build differs (new app version).
-#[cfg(target_os = "macos")]
 fn sync_dir(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
     // The start-up refresh and the setup screen may sync at the same time.
     static SYNC: std::sync::Mutex<()> = std::sync::Mutex::new(());
@@ -221,7 +232,6 @@ fn sync_dir(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()>
     std::fs::rename(&tmp, dst)
 }
 
-#[cfg(target_os = "macos")]
 fn copy_dir(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
     std::fs::create_dir_all(dst)?;
     for entry in std::fs::read_dir(src)? {
@@ -234,4 +244,59 @@ fn copy_dir(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()>
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::sync_dir;
+    use std::fs;
+    use std::path::Path;
+
+    fn write_build(dir: &Path, version: &str, icon: &str) {
+        fs::create_dir_all(dir.join("icons")).unwrap();
+        fs::write(
+            dir.join("manifest.json"),
+            format!(r#"{{"version":"{version}"}}"#),
+        )
+        .unwrap();
+        fs::write(dir.join("background.js"), format!("// {version}")).unwrap();
+        fs::write(dir.join("icons").join(icon), "png").unwrap();
+    }
+
+    fn version(dir: &Path) -> String {
+        fs::read_to_string(dir.join("manifest.json")).unwrap()
+    }
+
+    /// An AppImage is mounted at a new `/tmp/.mount_XXXXXX` on every run and unmounted on exit.
+    /// The folder the browser loads the extension from has to outlive the mount, stay put
+    /// across runs and pick up the extension of an updated AppImage.
+    #[test]
+    fn extension_copy_outlives_the_mount_and_follows_updates() {
+        let tmp = tempfile::tempdir().unwrap();
+        let mount = |id: &str| {
+            tmp.path()
+                .join(format!(".mount_{id}/usr/lib/Prism/extension/chromium"))
+        };
+        let copy = tmp.path().join("data/extension/chromium");
+
+        write_build(&mount("aaaaaa"), "1.0.4", "old.png");
+        sync_dir(&mount("aaaaaa"), &copy).unwrap();
+        fs::remove_dir_all(tmp.path().join(".mount_aaaaaa")).unwrap();
+        assert_eq!(version(&copy), r#"{"version":"1.0.4"}"#);
+        assert!(copy.join("background.js").exists() && copy.join("icons/old.png").exists());
+
+        // Next run of the same AppImage: the copy is left as it is.
+        write_build(&mount("bbbbbb"), "1.0.4", "old.png");
+        fs::write(copy.join("untouched"), "").unwrap();
+        sync_dir(&mount("bbbbbb"), &copy).unwrap();
+        assert!(copy.join("untouched").exists());
+
+        // Updated AppImage: the copy becomes the new build, without the files it dropped.
+        write_build(&mount("cccccc"), "1.0.5", "new.png");
+        sync_dir(&mount("cccccc"), &copy).unwrap();
+        assert_eq!(version(&copy), r#"{"version":"1.0.5"}"#);
+        assert!(copy.join("icons/new.png").exists());
+        assert!(!copy.join("icons/old.png").exists() && !copy.join("untouched").exists());
+        assert!(!copy.with_extension("tmp").exists());
+    }
 }

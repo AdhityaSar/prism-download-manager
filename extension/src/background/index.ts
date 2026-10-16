@@ -39,9 +39,19 @@ initMenus();
 
 // ---- hello / watchdog -----------------------------------------------------------
 
+let installTypeOnce: Promise<string | undefined> | undefined;
+/** `management.getSelf()` needs no permission (Chromium and Firefox). */
+function installType(): Promise<string | undefined> {
+  installTypeOnce ??= Promise.resolve()
+    .then(() => api.management?.getSelf?.())
+    .then((self) => self?.installType, () => undefined);
+  return installTypeOnce;
+}
+
 async function hello(noLaunch = true, forceSettings = false): Promise<void> {
+  const kind = await installType();
   const reply = await native.request(
-    { type: 'hello', protocol: PROTOCOL_VERSION, version: EXTENSION_VERSION, browser: detectBrowser(), userAgent: userAgent() },
+    { type: 'hello', protocol: PROTOCOL_VERSION, version: EXTENSION_VERSION, browser: detectBrowser(), userAgent: userAgent(), ...(kind ? { installType: kind } : {}) },
     { noLaunch, timeoutMs: noLaunch ? 4000 : 12000 },
   );
   await applyAppSettings(reply.settings, reply.app?.version, forceSettings);

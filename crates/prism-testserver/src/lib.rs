@@ -20,8 +20,11 @@
 //! Server-wide behaviour (connection limits, credentials, defaults) lives in [`ServerConfig`].
 //! [`TestServer::stats`] exposes per-connection request counts (keyed by peer address) and a
 //! request log, so tests can assert connection reuse, headers and URLs.
+//!
+//! [`FtpServer`] is a minimal FTP server (passive `REST` + `RETR`) serving generated files.
 
 pub mod content;
+mod ftp;
 pub mod media;
 pub mod options;
 mod server;
@@ -35,6 +38,7 @@ use tokio::sync::Notify;
 use tokio::task::JoinHandle;
 
 pub use content::{expected_bytes, expected_sha256, sha256_hex, versioned_seed};
+pub use ftp::FtpServer;
 pub use media::{DashFixture, DashRepresentation, HlsFixture, HlsVariant};
 pub use options::{AuthMode, FileOptions, LimitMode, ServerConfig, parse_size};
 pub use server::{ConnectionStats, RequestLog, ServerStats};
