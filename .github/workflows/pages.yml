@@ -51,7 +51,7 @@ jobs:
               else if (n < 1000000) { printf "%dk", int(n / 1000) }
               else { s = sprintf("%.1f", n / 1000000); sub(/\.0$/, "", s); printf "%sM", s }
             }')
-            printf '{"schemaVersion":1,"label":"downloads","message":"%s","color":"3fb8ff","cacheSeconds":3600}\n' "$message" > site/downloads.json
+            printf '{"schemaVersion":1,"label":"downloads","message":"%s","color":"3fb8ff","cacheSeconds":300}\n' "$message" > site/downloads.json
           else
             curl -fsS https://prismdl.site/downloads.json -o site/downloads.json || true
           fi
