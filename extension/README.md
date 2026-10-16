@@ -56,7 +56,9 @@ of them can win, so disable them while using Prism.
   player / Shorts aware, skips players < 200×120 and small muted autoplay loops, follows
   scroll/resize, moves into the fullscreen element, handles `yt-navigate-finish`, `popstate`,
   Navigation API and DOM mutations). On `videoSites` (YouTube, Vimeo, …) the menu shows the app's
-  `probeVideo` formats; elsewhere the sniffed streams (plus the element's `currentSrc`).
+  `probeVideo` formats; elsewhere first *This video* — what the hovered element itself plays
+  (`currentSrc`, `src`, `<source>` children, a `data-sources` quality list as on LinkedIn), best
+  quality first — then the tab's other sniffed streams (other posts, autoplaying ads).
 * **Popup** — connection state (with a fix hint), pause-capture toggle, media on the page with
   per-item Download, "All links / images / videos", Open Prism, Options. Follows the system theme.
 * **Context menus** — Download with Prism (link/image/video/audio), Download selection links,

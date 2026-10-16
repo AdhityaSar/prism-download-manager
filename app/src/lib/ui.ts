@@ -114,9 +114,9 @@ export const useUi = create<UiState>((set, get) => ({
   dragOver: false,
 
   openSheet: (sheet) => set({ sheet, menu: null }),
-  closeSheet: () => set({ sheet: null }),
+  closeSheet: () => set({ sheet: null, menu: null }),
   openDialog: (dialog) => set({ dialog, menu: null }),
-  closeDialog: () => set({ dialog: null }),
+  closeDialog: () => set({ dialog: null, menu: null }),
   openMenu: (menu) => set({ menu }),
   closeMenu: () => set({ menu: null }),
   focusSearch: () => set({ searchFocus: get().searchFocus + 1 }),

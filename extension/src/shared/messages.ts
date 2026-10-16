@@ -1,5 +1,5 @@
 /** Messages between content scripts / popup / options and the background (field `kind`). */
-import type { MediaItem } from './media';
+import type { ElementSource, MediaItem } from './media';
 import type { BatchKind, VideoStream } from './protocol';
 import type { StoredState } from './settings';
 
@@ -17,7 +17,8 @@ export interface VideoOption {
   id: string;
   label: string;
   detail?: string;
-  group: 'video' | 'audio' | 'stream';
+  /** `element` = a source of the hovered <video> itself; `stream` = anything else sniffed in the tab. */
+  group: 'element' | 'video' | 'audio' | 'stream';
   /** For app-resolved formats. */
   formatId?: string;
   /** For sniffed streams. */
@@ -33,7 +34,7 @@ export interface VideoOptionsResult {
 
 export type InternalMessage =
   | { kind: 'bypass'; url?: string; ts: number }
-  | { kind: 'videoOptions'; pageUrl: string; title: string; videoSrc?: string }
+  | { kind: 'videoOptions'; pageUrl: string; title: string; sources?: ElementSource[] }
   | { kind: 'videoDownload'; pageUrl: string; title: string; option: VideoOption }
   | { kind: 'popupState'; tabId: number }
   | { kind: 'refreshStatus' }

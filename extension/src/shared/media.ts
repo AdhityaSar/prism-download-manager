@@ -75,13 +75,66 @@ export function totalSize(status: number, contentLength?: string, contentRange?:
   return undefined;
 }
 
-/** Quality hint from a URL (`1080p`, `720`, `4k`, `hd`). */
+/** Quality hint from a URL (`1080p`, `720`, `4k`; any height written as `640p`, e.g. LinkedIn's `mp4-640p-30fp`). */
 export function qualityFromUrl(url: string): string | undefined {
   const s = decodeSafe(url);
-  const p = /(?:^|[^0-9])(2160|1440|1080|720|540|480|360|240|144)p?(?:[^0-9]|$)/i.exec(s);
+  const p = /(?:^|[^0-9])(2160|1440|1080|720|540|480|360|240|144)p?(?:[^0-9]|$)/i.exec(s) ?? /(?:^|[^0-9a-z])([1-9][0-9]{2,3})p(?:[^0-9a-z]|$)/i.exec(s);
   if (p) return `${p[1]}p`;
   if (/(?:^|[^a-z])(4k|uhd)(?:[^a-z]|$)/i.test(s)) return '2160p';
   return undefined;
+}
+
+/** Height of a quality label (`720p` → 720), 0 when unknown. */
+export function qualityHeight(q: string | undefined): number {
+  return q ? Number(/^(\d+)p$/.exec(q)?.[1] ?? 0) : 0;
+}
+
+/** A URL a media element can play, with the MIME type the page declared for it. */
+export interface ElementSource {
+  url: string;
+  type?: string;
+}
+
+/**
+ * What a `<video>` / `<audio>` element itself plays: its current source, `src`, `<source>`
+ * children and a `data-sources` JSON list (`[{"src": …, "type": …}]`, LinkedIn's video.js
+ * players list every quality there). Absolute http(s) URLs only (no `blob:` MSE players), in
+ * that order, without duplicates. Lets the in-page button offer the hovered video instead of
+ * whatever else the tab loaded (ads, other posts).
+ */
+export function elementSources(
+  el: { currentSrc?: string; src?: string; sources?: ElementSource[]; dataSources?: string | null },
+  baseUrl: string,
+): ElementSource[] {
+  const out: ElementSource[] = [];
+  const add = (raw: unknown, type?: unknown) => {
+    if (typeof raw !== 'string' || !raw.trim()) return;
+    let url: string;
+    try {
+      url = new URL(raw.trim(), baseUrl).toString();
+    } catch {
+      return;
+    }
+    if (!/^https?:$/.test(new URL(url).protocol)) return;
+    const prev = out.find((s) => s.url === url);
+    if (prev) {
+      if (!prev.type && typeof type === 'string' && type) prev.type = type;
+      return;
+    }
+    out.push(typeof type === 'string' && type ? { url, type } : { url });
+  };
+  add(el.currentSrc);
+  add(el.src);
+  for (const s of el.sources ?? []) add(s.url, s.type);
+  if (el.dataSources) {
+    try {
+      const list: unknown = JSON.parse(el.dataSources);
+      if (Array.isArray(list)) for (const s of list) if (s && typeof s === 'object') add((s as { src?: unknown }).src, (s as { type?: unknown }).type);
+    } catch {
+      /* not a JSON source list */
+    }
+  }
+  return out;
 }
 
 function decodeSafe(s: string): string {
@@ -109,6 +162,63 @@ export function mediaName(url: string, kind: MediaKind): string {
   const name = filenameFromUrl(url);
   if (name) return name.length > 80 ? `${name.slice(0, 77)}…` : name;
   return kind === 'hls' ? 'HLS stream' : kind === 'dash' ? 'DASH stream' : 'media';
+}
+
+const MIME_CONTAINERS: Record<string, string> = {
+  'video/mp4': 'MP4',
+  'video/webm': 'WEBM',
+  'video/ogg': 'OGV',
+  'video/quicktime': 'MOV',
+  'video/x-matroska': 'MKV',
+  'audio/mp4': 'M4A',
+  'audio/mpeg': 'MP3',
+  'audio/webm': 'WEBA',
+  'audio/ogg': 'OGG',
+  'audio/aac': 'AAC',
+  'audio/flac': 'FLAC',
+};
+
+/** Menu label: `720p · MP4 · 5.1 MB`. */
+export function mediaLabel(m: MediaItem): string {
+  // Container from the extension, else from the MIME type (CDN URLs often have no extension).
+  const container = fileExtension(m.url) || MIME_CONTAINERS[m.mime?.toLowerCase() ?? ''];
+  const kind = m.kind === 'hls' ? 'HLS' : m.kind === 'dash' ? 'DASH' : container || (m.kind === 'audio' ? 'Audio' : 'Video');
+  const parts = [m.quality ?? (m.kind === 'audio' ? 'Audio' : m.kind === 'hls' || m.kind === 'dash' ? 'Stream' : 'Video'), kind];
+  const size = humanSize(m.size);
+  if (size) parts.push(size);
+  return parts.join(' · ');
+}
+
+/**
+ * The hovered element's own sources as media items, best quality first. A source the tab has
+ * already loaded keeps what the sniffer saw (size, Referer/Origin actually sent); the others
+ * (e.g. qualities the player didn't pick) borrow those headers, or get the page as Referer.
+ */
+export function elementMedia(sources: ElementSource[], sniffed: MediaItem[], pageUrl: string): MediaItem[] {
+  const byKey = new Map(sniffed.map((m) => [m.key, m]));
+  const seen = sources.map((s) => byKey.get(mediaKey(s.url)));
+  const headers = seen.find((m) => m?.headers)?.headers ?? (pageUrl ? { Referer: pageUrl } : undefined);
+  const items = sources.map((s, i): MediaItem => {
+    const hit = seen[i];
+    if (hit) return hit;
+    const cls = classifyMedia({ url: s.url, contentType: s.type, resourceType: 'media' }) ?? { kind: 'video', streamKind: 'direct' };
+    const kind = cls.kind === 'segment' ? 'video' : cls.kind;
+    const quality = qualityFromUrl(s.url);
+    return {
+      key: mediaKey(s.url),
+      url: s.url,
+      kind,
+      streamKind: cls.streamKind,
+      name: mediaName(s.url, kind),
+      ts: Date.now(),
+      ...(s.type ? { mime: s.type.split(';')[0]!.trim() } : {}),
+      ...(quality ? { quality } : {}),
+      ...(headers ? { headers } : {}),
+    };
+  });
+  const unique = items.filter((m, i) => items.findIndex((x) => x.key === m.key) === i);
+  // Stable: equal / unknown qualities keep the element's order (what it plays comes first).
+  return unique.map((m, i) => ({ m, i })).sort((a, b) => qualityHeight(b.m.quality) - qualityHeight(a.m.quality) || a.i - b.i).map((x) => x.m);
 }
 
 /** Minimum size for progressive media to be listed (filters tracking pixels, tiny previews). */

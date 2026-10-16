@@ -5,6 +5,7 @@
  */
 import { sendInternal } from '../shared/api';
 import { icons, prismMark } from '../shared/icons';
+import { type ElementSource, elementSources } from '../shared/media';
 import type { ActionResult, VideoOption, VideoOptionsResult } from '../shared/messages';
 import { VIDEO_BUTTON_CSS } from './styles';
 
@@ -328,19 +329,31 @@ export class VideoButton {
 
   // ---- menu ----------------------------------------------------------------------
 
-  private context(): { pageUrl: string; title: string; videoSrc?: string; key: string } {
+  private context(): { pageUrl: string; title: string; sources: ElementSource[]; key: string } {
     const v = this.current;
     const src = v?.currentSrc || v?.src || '';
     const title = (IS_YOUTUBE ? document.title.replace(/ - YouTube$/, '') : document.title) || location.hostname;
     const pageUrl = location.href;
-    return { pageUrl, title, ...(src && !src.startsWith('blob:') ? { videoSrc: src } : {}), key: `${pageUrl}|${src}` };
+    // What this very <video> plays, so the menu can put it before the tab's other streams.
+    const sources = v
+      ? elementSources(
+          {
+            currentSrc: v.currentSrc,
+            src: v.getAttribute('src') ?? '',
+            sources: [...v.querySelectorAll('source')].map((s) => ({ url: s.getAttribute('src') ?? '', type: s.type })),
+            dataSources: v.getAttribute('data-sources'),
+          },
+          document.baseURI,
+        )
+      : [];
+    return { pageUrl, title, sources, key: `${pageUrl}|${src}` };
   }
 
   private options(): Promise<VideoOptionsResult | undefined> {
     const c = this.context();
     const hit = this.cache.get(c.key);
     if (hit && Date.now() - hit.at < 60_000) return hit.res;
-    const res = sendInternal<VideoOptionsResult>({ kind: 'videoOptions', pageUrl: c.pageUrl, title: c.title, ...(c.videoSrc ? { videoSrc: c.videoSrc } : {}) });
+    const res = sendInternal<VideoOptionsResult>({ kind: 'videoOptions', pageUrl: c.pageUrl, title: c.title, sources: c.sources });
     this.cache.set(c.key, { at: Date.now(), res });
     // Don't cache failures/empties for long.
     void res.then((r) => {
@@ -382,10 +395,12 @@ export class VideoButton {
       this.menu.innerHTML = `${head}<div class="note">Prism extension is restarting — try again in a moment.</div>`;
       return;
     }
+    const own = res.options.some((o) => o.group === 'element');
     const groups: Array<[VideoOption['group'], string]> = [
+      ['element', 'This video'],
       ['video', 'Video'],
       ['audio', 'Audio only'],
-      ['stream', 'Streams on this page'],
+      ['stream', own ? 'Other streams on this page' : 'Streams on this page'],
     ];
     let html = head;
     if (res.notice) html += `<div class="note">${esc(res.notice)}</div>`;
@@ -395,7 +410,7 @@ export class VideoButton {
     for (const [g, label] of groups) {
       const items = res.options.filter((o) => o.group === g);
       if (!items.length) continue;
-      if (res.source === 'probe' || g === 'stream') html += `<div class="group">${label}</div>`;
+      if (res.source === 'probe' || g === 'stream' || g === 'element') html += `<div class="group">${label}</div>`;
       for (const o of items) {
         const ic = g === 'audio' ? icons.audio(18) : g === 'stream' ? icons.stream(18) : icons.film(18);
         html += `<button class="item" role="menuitem" data-id="${esc(o.id)}"><span class="ic">${ic}</span><span class="tx"><span class="l">${esc(o.label)}</span>${o.detail ? `<span class="d">${esc(o.detail)}</span>` : ''}</span><span class="go">${icons.download(16)}</span></button>`;

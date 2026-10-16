@@ -1,9 +1,9 @@
 /** Floating video button + popup media actions. */
 import type { NativeError } from '../shared/correlator';
-import { type MediaItem, humanSize, visibleMedia } from '../shared/media';
+import { type ElementSource, type MediaItem, elementMedia, mediaLabel, visibleMedia } from '../shared/media';
 import type { VideoOption, VideoOptionsResult } from '../shared/messages';
 import type { VideoRequest, VideoStream } from '../shared/protocol';
-import { fileExtension, isHandoffUrl, siteMatches } from '../shared/rules';
+import { siteMatches } from '../shared/rules';
 import { actionTimeout, cookieHeaderFor, tabInfo, userAgent } from './context';
 import { native } from './native';
 import { getTabMedia } from './sniffer';
@@ -24,14 +24,6 @@ export function streamOf(m: MediaItem): VideoStream {
   };
 }
 
-export function mediaLabel(m: MediaItem): string {
-  const kind = m.kind === 'hls' ? 'HLS' : m.kind === 'dash' ? 'DASH' : fileExtension(m.url) || (m.kind === 'audio' ? 'Audio' : 'Video');
-  const parts = [m.quality ?? (m.kind === 'audio' ? 'Audio' : m.kind === 'hls' || m.kind === 'dash' ? 'Stream' : 'Video'), kind];
-  const size = humanSize(m.size);
-  if (size) parts.push(size);
-  return parts.join(' · ');
-}
-
 const rank = (m: MediaItem) => (m.kind === 'hls' || m.kind === 'dash' ? 0 : m.kind === 'video' ? 1 : 2);
 
 function noticeFor(err: NativeError): string {
@@ -50,7 +42,7 @@ function noticeFor(err: NativeError): string {
 }
 
 export async function videoOptions(
-  msg: { pageUrl: string; title: string; videoSrc?: string },
+  msg: { pageUrl: string; title: string; sources?: ElementSource[] },
   tab: chrome.tabs.Tab | undefined,
 ): Promise<VideoOptionsResult> {
   const st = await getState();
@@ -76,25 +68,13 @@ export async function videoOptions(
     }
   }
   const media = tab?.id !== undefined ? visibleMedia(await getTabMedia(tab.id)) : [];
-  const list = media.slice().sort((a, b) => rank(a) - rank(b) || (b.size ?? 0) - (a.size ?? 0));
-  if (msg.videoSrc && isHandoffUrl(msg.videoSrc) && !list.some((m) => m.url === msg.videoSrc)) {
-    list.push({
-      key: msg.videoSrc,
-      url: msg.videoSrc,
-      kind: 'video',
-      streamKind: 'direct',
-      name: msg.videoSrc.split('/').pop() || 'video',
-      ts: Date.now(),
-      ...(msg.pageUrl ? { headers: { Referer: msg.pageUrl } } : {}),
-    });
-  }
-  const options: VideoOption[] = list.map((m) => ({
-    id: `s:${m.key}`,
-    label: mediaLabel(m),
-    detail: m.name,
-    group: 'stream',
-    stream: streamOf(m),
-  }));
+  // The hovered video first: on a feed the tab also holds other posts' and autoplaying ads'
+  // streams, and the largest of those is rarely the one the user pointed at.
+  const own = elementMedia(msg.sources ?? [], media, msg.pageUrl);
+  const ownKeys = new Set(own.map((m) => m.key));
+  const rest = media.filter((m) => !ownKeys.has(m.key)).sort((a, b) => rank(a) - rank(b) || (b.size ?? 0) - (a.size ?? 0));
+  const option = (m: MediaItem, group: VideoOption['group']): VideoOption => ({ id: `s:${m.key}`, label: mediaLabel(m), detail: m.name, group, stream: streamOf(m) });
+  const options = [...own.map((m) => option(m, 'element')), ...rest.map((m) => option(m, 'stream'))];
   return { source: 'sniffed', options, ...(notice ? { notice } : {}) };
 }
 

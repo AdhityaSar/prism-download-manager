@@ -1,43 +1,37 @@
-# Prism 1.0.3 — One beam. Many rays.
+# Prism 1.0.4 — One beam. Many rays.
 
 A fast, open-source download manager for Windows, Linux and macOS, with browser integration
 and video downloads.
 
-## What's new in 1.0.3
+## What's new in 1.0.4
 
-* **Updates from inside the app.** Prism checks for new versions by itself and shows
-  "Prism 1.x is ready — Restart & update". It downloads the signed update, restarts into the
-  new version and continues the downloads that were running. (Settings → General to turn the
-  check off; About → Check for updates.) Installer, macOS app and AppImage update themselves;
-  MSI, portable and deb/rpm installs get a link to the new version.
-* **macOS fixes from real-world testing:**
-  * Clicking Prism in the Dock brings back the window after it was closed; "Show Prism" (⌘0)
-    is in the app menu too.
-  * Dialogs (Download File, Download Complete, …) appear immediately and are freed when closed.
-  * Clearer first-start instructions for Gatekeeper (`xattr` or Open Anyway). In-app updates
-    don't need it again.
-* **Trash:** a download moved to the trash while running can be restored and continues where
-  it stopped (it used to start over). Emptying the trash no longer leaves `.prismpart` files.
-* **Video:** streams (HLS/DASH) always get their audio joined in — it could be saved as a
-  separate `.audio.m4a` after changing a setting. File names follow your name template
-  (`Title [id].mp4`).
-* **Selecting downloads with the checkboxes** works (a click selected and unselected at once).
-* **Privacy:** the clipboard is read only when it changes and password-manager entries are
-  skipped; browser cookies and passwords are removed from the database once a download is
-  finished; Prism's data folder is private to your user on macOS and Linux.
-* The browser helper restarts itself after an update, and Prism no longer says "Browser not
-  connected" for a minute after every start.
+* **Dropdowns in Settings work** — *Cookies from browser*, *Preferred quality*,
+  *HTTP version* and the others (also *Category* in a download's properties). Their menu
+  opened behind the Settings window, so a click seemed to do nothing
+  ([#2](https://github.com/FortoGraphy/prism-download-manager/issues/2)). Tooltips inside
+  dialogs show up too, and menus work from the keyboard: arrows and Enter pick, Esc closes
+  only the menu.
+* **Browser extension: the Download button over a video offers that video.** On LinkedIn
+  and other feeds it listed every stream the page had loaded, largest first — often an ad
+  playing elsewhere on the page
+  ([#1](https://github.com/FortoGraphy/prism-download-manager/issues/1)). Now *This video*
+  comes first, with all its qualities (720p / 640p / 360p on LinkedIn, best first); other
+  streams on the page are listed below it. Streams without a file extension are labelled
+  with their quality and format (`640p · MP4 · 5.1 MB`).
+  * After updating, restart the browser (or click *Reload* for Prism on
+    `chrome://extensions`) so it loads the new extension. If you installed it from a
+    downloaded `prism-chromium.zip`, use the 1.0.4 zip.
 
 ## Downloads
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.0.3_x64-setup.exe` (recommended) · `Prism_1.0.3_x64_en-US.msi` (all users) · `Prism-1.0.3-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.0.3_aarch64.dmg` |
-| macOS — Intel | `Prism_1.0.3_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.0.3_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.0.3-1.x86_64.rpm` |
-| Any Linux | `Prism_1.0.3_amd64.AppImage` |
+| Windows 10 / 11 | `Prism_1.0.4_x64-setup.exe` (recommended) · `Prism_1.0.4_x64_en-US.msi` (all users) · `Prism-1.0.4-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.0.4_aarch64.dmg` |
+| macOS — Intel | `Prism_1.0.4_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.0.4_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.0.4-1.x86_64.rpm` |
+| Any Linux | `Prism_1.0.4_amd64.AppImage` |
 | Browser extension | `prism-chromium.zip` (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·

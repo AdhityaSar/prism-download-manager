@@ -56,9 +56,22 @@ function MenuPanel({
     setPos({ x: nx, y: ny, ready: true });
   }, [x, y, root, minWidth]);
 
+  // Take focus once the menu is visible (a `visibility: hidden` element can't be focused), so
+  // arrows / Enter / Esc go to the menu and not to the control or dialog behind it. On close,
+  // focus goes back to where it was (the select / button that opened the menu).
+  useEffect(() => {
+    const el = ref.current;
+    if (!root || !pos.ready || !el) return;
+    const prev = document.activeElement as HTMLElement | null;
+    el.focus();
+    return () => {
+      const now = document.activeElement;
+      if (prev?.isConnected && (!now || now === document.body || el.contains(now))) prev.focus();
+    };
+  }, [root, pos.ready]);
+
   useEffect(() => {
     if (!root) return;
-    ref.current?.focus();
     const down = (e: MouseEvent) => {
       if (!(e.target as HTMLElement).closest(".menu--floating")) onClose();
     };

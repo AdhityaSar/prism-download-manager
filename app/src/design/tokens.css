@@ -131,11 +131,13 @@
   --z-sticky: 10;      /* table header                                     */
   --z-chrome: 20;      /* toolbar, status bar (glass over scrolling list)  */
   --z-sidebar: 30;
-  --z-dropdown: 100;
-  --z-popover: 200;
-  --z-tooltip: 300;
-  --z-modal-backdrop: 400;
-  --z-modal: 410;
+  --z-modal-backdrop: 100;
+  --z-modal: 110;
+  /* Menus, selects, popovers and tooltips are portaled to <body> and must sit above the
+     modals and sheets they open from (a Settings select would otherwise open behind it). */
+  --z-dropdown: 200;
+  --z-popover: 300;
+  --z-tooltip: 400;
   --z-toast: 500;
   --z-drag: 600;
   --z-max: 1000;

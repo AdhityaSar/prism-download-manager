@@ -236,6 +236,46 @@ try {
     return `menu item "${label}"`;
   });
 
+  await step('(2a) on a feed the button offers the hovered video, not the bigger autoplaying ad above it', async () => {
+    const feed = await context.newPage();
+    try {
+      await feed.goto(`${site.origin}/feed.html`);
+      const feedTab = await sw.evaluate(async (u) => (await chrome.tabs.query({ url: u }))[0]?.id, `${site.origin}/feed.html`);
+      // both players' requests are sniffed (the ad is the largest stream in the tab)
+      await until(() => sw.evaluate(async (id) => {
+        const list = (await chrome.storage.session.get(`media:${id}`))[`media:${id}`] ?? [];
+        return list.some((m) => m.url.endsWith('/media/ad.mp4')) && list.some((m) => m.url.endsWith('/media/post-640p.mp4'));
+      }, feedTab), 5000, 'sniffed ad.mp4 and post-640p.mp4');
+      await feed.locator('#post').scrollIntoViewIfNeeded();
+      const box = await feed.locator('#post').boundingBox();
+      await feed.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+      await feed.mouse.move(box.x + box.width / 2 + 10, box.y + box.height / 2 + 5);
+      const pill = feed.locator('[data-prism-video-button] .pill');
+      await pill.waitFor({ state: 'visible', timeout: 3000 });
+      await pill.click();
+      const items = feed.locator('[data-prism-video-button] .item');
+      await items.first().waitFor({ state: 'visible', timeout: 3000 });
+      const menu = await feed.locator('[data-prism-video-button] .menu > *').evaluateAll((els) => els.map((e) => `${e.className}: ${e.textContent.trim()}`));
+      await feed.screenshot({ path: join(shots, 'video-button-feed.png'), clip: { x: box.x - 20, y: Math.max(0, box.y - 70), width: box.width + 40, height: box.height + 140 } });
+      const groups = menu.filter((l) => l.startsWith('group:'));
+      assert.equal(groups[0], 'group: This video', `menu: ${menu.join(' | ')}`);
+      // This video: its qualities from data-sources, best first; the ad only under "Other streams".
+      const own = menu.slice(menu.indexOf('group: This video') + 1, menu.indexOf('group: Other streams on this page'));
+      assert.deepEqual(own.map((l) => /\d+p/.exec(l)?.[0]), ['720p', '640p', '360p'], `menu: ${menu.join(' | ')}`);
+      assert.ok(menu.slice(menu.indexOf('group: Other streams on this page')).some((l) => l.includes('ad.mp4')), `menu: ${menu.join(' | ')}`);
+      const since = Date.now();
+      await items.first().click();
+      const { msg } = await mock.waitFor((m) => m.type === 'video', 3000, { since });
+      assert.equal(msg.pageUrl, `${site.origin}/feed.html`);
+      assert.equal(msg.streams.length, 1);
+      assert.equal(msg.streams[0].url, `${site.origin}/media/post-720p.mp4`);
+      assert.equal(msg.streams[0].headers?.Referer, `${site.origin}/feed.html`);
+      return `menu: ${menu.join(' | ')}`;
+    } finally {
+      await feed.close();
+    }
+  });
+
   await step('(2b) on a "video site" the button lists app formats (probeVideo) and sends the chosen formatId', async () => {
     // Treat the test origin as a yt-dlp site (local override), then reload so the content script starts fresh.
     await sw.evaluate(async () => {
