@@ -6,13 +6,18 @@ on:
     paths:
       - "site/**"
       - ".github/workflows/pages.yml"
-  # Refreshes the download count behind the README badge (site/downloads.json).
+  # Refreshes the README badge data (site/release.json, downloads.json, tests.json): after CI and
+  # release builds finish, and hourly for the download count.
+  workflow_run:
+    workflows: ["CI", "Release builds"]
+    types: [completed]
   schedule:
     - cron: "23 * * * *"
   workflow_dispatch:
 
 permissions:
   contents: read
+  actions: read
   pages: write
   id-token: write
 
@@ -23,8 +28,8 @@ concurrency:
 jobs:
   deploy:
     name: Deploy site/
-    # The hourly refresh only in the public repository.
-    if: github.event_name != 'schedule' || github.repository == 'FortoGraphy/prism-download-manager'
+    # The badge refreshes only in the public repository.
+    if: (github.event_name != 'schedule' && github.event_name != 'workflow_run') || github.repository == 'FortoGraphy/prism-download-manager'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
@@ -34,13 +39,23 @@ jobs:
       - uses: actions/configure-pages@v5
       - name: Drop build-only files
         run: rm -rf site/tools
-      - name: Download count for the README badge
-        # Downloads of every release asset (as the shields.io GitHub badge counted them), served as
-        # a shields.io endpoint, so the badge needs no GitHub API token. When the API call fails,
-        # the published count stays.
+      - name: Data for the README badges
+        # The badges read these files as shields.io endpoints, so they need no GitHub API token at
+        # shields.io (its token pool sometimes runs dry and the badge shows an error instead).
+        # When a lookup fails, the published file stays.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          badge() { # file label message color
+            printf '{"schemaVersion":1,"label":"%s","message":"%s","color":"%s","cacheSeconds":300}\n' "$2" "$3" "$4" > "site/$1"
+          }
+          keep() { curl -fsS "https://prismdl.site/$1" -o "site/$1" || true; }
+
+          # Latest release, as shields.io's github/v/release showed it.
+          tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName) || tag=""
+          if [ -n "$tag" ]; then badge release.json release "$tag" 7c5cff; else keep release.json; fi
+
+          # Downloads of every release asset, as shields.io's github/downloads counted them.
           total=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
             --jq '[.[].assets[].download_count] | add // 0' \
             | awk '{ s += $1 } END { print s + 0 }') || total=0
@@ -51,11 +66,21 @@ jobs:
               else if (n < 1000000) { printf "%dk", int(n / 1000) }
               else { s = sprintf("%.1f", n / 1000000); sub(/\.0$/, "", s); printf "%sM", s }
             }')
-            printf '{"schemaVersion":1,"label":"downloads","message":"%s","color":"3fb8ff","cacheSeconds":300}\n' "$message" > site/downloads.json
+            badge downloads.json downloads "$message" 3fb8ff
           else
-            curl -fsS https://prismdl.site/downloads.json -o site/downloads.json || true
+            keep downloads.json
           fi
-          cat site/downloads.json || true
+
+          # The latest finished CI run on main (cancelled runs were superseded by a newer push).
+          ci=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --limit 20 --json status,conclusion \
+            --jq '[.[] | select(.status == "completed" and (.conclusion == "success" or .conclusion == "failure"))][0].conclusion // ""') || ci=""
+          case "$ci" in
+            success) badge tests.json tests passing brightgreen ;;
+            failure) badge tests.json tests failing red ;;
+            *) keep tests.json ;;
+          esac
+
+          cat site/release.json site/downloads.json site/tests.json || true
       - uses: actions/upload-pages-artifact@v3
         with:
           path: site
