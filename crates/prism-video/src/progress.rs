@@ -14,7 +14,9 @@ pub const FILE_PREFIX: &str = "PRISMFILE ";
 
 pub const DL_TEMPLATE: &str = "download:PRISM %(progress)j";
 pub const PP_TEMPLATE: &str = "postprocess:PRISMPP %(progress)j";
-pub const FILE_PRINT: &str = "after_move:PRISMFILE %(filepath)s";
+/// JSON (`\uXXXX` escapes): on Windows yt-dlp writes its output in the console code page and
+/// drops what that can't encode, e.g. the `？` `｜` it puts in file names for `?` `|`.
+pub const FILE_PRINT: &str = "after_move:PRISMFILE %(filepath)j";
 
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "camelCase")]
@@ -146,7 +148,9 @@ pub fn parse_line(line: &str) -> Option<LineEvent> {
         }));
     }
     if let Some(rest) = line.strip_prefix(FILE_PREFIX) {
-        return Some(LineEvent::FinalPath(rest.trim().to_string()));
+        let raw = rest.trim();
+        let path = serde_json::from_str::<String>(raw).unwrap_or_else(|_| raw.to_string());
+        return Some(LineEvent::FinalPath(path));
     }
     if let Some(rest) = line.strip_prefix("ERROR: ") {
         return Some(LineEvent::Error(rest.to_string()));

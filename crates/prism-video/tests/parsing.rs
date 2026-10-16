@@ -379,3 +379,19 @@ synopsis=line1\\\nline2\n\
     assert_eq!(iso639_2("deu"), "deu");
     assert_eq!(iso639_2("x-weird"), "und");
 }
+
+#[test]
+fn final_path_keeps_the_characters_yt_dlp_substitutes() {
+    use prism_video::progress::{LineEvent, parse_line};
+    // `%(filepath)j`, as yt-dlp prints it: the full-width ？ ｜ it puts in names for ? | survive
+    // (printed plainly, a Windows console code page drops them and the path doesn't exist).
+    assert_eq!(
+        parse_line(
+            r#"PRISMFILE "C:\\Videos\\What Is MathWorks Cloud Center\uff1f \uff5c MathWorks [7151241570371948544].mp4""#
+        ),
+        Some(LineEvent::FinalPath(
+            "C:\\Videos\\What Is MathWorks Cloud Center？ ｜ MathWorks [7151241570371948544].mp4"
+                .into()
+        ))
+    );
+}

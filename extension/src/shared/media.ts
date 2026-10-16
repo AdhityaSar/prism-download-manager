@@ -84,6 +84,59 @@ export function qualityFromUrl(url: string): string | undefined {
   return undefined;
 }
 
+/**
+ * Paths of a single post / video on the video sites (`m[0]` is the canonical part). On a feed,
+ * listing or profile the page URL names no single video, so yt-dlp needs the hovered post's.
+ */
+const POST_PATHS: RegExp[] = [
+  /^\/(?:[^/]+|i(?:\/web)?)\/status(?:es)?\/\d+/, // x.com, twitter.com
+  /^\/(?:r|u|user)\/[^/]+\/comments\/[a-z0-9]+/i, // reddit.com
+  /^\/(?:[\w.]+\/)?(?:p|reels?|tv)\/[\w-]+/, // instagram.com
+  /^\/@[^/]+\/video\/\d+/, // tiktok.com
+  /^\/(?:[^/]+\/)?(?:videos|reel|posts)\/[\w.:-]+/, // facebook.com, twitch.tv/videos/<id>
+  /^\/share\/[rv]\/[\w-]+/, // facebook.com share links
+  /^\/shorts\/[\w-]+/, // youtube.com
+  /^\/video\/[\w-]+/, // dailymotion.com, bilibili.com, ok.ru
+  /^\/[^/]+\/clip\/[\w-]+/, // twitch.tv clips
+  /^\/\d{5,}(?:\/[0-9a-f]{6,})?\/?$/, // vimeo.com
+  /^\/watch\/[a-z]{2}\d+/, // nicovideo.jp
+  /^\/v[a-z0-9]+-[\w-]+\.html/, // rumble.com
+  /^\/(?:video|clip)-?\d+_\d+/, // vk.com
+  /^\/talks\/[\w-]+/, // ted.com
+  /^\/@[^/]+\/[^/]+:[0-9a-z]+/i, // odysee.com
+  /^\/track\/[\w-]+/, // bandcamp.com
+  /^\/feed\/update\/urn:li:activity:\d+/, // linkedin.com (its /posts/<slug> match the pattern above)
+];
+
+const siteKey = (host: string): string => {
+  const h = host.toLowerCase().replace(/^(?:www|m|mobile|old|new|web)\./, '');
+  return ({ 'twitter.com': 'x.com', 'fb.watch': 'facebook.com', 'youtu.be': 'youtube.com' } as Record<string, string>)[h] ?? h;
+};
+
+/**
+ * `href` (absolute or relative to `pageUrl`) as the canonical URL of a single post / video on
+ * the same site as `pageUrl` (`https://x.com/nasa/status/123`), or undefined when it is
+ * something else (profile, hashtag, another site, …).
+ */
+export function postUrl(href: string | null | undefined, pageUrl: string): string | undefined {
+  if (!href) return undefined;
+  let u: URL;
+  let page: URL;
+  try {
+    page = new URL(pageUrl);
+    u = new URL(href, page);
+  } catch {
+    return undefined;
+  }
+  if (!/^https?:$/.test(u.protocol) || siteKey(u.hostname) !== siteKey(page.hostname)) return undefined;
+  if (/^\/watch\/?$/.test(u.pathname) && u.searchParams.get('v')) return `${u.origin}${u.pathname}?v=${encodeURIComponent(u.searchParams.get('v')!)}`;
+  for (const re of POST_PATHS) {
+    const m = re.exec(u.pathname);
+    if (m) return `${u.origin}${m[0].replace(/\/$/, '')}`;
+  }
+  return undefined;
+}
+
 /** Height of a quality label (`720p` → 720), 0 when unknown. */
 export function qualityHeight(q: string | undefined): number {
   return q ? Number(/^(\d+)p$/.exec(q)?.[1] ?? 0) : 0;
@@ -177,6 +230,16 @@ const MIME_CONTAINERS: Record<string, string> = {
   'audio/aac': 'AAC',
   'audio/flac': 'FLAC',
 };
+
+/** Second menu line: the file name when the URL has a real one, else the server (CDN URLs end in IDs). */
+export function mediaDetail(m: MediaItem): string {
+  if (fileExtension(m.url)) return m.name;
+  try {
+    return new URL(m.url).hostname;
+  } catch {
+    return m.name;
+  }
+}
 
 /** Menu label: `720p · MP4 · 5.1 MB`. */
 export function mediaLabel(m: MediaItem): string {

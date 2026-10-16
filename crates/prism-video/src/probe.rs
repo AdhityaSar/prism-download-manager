@@ -157,10 +157,24 @@ impl Drop for TempFile {
 
 static COOKIE_COUNTER: AtomicU64 = AtomicU64::new(0);
 
+/// LinkedIn posts: yt-dlp reads the `<video data-sources>` of the public post page, which
+/// LinkedIn renders for visitors without a session; a signed-in session gets the web app's page
+/// without it. (LinkedIn Learning needs the session, so only posts.)
+pub(crate) fn public_page_only(url: &str) -> bool {
+    url::Url::parse(url).ok().is_some_and(|u| {
+        u.host_str()
+            .is_some_and(|h| h == "linkedin.com" || h.ends_with(".linkedin.com"))
+            && (u.path().starts_with("/posts/") || u.path().starts_with("/feed/update/"))
+    })
+}
+
 pub(crate) fn write_cookie_file(url: &str, ctx: &RequestContext) -> Result<Option<TempFile>> {
     let Some(cookies) = ctx.cookies.as_deref() else {
         return Ok(None);
     };
+    if public_page_only(url) {
+        return Ok(None);
+    }
     let expires = chrono::Utc::now().timestamp() + 86_400;
     let Some(text) = netscape_cookies(url, cookies, expires) else {
         return Ok(None);
@@ -316,4 +330,35 @@ pub(crate) async fn run_job(
         ..Default::default()
     });
     Ok(path)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn linkedin_posts_are_read_without_the_session() {
+        let ctx = RequestContext {
+            cookies: Some("li_at=AQEDAR; JSESSIONID=ajax:1".into()),
+            ..Default::default()
+        };
+        for url in [
+            "https://www.linkedin.com/feed/update/urn:li:activity:7151241570371948544/",
+            "https://www.linkedin.com/posts/the-mathworks_2_what-is-mathworks-cloud-center-activity-7151241570371948544-4Gu7",
+        ] {
+            assert!(public_page_only(url), "{url}");
+            assert!(write_cookie_file(url, &ctx).unwrap().is_none(), "{url}");
+        }
+        // Everything else keeps the page's cookies (LinkedIn Learning needs them).
+        for url in [
+            "https://www.linkedin.com/learning/some-course/intro",
+            "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+            "https://notlinkedin.com/posts/x",
+        ] {
+            assert!(!public_page_only(url), "{url}");
+        }
+        let f =
+            write_cookie_file("https://www.linkedin.com/learning/some-course/intro", &ctx).unwrap();
+        assert!(f.is_some_and(|f| std::fs::read_to_string(&f.0).unwrap().contains("li_at")));
+    }
 }

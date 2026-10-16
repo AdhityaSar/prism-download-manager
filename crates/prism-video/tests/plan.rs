@@ -213,7 +213,7 @@ fn ytdlp_args_video() {
     assert!(a.contains("--sponsorblock-remove sponsor,selfpromo,interaction"));
     assert!(a.contains("--progress-template download:PRISM %(progress)j"));
     assert!(a.contains("--progress-template postprocess:PRISMPP %(progress)j"));
-    assert!(a.contains("--print after_move:PRISMFILE %(filepath)s"));
+    assert!(a.contains("--print after_move:PRISMFILE %(filepath)j"));
     assert!(a.contains("--no-mtime --windows-filenames --no-playlist"));
     assert!(a.ends_with("-P out -o %(title)s [%(id)s].%(ext)s"));
     assert_eq!(job.url, "https://www.youtube.com/watch?v=HDRtest0001");

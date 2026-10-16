@@ -27,6 +27,8 @@ export interface VideoOption {
 
 export interface VideoOptionsResult {
   source: 'probe' | 'sniffed';
+  /** The page the app read the formats from (the hovered post on a feed); downloads use it. */
+  pageUrl?: string;
   title?: string;
   options: VideoOption[];
   notice?: string;
@@ -34,7 +36,7 @@ export interface VideoOptionsResult {
 
 export type InternalMessage =
   | { kind: 'bypass'; url?: string; ts: number }
-  | { kind: 'videoOptions'; pageUrl: string; title: string; sources?: ElementSource[] }
+  | { kind: 'videoOptions'; pageUrl: string; title: string; sources?: ElementSource[]; postUrl?: string }
   | { kind: 'videoDownload'; pageUrl: string; title: string; option: VideoOption }
   | { kind: 'popupState'; tabId: number }
   | { kind: 'refreshStatus' }

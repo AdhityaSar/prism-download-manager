@@ -12,7 +12,7 @@ import { reflectConnection, setTabCount } from './badge';
 import { bypass, initChromiumCapture, initFirefoxCapture, lastCapture } from './capture';
 import { collectAndSend } from './collect';
 import { EXTENSION_VERSION, actionTimeout, detectBrowser, tabInfo, userAgent } from './context';
-import { createMenus, initMenus, sendSingleLink } from './menus';
+import { createMenus, handleMenuClick, initMenus, sendSingleLink } from './menus';
 import { native } from './native';
 import { initRequestTracking } from './requests';
 import { getTabMedia, initSniffer } from './sniffer';
@@ -136,6 +136,7 @@ Object.assign(globalThis, {
     getConnection,
     collectAndSend,
     sendSingleLink,
+    handleMenuClick,
     hello,
     actionTimeout,
   },

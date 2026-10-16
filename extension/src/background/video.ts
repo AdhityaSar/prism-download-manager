@@ -1,6 +1,6 @@
 /** Floating video button + popup media actions. */
 import type { NativeError } from '../shared/correlator';
-import { type ElementSource, type MediaItem, elementMedia, mediaLabel, visibleMedia } from '../shared/media';
+import { type ElementSource, type MediaItem, elementMedia, mediaDetail, mediaLabel, visibleMedia } from '../shared/media';
 import type { VideoOption, VideoOptionsResult } from '../shared/messages';
 import type { VideoRequest, VideoStream } from '../shared/protocol';
 import { siteMatches } from '../shared/rules';
@@ -37,18 +37,29 @@ function noticeFor(err: NativeError): string {
     case 'timeout':
       return 'Prism took too long to read this page — showing streams found on this page.';
     default:
-      return `Prism couldn't read this page (${err.message}).`;
+      // yt-dlp's own text is long and technical ("please report this issue…"): console only.
+      console.debug('[prism] probeVideo failed:', err.message);
+      if (/couldn't read the cookies/i.test(err.message)) {
+        return "Prism couldn't read your browser's cookies (Settings › Video & streams › Cookies from browser) — showing streams found on this page.";
+      }
+      if (/sign in|log in|logged-in|login required|private/i.test(err.message)) {
+        return 'This video needs you to be signed in: sign in to the site in this browser and try again.';
+      }
+      return "Prism couldn't get this video's formats — showing streams found on this page (some may be video or audio only).";
   }
 }
 
 export async function videoOptions(
-  msg: { pageUrl: string; title: string; sources?: ElementSource[] },
+  msg: { pageUrl: string; title: string; sources?: ElementSource[]; postUrl?: string },
   tab: chrome.tabs.Tab | undefined,
 ): Promise<VideoOptionsResult> {
   const st = await getState();
   let notice: string | undefined;
   if (isVideoSite(msg.pageUrl, st.settings.videoSites) || isVideoSite(tab?.url, st.settings.videoSites)) {
-    const pageUrl = isVideoSite(msg.pageUrl, st.settings.videoSites) ? msg.pageUrl : tab!.url!;
+    // On a feed / profile / listing the hovered post, not the page (which yt-dlp can't read or
+    // reads as some other video).
+    const pageUrl =
+      msg.postUrl && isVideoSite(msg.postUrl, st.settings.videoSites) ? msg.postUrl : isVideoSite(msg.pageUrl, st.settings.videoSites) ? msg.pageUrl : tab!.url!;
     try {
       const reply = await native.request(
         { type: 'probeVideo', pageUrl, cookies: await cookieHeaderFor(pageUrl, !!tab?.incognito), userAgent: userAgent() },
@@ -61,7 +72,7 @@ export async function videoOptions(
         formatId: f.id,
         ...(f.note ? { detail: f.note } : {}),
       }));
-      if (options.length) return { source: 'probe', ...(reply.title ? { title: reply.title } : {}), options };
+      if (options.length) return { source: 'probe', pageUrl, ...(reply.title ? { title: reply.title } : {}), options };
       notice = 'Prism found no downloadable formats on this page.';
     } catch (e) {
       notice = noticeFor(e as NativeError);
@@ -73,7 +84,7 @@ export async function videoOptions(
   const own = elementMedia(msg.sources ?? [], media, msg.pageUrl);
   const ownKeys = new Set(own.map((m) => m.key));
   const rest = media.filter((m) => !ownKeys.has(m.key)).sort((a, b) => rank(a) - rank(b) || (b.size ?? 0) - (a.size ?? 0));
-  const option = (m: MediaItem, group: VideoOption['group']): VideoOption => ({ id: `s:${m.key}`, label: mediaLabel(m), detail: m.name, group, stream: streamOf(m) });
+  const option = (m: MediaItem, group: VideoOption['group']): VideoOption => ({ id: `s:${m.key}`, label: mediaLabel(m), detail: mediaDetail(m), group, stream: streamOf(m) });
   const options = [...own.map((m) => option(m, 'element')), ...rest.map((m) => option(m, 'stream'))];
   return { source: 'sniffed', options, ...(notice ? { notice } : {}) };
 }

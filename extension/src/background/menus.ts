@@ -1,6 +1,6 @@
 /** Context menu items. Created on install/startup, handled at top level. */
 import { api } from '../shared/api';
-import type { DownloadRequest } from '../shared/protocol';
+import type { DownloadRequest, VideoRequest } from '../shared/protocol';
 import { filenameFromUrl, isHandoffUrl } from '../shared/rules';
 import { showUnreachable } from './badge';
 import { collectAndSend } from './collect';
@@ -44,30 +44,63 @@ export async function sendSingleLink(url: string, referrer: string | undefined, 
   await native.request(msg, { timeoutMs: actionTimeout() });
 }
 
+/**
+ * "Download with Prism" on a video/audio element that plays a `blob:` (MSE) stream, which has
+ * no URL to hand over: open the page's Prism video menu for that element (it knows the post on
+ * a feed and the streams it loaded); without the in-page button, let the app read the page.
+ */
+async function downloadElementVideo(info: chrome.contextMenus.OnClickData, tab: chrome.tabs.Tab | undefined): Promise<void> {
+  const tabId = tab?.id;
+  if (tabId === undefined) return;
+  const shown = await api.tabs
+    .sendMessage(tabId, { kind: 'showVideoMenu' }, { frameId: info.frameId ?? 0 })
+    .then((r: { ok?: boolean } | undefined) => !!r?.ok)
+    .catch(() => false);
+  if (shown) return;
+  const pageUrl = info.frameUrl ?? info.pageUrl ?? tab?.url;
+  if (!pageUrl || !isHandoffUrl(pageUrl)) return;
+  const incognito = !!tab?.incognito;
+  const msg: VideoRequest = {
+    type: 'video',
+    pageUrl,
+    title: tab?.title ?? '',
+    streams: [],
+    cookies: await cookieHeaderFor(pageUrl, incognito),
+    userAgent: userAgent(),
+    incognito,
+  };
+  await native.request(msg, { timeoutMs: actionTimeout() });
+}
+
+export async function handleMenuClick(info: chrome.contextMenus.OnClickData, tab: chrome.tabs.Tab | undefined): Promise<void> {
+  const tabId = tab?.id;
+  switch (info.menuItemId) {
+    case 'prism-link': {
+      const url = info.linkUrl ?? info.srcUrl;
+      if (url && isHandoffUrl(url)) await sendSingleLink(url, info.frameUrl ?? info.pageUrl, tab, 'contextMenu');
+      else if (info.mediaType === 'video' || info.mediaType === 'audio') await downloadElementVideo(info, tab);
+      break;
+    }
+    case 'prism-selection':
+      if (tabId !== undefined) await collectAndSend(tabId, 'selection', info.frameId);
+      break;
+    case 'prism-all-links':
+      if (tabId !== undefined) await collectAndSend(tabId, 'links');
+      break;
+    case 'prism-all-images':
+      if (tabId !== undefined) await collectAndSend(tabId, 'images');
+      break;
+    case 'prism-all-videos':
+      if (tabId !== undefined) await collectAndSend(tabId, 'videos');
+      break;
+  }
+}
+
 export function initMenus(): void {
   api.contextMenus?.onClicked.addListener((info, tab) => {
     void (async () => {
       try {
-        const tabId = tab?.id;
-        switch (info.menuItemId) {
-          case 'prism-link': {
-            const url = info.linkUrl ?? info.srcUrl;
-            if (url && isHandoffUrl(url)) await sendSingleLink(url, info.frameUrl ?? info.pageUrl, tab, 'contextMenu');
-            break;
-          }
-          case 'prism-selection':
-            if (tabId !== undefined) await collectAndSend(tabId, 'selection', info.frameId);
-            break;
-          case 'prism-all-links':
-            if (tabId !== undefined) await collectAndSend(tabId, 'links');
-            break;
-          case 'prism-all-images':
-            if (tabId !== undefined) await collectAndSend(tabId, 'images');
-            break;
-          case 'prism-all-videos':
-            if (tabId !== undefined) await collectAndSend(tabId, 'videos');
-            break;
-        }
+        await handleMenuClick(info, tab);
       } catch (e) {
         console.warn('[prism] context menu action failed', e);
         showUnreachable(true, (e as Error).message);

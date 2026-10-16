@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type MediaItem, addMedia, classifyMedia, elementMedia, elementSources, humanSize, isIgnoredMediaUrl, mediaKey, mediaLabel, qualityFromUrl, totalSize, visibleMedia } from '../src/shared/media';
+import { type MediaItem, addMedia, classifyMedia, elementMedia, elementSources, humanSize, isIgnoredMediaUrl, mediaDetail, mediaKey, mediaLabel, postUrl, qualityFromUrl, totalSize, visibleMedia } from '../src/shared/media';
 
 const LI = 'https://dms.licdn.com/playlist/vid/v2/D5610AQFKo9M0zqY2_g';
 
@@ -58,6 +58,11 @@ describe('helpers', () => {
     // LinkedIn: dms.licdn.com/playlist/vid/v2/<asset>/mp4-640p-30fp-crf28/…/<timestamp>
     expect(qualityFromUrl(`${LI}/mp4-640p-30fp-crf28/mp4-640p-30fp-crf28/0/1704988851446?e=2147483647&v=beta&t=x`)).toBe('640p');
     expect(qualityFromUrl('https://x/v/1704988851446/clip?id=96000')).toBeUndefined();
+  });
+  it('shows the file name, or the server for CDN URLs that end in IDs', () => {
+    expect(mediaDetail(item({ url: 'https://cdn.x.com/media/clip.mp4', name: 'clip.mp4' }))).toBe('clip.mp4');
+    expect(mediaDetail(item({ url: `${LI}/mp4-640p-30fp-crf28/0/1704988851446?e=1`, name: '1704988851446' }))).toBe('dms.licdn.com');
+    expect(mediaDetail(item({ url: 'https://scontent-prg1-1.cdninstagram.com/o1/v/t16/f2/m86/AQO1ALoA6dTGFDP9ozZI3MuLOqC00q?efg=x', name: 'AQO1ALoA6dTGFDP9ozZI3MuLOqC00q' }))).toBe('scontent-prg1-1.cdninstagram.com');
   });
   it('labels streams by quality and container, also from the MIME type', () => {
     expect(mediaLabel(item({ url: `${LI}/mp4-640p-30fp-crf28/0/1704988851446`, mime: 'video/mp4', quality: '640p', size: 5316468 }))).toBe('640p · MP4 · 5.1 MB');
@@ -153,5 +158,47 @@ describe('element sources (the hovered <video>)', () => {
       ['cdn.x.com/master.m3u8', 'hls'],
     ]);
     expect(own[0]!.headers).toEqual({ Referer: 'https://x.com/post/1' });
+  });
+});
+
+describe('postUrl (the hovered post on a feed)', () => {
+  it('turns post links into canonical single-post URLs', () => {
+    expect(postUrl('/nasa/status/1846951300071829923/photo/1', 'https://x.com/home')).toBe('https://x.com/nasa/status/1846951300071829923');
+    expect(postUrl('https://twitter.com/nasa/status/123', 'https://x.com/nasa')).toBe('https://twitter.com/nasa/status/123');
+    expect(postUrl('/i/web/status/123', 'https://x.com/home')).toBe('https://x.com/i/web/status/123');
+    expect(postUrl('/r/videos/comments/1g4abcd/funny_cat/', 'https://www.reddit.com/r/videos/')).toBe('https://www.reddit.com/r/videos/comments/1g4abcd');
+    expect(postUrl('/p/DBx1yZ2abc/', 'https://www.instagram.com/')).toBe('https://www.instagram.com/p/DBx1yZ2abc');
+    expect(postUrl('/reel/DBx1yZ2abc/?utm_source=ig', 'https://www.instagram.com/')).toBe('https://www.instagram.com/reel/DBx1yZ2abc');
+    expect(postUrl('/@scout2015/video/6718335390845095173', 'https://www.tiktok.com/foryou')).toBe('https://www.tiktok.com/@scout2015/video/6718335390845095173');
+    expect(postUrl('https://www.facebook.com/NASA/videos/1234567890/', 'https://www.facebook.com/')).toBe('https://www.facebook.com/NASA/videos/1234567890');
+    expect(postUrl('https://www.facebook.com/watch/?v=1234567890&ref=x', 'https://www.facebook.com/')).toBe('https://www.facebook.com/watch/?v=1234567890');
+    expect(postUrl('https://www.youtube.com/watch?v=aqz-KE-bpKQ&t=3', 'https://www.youtube.com/@BlenderStudio')).toBe('https://www.youtube.com/watch?v=aqz-KE-bpKQ');
+    expect(postUrl('/videos/2271453223', 'https://www.twitch.tv/directory')).toBe('https://www.twitch.tv/videos/2271453223');
+    expect(postUrl('/76979871', 'https://vimeo.com/channels/staffpicks')).toBe('https://vimeo.com/76979871');
+    expect(postUrl('/feed/update/urn:li:activity:7151241570371948544/', 'https://www.linkedin.com/feed/')).toBe('https://www.linkedin.com/feed/update/urn:li:activity:7151241570371948544');
+    expect(postUrl('/reel/DBx1yZ2abc/', 'https://www.instagram.com/explore/')).toBe('https://www.instagram.com/reel/DBx1yZ2abc');
+  });
+
+  it('ignores profiles, tags, listings and other sites', () => {
+    const page = 'https://x.com/home';
+    for (const href of ['/nasa', '/hashtag/space', '/nasa/photo', '/search?q=x', 'https://example.com/a/status/1', 'javascript:void(0)', '', null]) {
+      expect(postUrl(href, page)).toBeUndefined();
+    }
+    expect(postUrl('/r/videos/', 'https://www.reddit.com/')).toBeUndefined();
+    expect(postUrl('/user/someone/', 'https://www.reddit.com/')).toBeUndefined();
+    expect(postUrl('/NASA/videos', 'https://www.facebook.com/')).toBeUndefined();
+    expect(postUrl('/channels/staffpicks', 'https://vimeo.com/')).toBeUndefined();
+  });
+
+  it('recognises pages that already are a single post (their URL is used as is)', () => {
+    for (const page of ['https://x.com/nasa/status/123', 'https://www.youtube.com/watch?v=aqz-KE-bpKQ', 'https://www.reddit.com/r/videos/comments/abc/t/', 'https://www.youtube.com/shorts/abc123']) {
+      expect(postUrl(page, page)).toBeDefined();
+    }
+    for (const page of ['https://www.linkedin.com/posts/the-mathworks_2_what-is-mathworks-cloud-center-activity-7151241570371948544-4Gu7', 'https://www.linkedin.com/feed/update/urn:li:activity:7151241570371948544/', 'https://www.instagram.com/reel/DBx1yZ2abc/']) {
+      expect(postUrl(page, page)).toBeDefined();
+    }
+    for (const page of ['https://x.com/home', 'https://www.reddit.com/r/videos/', 'https://www.instagram.com/', 'https://www.instagram.com/explore/', 'https://www.linkedin.com/feed/', 'https://www.twitch.tv/somechannel', 'https://www.youtube.com/']) {
+      expect(postUrl(page, page)).toBeUndefined();
+    }
   });
 });

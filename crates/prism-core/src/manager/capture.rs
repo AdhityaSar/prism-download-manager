@@ -940,10 +940,12 @@ impl Core {
 }
 
 /// Sites where the in-page button asks the app for formats (yt-dlp) instead of only
-/// offering sniffed streams.
+/// offering sniffed streams. The extension uses this list once connected (`capture_rules`), and
+/// ships the same one as its default (`DEFAULT_VIDEO_SITES`, kept equal by a test there).
 const VIDEO_SITES: &[&str] = &[
     "youtube.com",
     "youtu.be",
+    "youtube-nocookie.com",
     "vimeo.com",
     "twitch.tv",
     "x.com",
@@ -962,6 +964,9 @@ const VIDEO_SITES: &[&str] = &[
     "ted.com",
     "nicovideo.jp",
     "odysee.com",
+    "vk.com",
+    "ok.ru",
+    "linkedin.com",
 ];
 
 /// Is this a page on a known video site (as opposed to a direct media file)?
@@ -1062,6 +1067,13 @@ mod tests {
         assert!(is_video_page("https://youtu.be/aqz-KE-bpKQ"));
         assert!(is_video_page("https://vimeo.com/76979871"));
         assert!(is_video_page("https://m.youtube.com/shorts/abc"));
+        // Privacy-enhanced embeds (the extension's video button inside the embed's frame).
+        assert!(is_video_page(
+            "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ"
+        ));
+        assert!(is_video_page(
+            "https://www.linkedin.com/feed/update/urn:li:activity:7151241570371948544/"
+        ));
         assert!(!is_video_page("https://example.com/video.mp4"));
         assert!(!is_video_page("https://cdn.vimeo.com/file.mp4"));
         assert!(!is_video_page("https://notyoutube.com/watch"));

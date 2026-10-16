@@ -437,3 +437,73 @@ async fn sponsorblock_api_reachable() {
     .unwrap();
     eprintln!("dQw4w9WgXcQ segments: {segs:?}");
 }
+
+/// LinkedIn feed post as the browser extension sends it: the post's permalink plus the
+/// signed-in session's cookies (Prism leaves those out for LinkedIn posts, see `probe.rs`).
+#[tokio::test]
+#[ignore]
+async fn linkedin_post_permalink_with_session_cookies() {
+    let _g = LOCK.lock();
+    let svc = ready_service().await;
+    let ctx = RequestContext {
+        cookies: Some("li_at=AQEDAR_not_a_real_session; JSESSIONID=\"ajax:123\"".into()),
+        user_agent: Some("Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36".into()),
+        ..Default::default()
+    };
+    let probe = svc
+        .probe(
+            "https://www.linkedin.com/feed/update/urn:li:activity:7151241570371948544/",
+            &ctx,
+        )
+        .await
+        .expect("probe");
+    let Probe::Video(info) = probe else {
+        panic!("expected a video")
+    };
+    eprintln!("{}: {} formats", info.title, info.formats.len());
+    assert!(info.title.contains("MathWorks"), "{}", info.title);
+    let choices = svc.choices(&info, prism_video::Container::Mp4);
+    let video: Vec<_> = choices
+        .iter()
+        .filter(|c| c.kind != ChoiceKind::Audio)
+        .collect();
+    assert!(!video.is_empty(), "{choices:?}");
+    eprintln!(
+        "choices: {:?}",
+        choices.iter().map(|c| c.label.clone()).collect::<Vec<_>>()
+    );
+    // Down to the file, with the same cookies (the download reads the post page again).
+    let out = tempfile::tempdir().unwrap();
+    let opts = OutputOptions {
+        output_dir: out.path().to_path_buf(),
+        ..Default::default()
+    };
+    let job = svc.plan_ytdlp_forced(&info, video[0], &opts, &ctx);
+    let (tx, mut rx) = tokio::sync::mpsc::unbounded_channel::<prism_video::YtProgress>();
+    tokio::spawn(async move { while rx.recv().await.is_some() {} });
+    let path = svc
+        .run_ytdlp(&job, tx, CancellationToken::new())
+        .await
+        .expect("download");
+    let listing: Vec<_> = std::fs::read_dir(out.path())
+        .unwrap()
+        .map(|e| e.unwrap().file_name())
+        .collect();
+    eprintln!("exists={} dir={listing:?}", path.is_file());
+    let j = ffprobe_json(&path);
+    let kinds: Vec<_> = j["streams"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|s| s["codec_type"].as_str().unwrap().to_string())
+        .collect();
+    eprintln!(
+        "{} ({} bytes): {kinds:?}",
+        path.display(),
+        std::fs::metadata(&path).unwrap().len()
+    );
+    assert!(
+        kinds.contains(&"video".to_string()) && kinds.contains(&"audio".to_string()),
+        "{kinds:?}"
+    );
+}

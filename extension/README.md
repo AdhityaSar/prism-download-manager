@@ -56,12 +56,15 @@ of them can win, so disable them while using Prism.
   player / Shorts aware, skips players < 200×120 and small muted autoplay loops, follows
   scroll/resize, moves into the fullscreen element, handles `yt-navigate-finish`, `popstate`,
   Navigation API and DOM mutations). On `videoSites` (YouTube, Vimeo, …) the menu shows the app's
-  `probeVideo` formats; elsewhere first *This video* — what the hovered element itself plays
+  `probeVideo` formats — on a feed, profile or listing (X, Instagram, Facebook, Reddit, TikTok,
+  LinkedIn…) for the hovered post (the tile's link, the single-post link of its `<article>`, or
+  LinkedIn's `data-urn` activity id), not the page; elsewhere first *This video* — what the hovered element itself plays
   (`currentSrc`, `src`, `<source>` children, a `data-sources` quality list as on LinkedIn), best
   quality first — then the tab's other sniffed streams (other posts, autoplaying ads).
 * **Popup** — connection state (with a fix hint), pause-capture toggle, media on the page with
   per-item Download, "All links / images / videos", Open Prism, Options. Follows the system theme.
-* **Context menus** — Download with Prism (link/image/video/audio), Download selection links,
+* **Context menus** — Download with Prism (link/image/video/audio; a video that plays a `blob:`
+  stream opens the Prism menu over it, or the app's video window without the in-page button), Download selection links,
   all links, all images, all videos (collected in every frame with `scripting.executeScript`).
 * **Options** — capture on/off, video button, bypass key, extension list, MIME list, min size,
   excluded sites, video sites, *Sync from Prism*.

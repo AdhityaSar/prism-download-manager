@@ -34,6 +34,7 @@ export const DEFAULT_MIME_TYPES = [
   'application/x-redhat-package-manager',
 ];
 
+/** Same list as `VIDEO_SITES` in crates/prism-core/src/manager/capture.rs (the app sends its copy; test/video-sites.test.ts keeps them equal). */
 export const DEFAULT_VIDEO_SITES = [
   'youtube.com',
   'youtu.be',
@@ -56,6 +57,9 @@ export const DEFAULT_VIDEO_SITES = [
   'ok.ru',
   'nicovideo.jp',
   'bandcamp.com',
+  'ted.com',
+  'odysee.com',
+  'linkedin.com',
 ];
 
 export const DEFAULT_SETTINGS: CaptureSettings = {

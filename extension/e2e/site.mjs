@@ -32,6 +32,20 @@ const feed = () => `<!doctype html>
   <p style="height:600px">filler</p>
 </body></html>`;
 
+// Like an X timeline (a "video site" in step 2c): each post is an <article> with links to the
+// author's profile and to the post itself; the page URL names no single video.
+const timeline = () => `<!doctype html>
+<html><head><meta charset="utf-8"><title>Home | Prism e2e</title>
+<style>body{font:15px system-ui;margin:24px} article{margin:0 0 40px;width:640px} video{display:block;background:#123}</style></head>
+<body>
+  <article><a href="/alice">Alice</a> · <a href="/alice/status/111">2h</a> <a href="/hashtag/cats">#cats</a>
+    <video id="t1" src="/media/clip.mp4" width="640" height="360" muted preload="auto"></video></article>
+  <article><a href="/bob">Bob</a> · <a href="/bob/status/222/analytics">stats</a> · <a href="/bob/status/222">3h</a>
+    <video id="t2" src="/media/post-640p.mp4" width="640" height="360" muted preload="auto"></video></article>
+  <a href="/reel/R1abc/" title="Instagram Explore style tile"><video id="t3" src="/media/post-360p.mp4" width="640" height="360" muted preload="auto"></video></a>
+  <p style="height:600px">filler</p>
+</body></html>`;
+
 const PNG = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000000' + '1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082', 'hex');
 
 export async function startSite() {
@@ -41,6 +55,17 @@ export async function startSite() {
     if (url.pathname === '/' || url.pathname === '/index.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8', 'Set-Cookie': 'session=abc123; Path=/' });
       return res.end(page(origin));
+    }
+    if (url.pathname === '/blob.html') {
+      // A player that plays from a blob: URL (as MSE players do): there is no URL to hand over.
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(`<!doctype html><meta charset="utf-8"><title>Blob player | Prism e2e</title>
+<body style="margin:24px"><video id="b" width="640" height="360" muted></video>
+<script>fetch('/media/clip.mp4').then((r) => r.blob()).then((b) => { document.getElementById('b').src = URL.createObjectURL(b); });</script>`);
+    }
+    if (url.pathname === '/home') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(timeline());
     }
     if (url.pathname === '/feed.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });

@@ -1,39 +1,41 @@
-# Prism 1.0.4 — One beam. Many rays.
+# Prism 1.0.5 — One beam. Many rays.
 
 A fast, open-source download manager for Windows, Linux and macOS, with browser integration
 and video downloads.
 
-## What's new in 1.0.4
+## What's new in 1.0.5
 
-* **Dropdowns in Settings work** — *Cookies from browser*, *Preferred quality*,
-  *HTTP version* and the others (also *Category* in a download's properties). Their menu
-  opened behind the Settings window, so a click seemed to do nothing
-  ([#2](https://github.com/FortoGraphy/prism-download-manager/issues/2)). Tooltips inside
-  dialogs show up too, and menus work from the keyboard: arrows and Enter pick, Esc closes
-  only the menu.
-* **Browser extension: the Download button over a video offers that video.** On LinkedIn
-  and other feeds it listed every stream the page had loaded, largest first — often an ad
-  playing elsewhere on the page
-  ([#1](https://github.com/FortoGraphy/prism-download-manager/issues/1)). Now *This video*
-  comes first, with all its qualities (720p / 640p / 360p on LinkedIn, best first); other
-  streams on the page are listed below it. Streams without a file extension are labelled
-  with their quality and format (`640p · MP4 · 5.1 MB`).
-  * After updating, restart the browser (or click *Reload* for Prism on
-    `chrome://extensions`) so it loads the new extension. On macOS Prism now refreshes its
-    copy of the extension in Application Support when it starts (until now that copy stayed
-    at the old version). If you installed it from a downloaded `prism-chromium.zip`, use the
-    1.0.4 zip.
+* **LinkedIn: the Download button over a video finds it, also in the feed.** 1.0.4 only found
+  videos whose player shows its files (public post pages); in the signed-in feed it said
+  "No downloadable stream found"
+  ([#1](https://github.com/FortoGraphy/prism-download-manager/issues/1)). Prism now reads the
+  post you point at — as it does for YouTube — and offers its video.
+* **Feeds and timelines** (X, Instagram, Facebook, Reddit, TikTok…): the button reads the post
+  under the pointer, not the page. On Instagram Explore, for example, it showed an error.
+  When a page can't be read, the message says what to do instead of showing yt-dlp's output.
+* **Right-click › Download with Prism** on a streaming video opens Prism's menu for it (it did
+  nothing).
+* **Cookies from browser:** when Prism can't read the browser's cookies (Chrome and Edge on
+  Windows lock them while open), videos that don't need them still download, and the error
+  for those that do explains the fix.
+* **Windows:** a video downloaded by yt-dlp whose title has `?`, `|` or `:` showed up as a
+  missing file.
+* Embedded YouTube players in privacy mode (youtube-nocookie.com), VK and OK.ru get the quality
+  menu; dropdown menus close on Tab and when the page under them scrolls.
+* **After updating, restart your browser** (or click *Reload* for Prism on
+  `chrome://extensions`) so it loads the new extension (1.0.5). If you installed it from a
+  downloaded `prism-chromium.zip`, use the 1.0.5 zip.
 
 ## Downloads
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.0.4_x64-setup.exe` (recommended) · `Prism_1.0.4_x64_en-US.msi` (all users) · `Prism-1.0.4-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.0.4_aarch64.dmg` |
-| macOS — Intel | `Prism_1.0.4_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.0.4_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.0.4-1.x86_64.rpm` |
-| Any Linux | `Prism_1.0.4_amd64.AppImage` |
+| Windows 10 / 11 | `Prism_1.0.5_x64-setup.exe` (recommended) · `Prism_1.0.5_x64_en-US.msi` (all users) · `Prism-1.0.5-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.0.5_aarch64.dmg` |
+| macOS — Intel | `Prism_1.0.5_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.0.5_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.0.5-1.x86_64.rpm` |
+| Any Linux | `Prism_1.0.5_amd64.AppImage` |
 | Browser extension | `prism-chromium.zip` (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·

@@ -63,10 +63,10 @@ function MenuPanel({
     const el = ref.current;
     if (!root || !pos.ready || !el) return;
     const prev = document.activeElement as HTMLElement | null;
-    el.focus();
+    el.focus({ preventScroll: true });
     return () => {
       const now = document.activeElement;
-      if (prev?.isConnected && (!now || now === document.body || el.contains(now))) prev.focus();
+      if (prev?.isConnected && (!now || now === document.body || el.contains(now))) prev.focus({ preventScroll: true });
     };
   }, [root, pos.ready]);
 
@@ -79,13 +79,18 @@ function MenuPanel({
     // Only real size changes close the menu (WebViews can emit no-op resize events).
     const size = { w: window.innerWidth, h: window.innerHeight };
     const resize = () => (window.innerWidth !== size.w || window.innerHeight !== size.h) && onClose();
+    // The menu is fixed-position: when the list / sheet under it scrolls it would float away
+    // from its control, so close it (scrolling inside the menu itself is fine).
+    const scroll = (e: Event) => !(e.target instanceof Node && (e.target as Element).closest?.(".menu--floating")) && onClose();
     window.addEventListener("mousedown", down, true);
     window.addEventListener("blur", blur);
     window.addEventListener("resize", resize);
+    window.addEventListener("scroll", scroll, true);
     return () => {
       window.removeEventListener("mousedown", down, true);
       window.removeEventListener("blur", blur);
       window.removeEventListener("resize", resize);
+      window.removeEventListener("scroll", scroll, true);
     };
   }, [root, onClose]);
 
@@ -108,14 +113,14 @@ function MenuPanel({
   const onKey = (ev: React.KeyboardEvent) => {
     const at = selectable.indexOf(active);
     if (ev.key === "ArrowDown") setActive(selectable[(at + 1) % selectable.length]);
-    else if (ev.key === "ArrowUp") setActive(selectable[(at - 1 + selectable.length) % selectable.length]);
+    else if (ev.key === "ArrowUp") setActive(selectable[at < 0 ? selectable.length - 1 : (at - 1 + selectable.length) % selectable.length]);
     else if (ev.key === "Enter" || ev.key === " " || ev.key === "ArrowRight") {
       const e = entries[active];
       if (e && isItem(e)) {
         if (ev.key === "ArrowRight" && !e.submenu) return;
         run(e, active);
       }
-    } else if (ev.key === "Escape" || (ev.key === "ArrowLeft" && !root)) onClose();
+    } else if (ev.key === "Escape" || ev.key === "Tab" || (ev.key === "ArrowLeft" && !root)) onClose();
     else return;
     ev.preventDefault();
     ev.stopPropagation();

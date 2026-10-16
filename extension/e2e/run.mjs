@@ -310,6 +310,101 @@ try {
     return `menu: ${labels.join(' | ')}`;
   });
 
+  await step('(2c) on a video-site timeline the app reads the hovered post, not the timeline page', async () => {
+    await sw.evaluate(async () => {
+      const k = 'prism.state';
+      const st = (await chrome.storage.local.get(k))[k];
+      await chrome.storage.local.set({ [k]: { ...st, settingsSource: 'local', settings: { ...st.settings, videoSites: ['127.0.0.1'] } } });
+    });
+    const tl = await context.newPage();
+    try {
+      await tl.goto(`${site.origin}/home`);
+      await tl.locator('#t2').scrollIntoViewIfNeeded();
+      const box = await tl.locator('#t2').boundingBox();
+      await tl.mouse.move(box.x + 100, box.y + 100);
+      await tl.mouse.move(box.x + 120, box.y + 110);
+      const pill = tl.locator('[data-prism-video-button] .pill');
+      await pill.waitFor({ state: 'visible', timeout: 3000 });
+      const since = Date.now();
+      await pill.click();
+      const { msg: probe } = await mock.waitFor((m) => m.type === 'probeVideo', 3000, { since });
+      assert.equal(probe.pageUrl, `${site.origin}/bob/status/222`);
+      const item = tl.locator('[data-prism-video-button] .item', { hasText: '720p' });
+      await item.waitFor({ state: 'visible', timeout: 3000 });
+      await item.click();
+      const { msg } = await mock.waitFor((m) => m.type === 'video' && m.formatId, 3000, { since });
+      assert.equal(msg.pageUrl, `${site.origin}/bob/status/222`);
+      assert.equal(msg.formatId, '22');
+      // A grid tile that links to its post, and a LinkedIn feed post (data-urn, no own link).
+      const probed = [];
+      for (const [p, sel] of [[tl, '#t3'], [await context.newPage(), '#post']]) {
+        if (sel === '#post') await p.goto(`${site.origin}/feed.html`);
+        await p.keyboard.press('Escape');
+        await p.mouse.move(2, 2);
+        await sleep(1000);
+        await p.locator(sel).scrollIntoViewIfNeeded();
+        const b = await p.locator(sel).boundingBox();
+        await p.mouse.move(b.x + 100, b.y + 100);
+        await p.mouse.move(b.x + 120, b.y + 110);
+        const pl = p.locator('[data-prism-video-button] .pill');
+        await pl.waitFor({ state: 'visible', timeout: 3000 });
+        const t = Date.now();
+        await pl.click();
+        const { msg: pr } = await mock.waitFor((m) => m.type === 'probeVideo', 3000, { since: t });
+        probed.push(pr.pageUrl.replace(site.origin, ''));
+        if (sel === '#post') await p.close();
+      }
+      assert.deepEqual(probed, ['/reel/R1abc', '/feed/update/urn:li:activity:2']);
+      return `probed and sent ${msg.pageUrl.replace(site.origin, '')}; tile → ${probed[0]}; LinkedIn post → ${probed[1]}`;
+    } finally {
+      await tl.close();
+      await sw.evaluate(() => globalThis.__prism.hello(true, true));
+    }
+  });
+
+  await step('(2d) context menu "Download with Prism" on a blob: video opens the page menu (or the app)', async () => {
+    const bp = await context.newPage();
+    try {
+      await bp.goto(`${site.origin}/blob.html`);
+      const src = await until(() => bp.evaluate(() => document.getElementById('b').currentSrc), 5000, 'blob src');
+      assert.match(src, /^blob:/);
+      const box = await bp.locator('#b').boundingBox();
+      await bp.mouse.move(box.x + 200, box.y + 150);
+      await bp.mouse.click(box.x + 200, box.y + 150, { button: 'right' });
+      await bp.keyboard.press('Escape'); // the browser's own context menu (headed runs)
+      const click = (id) =>
+        sw.evaluate(async ([origin, srcUrl, tabId]) => {
+          const tab = (await chrome.tabs.query({ url: `${origin}/blob.html` }))[0];
+          await globalThis.__prism.handleMenuClick({ menuItemId: 'prism-link', mediaType: 'video', srcUrl, frameId: 0, pageUrl: tab.url, editable: false }, tab);
+          return tab.id;
+        }, [site.origin, src, id]);
+      await click();
+      const items = bp.locator('[data-prism-video-button] .item');
+      await items.first().waitFor({ state: 'visible', timeout: 3000 });
+      const labels = await items.locator('.d').allTextContents();
+      assert.ok(labels.includes('clip.mp4'), `menu: ${labels.join(' | ')}`);
+      await bp.keyboard.press('Escape');
+      // Without the in-page button the app gets the page to read.
+      await sw.evaluate(async () => {
+        const k = 'prism.state';
+        const st = (await chrome.storage.local.get(k))[k];
+        await chrome.storage.local.set({ [k]: { ...st, settingsSource: 'local', settings: { ...st.settings, showVideoButton: false } } });
+      });
+      await sleep(300);
+      await bp.mouse.click(box.x + 200, box.y + 150, { button: 'right' });
+      await bp.keyboard.press('Escape');
+      const since = Date.now();
+      await click();
+      const { msg } = await mock.waitFor((m) => m.type === 'video', 3000, { since });
+      assert.equal(msg.pageUrl, `${site.origin}/blob.html`);
+      assert.deepEqual(msg.streams, []);
+      return `in-page menu: ${labels.join(' | ')}; without the button → app video window for ${msg.pageUrl.replace(site.origin, '')}`;
+    } finally {
+      await bp.close();
+      await sw.evaluate(() => globalThis.__prism.hello(true, true));
+    }
+  });
+
   await step('(3) batch collection ("all links" / "selection") via direct trigger', async () => {
     let since = Date.now();
     const count = await sw.evaluate((id) => globalThis.__prism.collectAndSend(id, 'links'), tabId);

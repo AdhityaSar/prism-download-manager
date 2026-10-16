@@ -40,6 +40,16 @@ pub use tools::{Tool, ToolInfo, ToolPhase, ToolProgress, ToolSource, ToolStatus,
 use probe::ToolPaths;
 use tokio::sync::mpsc::UnboundedSender;
 
+/// The options for a retry after yt-dlp couldn't read the "Cookies from browser" cookies: a
+/// locked or unreadable browser must not break videos that need no login.
+fn without_browser_cookies(opts: &VideoOptions, err: &VideoError) -> VideoOptions {
+    tracing::warn!("{err}; trying again without --cookies-from-browser");
+    VideoOptions {
+        cookies_from_browser: None,
+        ..opts.clone()
+    }
+}
+
 struct Inner {
     tools_dir: PathBuf,
     opts: RwLock<VideoOptions>,
@@ -234,6 +244,22 @@ impl VideoService {
     /// `yt-dlp -J` the URL. Playlists/channels (or `list=` URLs with
     /// `ctx.want_playlist`) are listed flat.
     pub async fn probe(&self, url: &str, ctx: &RequestContext) -> Result<Probe> {
+        let opts = self.options();
+        match self.probe_with(url, ctx, &opts).await {
+            Err(e) if e.is_cookie_read_failure() && opts.cookies_from_browser.is_some() => self
+                .probe_with(url, ctx, &without_browser_cookies(&opts, &e))
+                .await
+                .map_err(|e2| e2.after_cookie_read_failure(&e)),
+            r => r,
+        }
+    }
+
+    async fn probe_with(
+        &self,
+        url: &str,
+        ctx: &RequestContext,
+        opts: &VideoOptions,
+    ) -> Result<Probe> {
         let ytdlp = self.require(Tool::YtDlp)?;
         let mut target = url.to_string();
         for _ in 0..2 {
@@ -243,6 +269,7 @@ impl VideoService {
                 ctx,
                 cookie_file.as_ref().map(|f| f.0.as_path()),
                 probe::probe_args(&target, ctx),
+                opts,
             );
             let json = probe::run_probe_json(&ytdlp, args).await?;
             match probe::redirect_url(&json) {
@@ -261,10 +288,10 @@ impl VideoService {
         ctx: &RequestContext,
         cookie_file: Option<&Path>,
         tail: Vec<String>,
+        o: &VideoOptions,
     ) -> Vec<String> {
-        let o = self.options();
-        let mut a = probe::global_args(&self.tool_paths(), &o);
-        a.extend(probe::context_args(url, ctx, &o, cookie_file));
+        let mut a = probe::global_args(&self.tool_paths(), o);
+        a.extend(probe::context_args(url, ctx, o, cookie_file));
         a.extend(tail);
         a
     }
@@ -316,9 +343,17 @@ impl VideoService {
 
     /// Full yt-dlp argument list for a job (`cookie_file` = path of the temp cookies.txt, if any).
     pub fn ytdlp_command_line(&self, job: &YtDlpJob, cookie_file: Option<&Path>) -> Vec<String> {
-        let o = self.options();
-        let mut a = probe::global_args(&self.tool_paths(), &o);
-        a.extend(probe::context_args(&job.url, &job.context, &o, cookie_file));
+        self.command_line_with(job, cookie_file, &self.options())
+    }
+
+    fn command_line_with(
+        &self,
+        job: &YtDlpJob,
+        cookie_file: Option<&Path>,
+        o: &VideoOptions,
+    ) -> Vec<String> {
+        let mut a = probe::global_args(&self.tool_paths(), o);
+        a.extend(probe::context_args(&job.url, &job.context, o, cookie_file));
         a.extend(job.args.iter().cloned());
         a.extend(o.extra_ytdlp_args.iter().cloned());
         a.push("--".into());
@@ -335,12 +370,33 @@ impl VideoService {
         progress: UnboundedSender<YtProgress>,
         cancel: CancellationToken,
     ) -> Result<PathBuf> {
+        let opts = self.options();
+        match self
+            .run_ytdlp_with(job, progress.clone(), cancel.clone(), &opts)
+            .await
+        {
+            // yt-dlp reads the cookies before it downloads anything, so a retry starts clean.
+            Err(e) if e.is_cookie_read_failure() && opts.cookies_from_browser.is_some() => self
+                .run_ytdlp_with(job, progress, cancel, &without_browser_cookies(&opts, &e))
+                .await
+                .map_err(|e2| e2.after_cookie_read_failure(&e)),
+            r => r,
+        }
+    }
+
+    async fn run_ytdlp_with(
+        &self,
+        job: &YtDlpJob,
+        progress: UnboundedSender<YtProgress>,
+        cancel: CancellationToken,
+        opts: &VideoOptions,
+    ) -> Result<PathBuf> {
         let ytdlp = self.require(Tool::YtDlp)?;
         if !job.output_dir.as_os_str().is_empty() {
             tokio::fs::create_dir_all(&job.output_dir).await?;
         }
         let cookie_file = probe::write_cookie_file(&job.url, &job.context)?;
-        let args = self.ytdlp_command_line(job, cookie_file.as_ref().map(|f| f.0.as_path()));
+        let args = self.command_line_with(job, cookie_file.as_ref().map(|f| f.0.as_path()), opts);
         let res = probe::run_job(&ytdlp, args, progress, cancel).await;
         drop(cookie_file);
         res

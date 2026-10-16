@@ -5,7 +5,7 @@
  */
 import { sendInternal } from '../shared/api';
 import { icons, prismMark } from '../shared/icons';
-import { type ElementSource, elementSources } from '../shared/media';
+import { type ElementSource, elementSources, postUrl } from '../shared/media';
 import type { ActionResult, VideoOption, VideoOptionsResult } from '../shared/messages';
 import { VIDEO_BUTTON_CSS } from './styles';
 
@@ -34,6 +34,41 @@ function eligible(v: HTMLVideoElement, r: DOMRect): boolean {
   return true;
 }
 
+/** `closest()` that also climbs out of (open) shadow roots. */
+function composedClosest(el: Element, selector: string): Element | null {
+  for (let n: Element | null = el; n; ) {
+    const hit = n.closest(selector);
+    if (hit) return hit;
+    const root = n.getRootNode();
+    n = root instanceof ShadowRoot ? root.host : null;
+  }
+  return null;
+}
+
+/**
+ * On a feed, profile or listing (X, Instagram, Facebook, Reddit, TikTok…) the post the video
+ * belongs to: the first single-post link of its <article>, so the app reads that post and not the
+ * page. Undefined when the page itself is the post, or the video isn't inside a post.
+ */
+function postUrlOf(v: HTMLVideoElement, pageUrl: string): string | undefined {
+  if (postUrl(pageUrl, pageUrl)) return undefined;
+  // A grid tile that links to its post (Instagram Explore, profile grids).
+  const tile = postUrl((composedClosest(v, 'a[href]') as HTMLAnchorElement | null)?.href, pageUrl);
+  if (tile) return tile;
+  // LinkedIn: feed posts are <div data-urn="urn:li:activity:…"> without a link to themselves.
+  const li = composedClosest(v, '[data-urn^="urn:li:activity:"], [data-id^="urn:li:activity:"]');
+  const urn = [li?.getAttribute('data-urn'), li?.getAttribute('data-id')].find((x) => x && /^urn:li:activity:\d+$/.test(x));
+  if (urn) return postUrl(`/feed/update/${urn}/`, pageUrl);
+  const post = composedClosest(v, 'article, [role="article"], shreddit-post');
+  if (!post) return undefined;
+  const links = [post.getAttribute('permalink'), ...[...post.querySelectorAll<HTMLAnchorElement>('a[href]')].map((a) => a.href)];
+  for (const href of links) {
+    const u = postUrl(href, pageUrl);
+    if (u) return u;
+  }
+  return undefined;
+}
+
 function inside(r: DOMRect, x: number, y: number, pad = 0): boolean {
   return x >= r.left - pad && x <= r.right + pad && y >= r.top - pad && y <= r.bottom + pad;
 }
@@ -58,6 +93,8 @@ export class VideoButton {
   private observer: MutationObserver | null = null;
   private cache = new Map<string, { at: number; res: Promise<VideoOptionsResult | undefined> }>();
   private scanQueued = false;
+  /** The video under the last right-click (for the context menu's "Download with Prism"). */
+  private contextVideo: { v: HTMLVideoElement; at: number } | null = null;
 
   setEnabled(on: boolean): void {
     if (on === this.enabled) return;
@@ -92,6 +129,7 @@ export class VideoButton {
     document.addEventListener('fullscreenchange', this.onFullscreen);
     document.addEventListener('pointerdown', this.onDocDown, true);
     document.addEventListener('keydown', this.onKey, true);
+    document.addEventListener('contextmenu', this.onContextMenu, true);
     // SPA navigation (YouTube fires yt-navigate-finish; others: history/navigation API).
     document.addEventListener('yt-navigate-finish', this.onNavigate);
     window.addEventListener('popstate', this.onNavigate);
@@ -111,6 +149,7 @@ export class VideoButton {
     document.removeEventListener('fullscreenchange', this.onFullscreen);
     document.removeEventListener('pointerdown', this.onDocDown, true);
     document.removeEventListener('keydown', this.onKey, true);
+    document.removeEventListener('contextmenu', this.onContextMenu, true);
     document.removeEventListener('yt-navigate-finish', this.onNavigate);
     window.removeEventListener('popstate', this.onNavigate);
     this.hide(true);
@@ -313,6 +352,28 @@ export class VideoButton {
     this.queueScan();
   };
 
+  // Remember the right-clicked video: the element itself, or (players put overlays and
+  // controls on top) the visible video under the pointer.
+  private onContextMenu = (e: MouseEvent): void => {
+    const own = e.composedPath().find((n): n is HTMLVideoElement => n instanceof HTMLVideoElement);
+    const under = [...this.visible].find((v) => v.isConnected && targetOf(v) && inside(targetOf(v)!.getBoundingClientRect(), e.clientX, e.clientY));
+    const v = own ?? under;
+    this.contextVideo = v ? { v, at: Date.now() } : null;
+  };
+
+  /** Opens the Prism menu over the right-clicked video; false when there is none (any more). */
+  openForContextMenu(): boolean {
+    const c = this.contextVideo;
+    this.contextVideo = null;
+    if (!this.enabled || !c || Date.now() - c.at > 60_000 || !c.v.isConnected || !targetOf(c.v)) return false;
+    const fs = document.fullscreenElement;
+    if (fs && fs.tagName === 'VIDEO') return false;
+    this.hide(true);
+    this.show(c.v);
+    void this.toggleMenu();
+    return true;
+  }
+
   private onDocDown = (e: Event): void => {
     if (!this.menuOpen || !this.host) return;
     if (e.composedPath().includes(this.host)) return;
@@ -329,7 +390,7 @@ export class VideoButton {
 
   // ---- menu ----------------------------------------------------------------------
 
-  private context(): { pageUrl: string; title: string; sources: ElementSource[]; key: string } {
+  private context(): { pageUrl: string; title: string; sources: ElementSource[]; postUrl?: string; key: string } {
     const v = this.current;
     const src = v?.currentSrc || v?.src || '';
     const title = (IS_YOUTUBE ? document.title.replace(/ - YouTube$/, '') : document.title) || location.hostname;
@@ -346,14 +407,15 @@ export class VideoButton {
           document.baseURI,
         )
       : [];
-    return { pageUrl, title, sources, key: `${pageUrl}|${src}` };
+    const post = v ? postUrlOf(v, pageUrl) : undefined;
+    return { pageUrl, title, sources, ...(post ? { postUrl: post } : {}), key: `${pageUrl}|${post ?? ''}|${src}` };
   }
 
   private options(): Promise<VideoOptionsResult | undefined> {
     const c = this.context();
     const hit = this.cache.get(c.key);
     if (hit && Date.now() - hit.at < 60_000) return hit.res;
-    const res = sendInternal<VideoOptionsResult>({ kind: 'videoOptions', pageUrl: c.pageUrl, title: c.title, sources: c.sources });
+    const res = sendInternal<VideoOptionsResult>({ kind: 'videoOptions', pageUrl: c.pageUrl, title: c.title, sources: c.sources, ...(c.postUrl ? { postUrl: c.postUrl } : {}) });
     this.cache.set(c.key, { at: Date.now(), res });
     // Don't cache failures/empties for long.
     void res.then((r) => {
@@ -421,17 +483,18 @@ export class VideoButton {
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
         const opt = res.options.find((o) => o.id === btn.dataset.id);
-        if (opt) void this.choose(opt, res.title || title);
+        if (opt) void this.choose(opt, res.title || title, opt.formatId ? res.pageUrl : undefined);
       });
     });
   }
 
-  private async choose(option: VideoOption, title: string): Promise<void> {
+  /** `pageUrl`: the page the app read this format from (the post on a feed), else this page. */
+  private async choose(option: VideoOption, title: string, pageUrl?: string): Promise<void> {
     const ctx = this.context();
     this.closeMenu();
     const label = this.pill.querySelector('.label')!;
     label.textContent = 'Sending…';
-    const r = await sendInternal<ActionResult>({ kind: 'videoDownload', pageUrl: ctx.pageUrl, title, option });
+    const r = await sendInternal<ActionResult>({ kind: 'videoDownload', pageUrl: pageUrl ?? ctx.pageUrl, title, option });
     if (r?.ok) {
       this.pill.classList.add('done');
       label.textContent = 'Sent to Prism';
