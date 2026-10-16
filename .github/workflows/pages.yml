@@ -35,14 +35,14 @@ jobs:
       - name: Drop build-only files
         run: rm -rf site/tools
       - name: Download count for the README badge
-        # Every release asset except the updater's latest.json (fetched on each update check) and
-        # the checksums. Served as a shields.io endpoint, so the badge needs no GitHub API token.
-        # When the API call fails, the published count stays.
+        # Downloads of every release asset (as the shields.io GitHub badge counted them), served as
+        # a shields.io endpoint, so the badge needs no GitHub API token. When the API call fails,
+        # the published count stays.
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
           total=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
-            --jq '[.[].assets[] | select(.name != "latest.json" and .name != "SHA256SUMS.txt") | .download_count] | add // 0' \
+            --jq '[.[].assets[].download_count] | add // 0' \
             | awk '{ s += $1 } END { print s + 0 }') || total=0
           if [ "${total:-0}" -gt 0 ]; then
             message=$(awk -v n="$total" 'BEGIN {
