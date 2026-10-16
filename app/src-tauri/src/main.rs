@@ -92,6 +92,11 @@ fn main() {
                     tracing::warn!("native messaging registration failed: {e}");
                 }
             });
+            #[cfg(target_os = "macos")]
+            {
+                let h = handle.clone();
+                std::thread::spawn(move || integration::refresh_extension_copies(&h));
+            }
             handle_args(&handle, &std::env::args().collect::<Vec<_>>());
             core.arm_wake_timers();
             // Fetch yt-dlp/deno (and ffmpeg if there is no system copy) in the background so the

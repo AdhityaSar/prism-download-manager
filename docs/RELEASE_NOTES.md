@@ -19,8 +19,10 @@ and video downloads.
   streams on the page are listed below it. Streams without a file extension are labelled
   with their quality and format (`640p · MP4 · 5.1 MB`).
   * After updating, restart the browser (or click *Reload* for Prism on
-    `chrome://extensions`) so it loads the new extension. If you installed it from a
-    downloaded `prism-chromium.zip`, use the 1.0.4 zip.
+    `chrome://extensions`) so it loads the new extension. On macOS Prism now refreshes its
+    copy of the extension in Application Support when it starts (until now that copy stayed
+    at the old version). If you installed it from a downloaded `prism-chromium.zip`, use the
+    1.0.4 zip.
 
 ## Downloads
 

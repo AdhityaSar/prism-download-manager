@@ -100,6 +100,20 @@ pub fn extension_folder(app: &AppHandle, firefox: bool) -> Option<PathBuf> {
     Some(PathBuf::from(s.strip_prefix(r"\?\").unwrap_or(&s)))
 }
 
+/// macOS: the browser loads the extension from the copy in Application Support (see
+/// `extension_folder`), which an app update doesn't touch. Refresh the copies that exist on
+/// every start so an update brings the new extension along (the browser loads it on its next
+/// start). Elsewhere the browser loads it straight from the app's resources.
+#[cfg(target_os = "macos")]
+pub fn refresh_extension_copies(app: &AppHandle) {
+    for firefox in [false, true] {
+        let sub = if firefox { "firefox" } else { "chromium" };
+        if prism_core::paths::data_dir().join("extension").join(sub).exists() {
+            let _ = extension_folder(app, firefox);
+        }
+    }
+}
+
 /// Starts (or focuses) the browser with a new window. Browsers refuse to open their internal
 /// pages (`chrome://extensions`) from the command line, so the UI copies that address for the
 /// user to paste.
@@ -190,6 +204,9 @@ fn launch(browser: &str) -> std::io::Result<()> {
 /// Mirrors `src` into `dst` when the extension build differs (new app version).
 #[cfg(target_os = "macos")]
 fn sync_dir(src: &std::path::Path, dst: &std::path::Path) -> std::io::Result<()> {
+    // The start-up refresh and the setup screen may sync at the same time.
+    static SYNC: std::sync::Mutex<()> = std::sync::Mutex::new(());
+    let _guard = SYNC.lock().unwrap_or_else(|e| e.into_inner());
     let stamp = |d: &std::path::Path| {
         ["manifest.json", "background.js"].map(|f| std::fs::read(d.join(f)).ok())
     };
