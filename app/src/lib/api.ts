@@ -255,6 +255,10 @@ export interface IntegrationStatus {
   browsers: BrowserIntegration[];
   extensionConnected?: boolean;
   lastSeen?: number | null;
+  /** Version the extension reported; older than `appVersion` = the browser runs old files. */
+  extensionVersion?: string | null;
+  extensionOutdated?: boolean;
+  appVersion?: string;
 }
 
 /** One entry of the quality picker (`prism_video::Choice`, camelCase). Echo it back unchanged in confirmVideo. */

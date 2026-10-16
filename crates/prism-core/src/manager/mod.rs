@@ -120,6 +120,10 @@ pub(crate) struct Inner {
     pub ext_seen: std::sync::atomic::AtomicI64,
     /// ffmpeg resolved by the video service (managed or system), for the engine's remuxer.
     pub ffmpeg_path: Mutex<Option<PathBuf>>,
+    /// One `probe_video` per page at a time: a second request waits for the first's result.
+    pub probe_locks: Mutex<HashMap<String, Arc<tokio::sync::Mutex<()>>>>,
+    /// Version the browser extension reported in its last hello (kept across restarts).
+    pub ext_version: Mutex<Option<String>>,
 }
 
 /// Cheap, cloneable handle to the application core.
@@ -214,6 +218,13 @@ impl Core {
                     .unwrap_or(0),
             ),
             ffmpeg_path: Mutex::new(None),
+            probe_locks: Mutex::new(HashMap::new()),
+            ext_version: Mutex::new(
+                std::fs::read_to_string(opts.data_dir.join("extension-version"))
+                    .ok()
+                    .map(|t| t.trim().to_string())
+                    .filter(|t| !t.is_empty()),
+            ),
         }));
         core.apply_runtime_settings();
         core.spawn_background(outcome_rx);
@@ -274,6 +285,18 @@ impl Core {
     pub fn extension_last_seen(&self) -> Option<i64> {
         let v = self.0.ext_seen.load(std::sync::atomic::Ordering::Relaxed);
         (v > 0).then_some(v)
+    }
+
+    /// Version of the browser extension that last said hello.
+    pub fn extension_version(&self) -> Option<String> {
+        self.0.ext_version.lock().clone()
+    }
+
+    /// The browser runs an extension older than the one this app ships: browsers don't reload
+    /// an unpacked extension's files by themselves after an update.
+    pub fn extension_outdated(&self) -> bool {
+        self.extension_version()
+            .is_some_and(|v| capture::version_older(&v, crate::APP_VERSION))
     }
 
     pub fn ipc_port(&self) -> Option<u16> {

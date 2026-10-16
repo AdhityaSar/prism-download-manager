@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { type MediaItem, addMedia, classifyMedia, elementMedia, elementSources, humanSize, isIgnoredMediaUrl, mediaDetail, mediaKey, mediaLabel, postUrl, qualityFromUrl, totalSize, visibleMedia } from '../src/shared/media';
+import { type MediaItem, addMedia, classifyMedia, elementMedia, elementSources, humanSize, isIgnoredMediaUrl, linkedinPostPath, mediaDetail, mediaKey, mediaLabel, postUrl, qualityFromUrl, totalSize, visibleMedia } from '../src/shared/media';
 
 const LI = 'https://dms.licdn.com/playlist/vid/v2/D5610AQFKo9M0zqY2_g';
 
@@ -200,5 +200,22 @@ describe('postUrl (the hovered post on a feed)', () => {
     for (const page of ['https://x.com/home', 'https://www.reddit.com/r/videos/', 'https://www.instagram.com/', 'https://www.instagram.com/explore/', 'https://www.linkedin.com/feed/', 'https://www.twitch.tv/somechannel', 'https://www.youtube.com/']) {
       expect(postUrl(page, page)).toBeUndefined();
     }
+  });
+});
+
+
+describe('linkedinPostPath (LinkedIn feed posts)', () => {
+  it('finds the post id, also inside composite ids, nearest container first', () => {
+    expect(linkedinPostPath(['ember123', 'urn:li:activity:7151241570371948544'])).toBe('/feed/update/urn:li:activity:7151241570371948544/');
+    expect(linkedinPostPath(['urn:li:fsd_update:(urn:li:activity:7151241570371948544,MAIN_FEED,EMPTY,DEFAULT,false)'])).toBe('/feed/update/urn:li:activity:7151241570371948544/');
+    expect(linkedinPostPath(['urn:li:ugcPost:6850898786781339649'])).toBe('/feed/update/urn:li:ugcPost:6850898786781339649/');
+    // A reshare: the original post (inner container) comes first.
+    expect(linkedinPostPath(['urn:li:activity:111111111', 'urn:li:activity:222222222'])).toBe('/feed/update/urn:li:activity:111111111/');
+  });
+  it('ignores other ids', () => {
+    expect(linkedinPostPath(['urn:li:member:12345678', 'urn:li:share:7151241570371948544', '', null, undefined])).toBeUndefined();
+  });
+  it('the paths count as single posts', () => {
+    expect(postUrl('/feed/update/urn:li:ugcPost:6850898786781339649/', 'https://www.linkedin.com/feed/')).toBe('https://www.linkedin.com/feed/update/urn:li:ugcPost:6850898786781339649');
   });
 });

@@ -105,7 +105,7 @@ const POST_PATHS: RegExp[] = [
   /^\/talks\/[\w-]+/, // ted.com
   /^\/@[^/]+\/[^/]+:[0-9a-z]+/i, // odysee.com
   /^\/track\/[\w-]+/, // bandcamp.com
-  /^\/feed\/update\/urn:li:activity:\d+/, // linkedin.com (its /posts/<slug> match the pattern above)
+  /^\/feed\/update\/urn:li:(?:activity|ugcPost):\d+/, // linkedin.com (its /posts/<slug> match the pattern above)
 ];
 
 const siteKey = (host: string): string => {
@@ -133,6 +133,20 @@ export function postUrl(href: string | null | undefined, pageUrl: string): strin
   for (const re of POST_PATHS) {
     const m = re.exec(u.pathname);
     if (m) return `${u.origin}${m[0].replace(/\/$/, '')}`;
+  }
+  return undefined;
+}
+
+/**
+ * LinkedIn post of a video from the attribute values of its containers, nearest first: the
+ * post's `urn:li:activity:<id>` or `urn:li:ugcPost:<id>`, also inside composite ids such as
+ * `urn:li:fsd_update:(urn:li:activity:<id>,MAIN_FEED,...)`. Returns `/feed/update/<urn>/`,
+ * which LinkedIn serves as the public post page yt-dlp reads.
+ */
+export function linkedinPostPath(values: Array<string | null | undefined>): string | undefined {
+  for (const v of values) {
+    const m = v ? /urn:li:(activity|ugcPost):(\d{6,})/.exec(v) : null;
+    if (m) return `/feed/update/urn:li:${m[1]}:${m[2]}/`;
   }
   return undefined;
 }

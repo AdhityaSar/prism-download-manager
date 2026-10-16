@@ -58,7 +58,10 @@ of them can win, so disable them while using Prism.
   Navigation API and DOM mutations). On `videoSites` (YouTube, Vimeo, …) the menu shows the app's
   `probeVideo` formats — on a feed, profile or listing (X, Instagram, Facebook, Reddit, TikTok,
   LinkedIn…) for the hovered post (the tile's link, the single-post link of its `<article>`, or
-  LinkedIn's `data-urn` activity id), not the page; elsewhere first *This video* — what the hovered element itself plays
+  LinkedIn's post id in the attributes of its container), not the page (the app refuses
+  LinkedIn / Instagram list pages at once, without yt-dlp). The probe starts once the pointer rests on a video (~0.4 s; one at a time) and is
+  kept 10 minutes; while it runs, single post / video pages offer *Best quality* at once
+  (`formatId: "best"`: the app picks the best format within the preferred quality). Elsewhere first *This video* — what the hovered element itself plays
   (`currentSrc`, `src`, `<source>` children, a `data-sources` quality list as on LinkedIn), best
   quality first — then the tab's other sniffed streams (other posts, autoplaying ads).
 * **Popup** — connection state (with a fix hint), pause-capture toggle, media on the page with

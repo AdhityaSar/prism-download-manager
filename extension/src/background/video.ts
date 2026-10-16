@@ -36,6 +36,8 @@ function noticeFor(err: NativeError): string {
       return "Prism isn't running — showing streams found on this page.";
     case 'timeout':
       return 'Prism took too long to read this page — showing streams found on this page.';
+    case 'not_a_video_page':
+      return err.message;
     default:
       // yt-dlp's own text is long and technical ("please report this issue…"): console only.
       console.debug('[prism] probeVideo failed:', err.message);
@@ -45,6 +47,8 @@ function noticeFor(err: NativeError): string {
       if (/sign in|log in|logged-in|login required|private/i.test(err.message)) {
         return 'This video needs you to be signed in: sign in to the site in this browser and try again.';
       }
+      // Prism 1.0.6+ already answers in plain words; older apps pass yt-dlp's text through.
+      if (err.code === 'app_error' && !/yt-dlp/i.test(err.message) && err.message.length < 200) return err.message;
       return "Prism couldn't get this video's formats — showing streams found on this page (some may be video or audio only).";
   }
 }
@@ -60,6 +64,8 @@ export async function videoOptions(
     // reads as some other video).
     const pageUrl =
       msg.postUrl && isVideoSite(msg.postUrl, st.settings.videoSites) ? msg.postUrl : isVideoSite(msg.pageUrl, st.settings.videoSites) ? msg.pageUrl : tab!.url!;
+    // Feeds and profiles of sites that read single posts only (LinkedIn, Instagram) are refused by
+    // the app at once (`not_a_video_page`), without running yt-dlp.
     try {
       const reply = await native.request(
         { type: 'probeVideo', pageUrl, cookies: await cookieHeaderFor(pageUrl, !!tab?.incognito), userAgent: userAgent() },

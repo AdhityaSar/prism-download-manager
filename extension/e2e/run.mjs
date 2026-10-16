@@ -314,7 +314,7 @@ try {
     await sw.evaluate(async () => {
       const k = 'prism.state';
       const st = (await chrome.storage.local.get(k))[k];
-      await chrome.storage.local.set({ [k]: { ...st, settingsSource: 'local', settings: { ...st.settings, videoSites: ['127.0.0.1'] } } });
+      await chrome.storage.local.set({ [k]: { ...st, settingsSource: 'local', settings: { ...st.settings, videoSites: ['127.0.0.1', 'linkedin.com'] } } });
     });
     const tl = await context.newPage();
     try {
@@ -335,10 +335,17 @@ try {
       const { msg } = await mock.waitFor((m) => m.type === 'video' && m.formatId, 3000, { since });
       assert.equal(msg.pageUrl, `${site.origin}/bob/status/222`);
       assert.equal(msg.formatId, '22');
-      // A grid tile that links to its post, and a LinkedIn feed post (data-urn, no own link).
+      // A grid tile that links to its post, and a LinkedIn feed post (data-urn, no own link),
+      // served as www.linkedin.com: the post id is looked for on LinkedIn only.
       const probed = [];
       for (const [p, sel] of [[tl, '#t3'], [await context.newPage(), '#post']]) {
-        if (sel === '#post') await p.goto(`${site.origin}/feed.html`);
+        if (sel === '#post') {
+          await p.route('https://www.linkedin.com/**', async (route) => {
+            const path = new URL(route.request().url()).pathname;
+            await route.fulfill({ response: await route.fetch({ url: `${site.origin}${path === '/feed/' ? '/feed.html' : path}` }) });
+          });
+          await p.goto('https://www.linkedin.com/feed/');
+        }
         await p.keyboard.press('Escape');
         await p.mouse.move(2, 2);
         await sleep(1000);
@@ -351,11 +358,31 @@ try {
         const t = Date.now();
         await pl.click();
         const { msg: pr } = await mock.waitFor((m) => m.type === 'probeVideo', 3000, { since: t });
-        probed.push(pr.pageUrl.replace(site.origin, ''));
+        probed.push(pr.pageUrl.replace(site.origin, '').replace('https://www.linkedin.com', ''));
         if (sel === '#post') await p.close();
       }
-      assert.deepEqual(probed, ['/reel/R1abc', '/feed/update/urn:li:activity:2']);
-      return `probed and sent ${msg.pageUrl.replace(site.origin, '')}; tile → ${probed[0]}; LinkedIn post → ${probed[1]}`;
+      assert.deepEqual(probed, ['/reel/R1abc', '/feed/update/urn:li:activity:7000000000000000002']);
+      // While a slow post is being read, "Best quality" is offered at once and sends `best`.
+      const slow = await context.newPage();
+      await slow.goto(`${site.origin}/home`);
+      await slow.locator('#t4').scrollIntoViewIfNeeded();
+      const sb = await slow.locator('#t4').boundingBox();
+      await slow.mouse.move(sb.x + 100, sb.y + 100);
+      await slow.mouse.move(sb.x + 120, sb.y + 110);
+      const sp = slow.locator('[data-prism-video-button] .pill');
+      await sp.waitFor({ state: 'visible', timeout: 3000 });
+      const t0 = Date.now();
+      await sp.click();
+      const bestItem = slow.locator('[data-prism-video-button] .item[data-id="best"]');
+      await bestItem.waitFor({ state: 'visible', timeout: 1000 });
+      const shownAfter = Date.now() - t0;
+      const loading = await slow.locator('[data-prism-video-button] .loading').count();
+      await bestItem.click();
+      const { msg: bestMsg } = await mock.waitFor((m) => m.type === 'video' && m.formatId === 'best', 3000, { since: t0 });
+      assert.equal(bestMsg.pageUrl, `${site.origin}/carol/status/333`);
+      assert.equal(loading, 1, 'still loading the list when Best quality was offered');
+      await slow.close();
+      return `probed and sent ${msg.pageUrl.replace(site.origin, '')}; tile → ${probed[0]}; LinkedIn post → ${probed[1]}; Best quality shown after ${shownAfter} ms (list still loading) → sent formatId "best"`;
     } finally {
       await tl.close();
       await sw.evaluate(() => globalThis.__prism.hello(true, true));

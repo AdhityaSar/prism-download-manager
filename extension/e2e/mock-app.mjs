@@ -75,7 +75,9 @@ export async function startMockApp(dataDir) {
           w.resolve(entry);
         }
       }
-      send(200, reply(msg));
+      // A post that takes a while to read (the "Best quality" item shows while waiting).
+      const slow = msg.type === 'probeVideo' && String(msg.pageUrl).endsWith('/status/333');
+      setTimeout(() => send(200, reply(msg)), slow ? 2000 : 0);
     });
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));

@@ -217,25 +217,39 @@ impl VideoService {
             Some(p) => self.inner.versions.version(Tool::YtDlp, p).await,
             None => None,
         };
-        let (tag, url, expected) = tools::ytdlp_latest(&http, o.channel).await?;
-        if let Some(p) = path.clone() {
-            let local = tokio::task::spawn_blocking(move || tools::sha256_file(&p))
+        let rel = tools::ytdlp_latest(&http, o.channel).await?;
+        let expected = rel.preferred_sha256().unwrap_or_default().to_string();
+        if let Some(p) = &path {
+            // A single-file install differs from the unpacked build's archive, so it moves to
+            // the unpacked build here (faster start). The archive's hash says nothing about files
+            // removed since (an antivirus taking one of its libraries): one that doesn't start is
+            // reinstalled.
+            let runs = process::run_capture(
+                Tool::YtDlp,
+                p,
+                ["--version"],
+                std::time::Duration::from_secs(60),
+            )
+            .await
+            .is_ok_and(|out| out.status.success());
+            let dir = d.clone();
+            let local = tokio::task::spawn_blocking(move || tools::installed_ytdlp_sha256(&dir))
                 .await
-                .map_err(|e| VideoError::Other(e.to_string()))??;
-            if local.eq_ignore_ascii_case(&expected) {
+                .map_err(|e| VideoError::Other(e.to_string()))?;
+            if runs && local.is_some_and(|l| l.eq_ignore_ascii_case(&expected)) {
                 return Ok(UpdateOutcome::UpToDate {
-                    version: from.or(Some(tag)),
+                    version: from.or(Some(rel.tag)),
                 });
             }
         }
-        tracing::info!(%tag, "updating yt-dlp");
-        tools::install_ytdlp_from(&http, &d, &url, &expected).await?;
+        tracing::info!(tag = %rel.tag, "updating yt-dlp");
+        tools::install_ytdlp_release(&http, &d, &rel, &|_| {}).await?;
         let to = self
             .inner
             .versions
             .version(Tool::YtDlp, &tools::managed_path(&d, Tool::YtDlp))
             .await
-            .or(Some(tag));
+            .or(Some(rel.tag));
         Ok(UpdateOutcome::Updated { from, to })
     }
 

@@ -710,6 +710,13 @@ impl Core {
         let app = serde_json::json!({"name": "Prism", "version": crate::APP_VERSION});
         match ty {
             "hello" => {
+                if let Some(v) = s("version") {
+                    let mut cur = self.0.ext_version.lock();
+                    if cur.as_deref() != Some(v.as_str()) {
+                        let _ = std::fs::write(self.0.data_dir.join("extension-version"), &v);
+                        *cur = Some(v);
+                    }
+                }
                 serde_json::json!({"ok": true, "app": app, "protocol": 1, "settings": self.capture_rules()})
             }
             "status" | "ping" => {
@@ -815,16 +822,17 @@ impl Core {
                 let Some(page_url) = s("pageUrl") else {
                     return fail("bad_request", "missing pageUrl".into());
                 };
+                if let Some(why) = not_a_single_video(&page_url) {
+                    return fail("not_a_video_page", why.into());
+                }
+                // `probe_video` keeps the result for the "video" request (the chosen format).
                 match self.probe_video(&page_url).await {
-                    Ok(probe) => {
-                        self.0
-                            .state
-                            .lock()
-                            .video_probes
-                            .insert(page_url, (std::time::Instant::now(), probe.clone()));
-                        video_formats_reply(&probe)
+                    Ok(probe) => video_formats_reply(&probe),
+                    Err(e) => {
+                        let raw = format!("{e:#}");
+                        tracing::info!("probeVideo {page_url}: {raw}");
+                        fail("app_error", readable_probe_error(&raw))
                     }
-                    Err(e) => fail("app_error", format!("{e:#}")),
                 }
             }
             "video" => {
@@ -968,6 +976,121 @@ const VIDEO_SITES: &[&str] = &[
     "ok.ru",
     "linkedin.com",
 ];
+
+/// Pages of sites whose yt-dlp extractor only reads single posts (LinkedIn, Instagram): a
+/// feed, profile or Explore page has nothing to read, and yt-dlp's answer (an "Unsupported URL"
+/// or a redirect to the sign-in page) only confuses. `None` = probe it.
+pub(crate) fn not_a_single_video(url: &str) -> Option<&'static str> {
+    let u = url::Url::parse(url).ok()?;
+    let host = u
+        .host_str()?
+        .trim_start_matches("www.")
+        .trim_start_matches("m.");
+    let path = u.path();
+    let site = |s: &str| host == s || host.ends_with(&format!(".{s}"));
+    // LinkedIn's listings (feed, company pages, profiles, search...). Other pages are read as
+    // before: posts, learning, events, but also embeds and articles the generic reader may get.
+    let first = path.trim_start_matches('/').split('/').next().unwrap_or("");
+    if site("linkedin.com")
+        && !path.starts_with("/feed/update/")
+        && matches!(
+            first,
+            "" | "feed"
+                | "company"
+                | "in"
+                | "school"
+                | "showcase"
+                | "groups"
+                | "search"
+                | "mynetwork"
+                | "jobs"
+                | "notifications"
+                | "messaging"
+                | "my-items"
+        )
+    {
+        return Some(
+            "This LinkedIn page lists posts. Point at the video inside a post, or open the post.",
+        );
+    }
+    if site("instagram.com")
+        && !path
+            .split('/')
+            .any(|seg| matches!(seg, "p" | "reel" | "reels" | "tv" | "stories"))
+    {
+        return Some(
+            "This Instagram page lists posts. Point at the video inside a post, or open the post.",
+        );
+    }
+    None
+}
+
+/// yt-dlp's errors for the in-page menu: what to do, not its raw output ("please report this
+/// issue on ..."). The raw text goes to the log.
+pub(crate) fn readable_probe_error(raw: &str) -> String {
+    let m = raw.to_ascii_lowercase();
+    if m.contains("couldn't read the cookies") {
+        // prism-video's own explanation (see its error.rs), already readable.
+        return raw.trim().to_string();
+    }
+    let login = [
+        "/login",
+        "authwall",
+        "signin",
+        "sign in",
+        "log in",
+        "logged-in",
+        "login required",
+    ];
+    if login.iter().any(|w| m.contains(w)) {
+        return "The site wants you to sign in to show this video. Sign in in your browser and try again.".into();
+    }
+    if m.contains("unsupported url") {
+        return "This page doesn't show a single video Prism can read. Point at the video in a post, or open the video's own page.".into();
+    }
+    let gone = [
+        "private",
+        "video unavailable",
+        "video is unavailable",
+        "video is not available",
+        "not available in your",
+        "no longer available",
+        "has been removed",
+    ];
+    if gone.iter().any(|w| m.contains(w)) {
+        return "This video is private or not available.".into();
+    }
+    if m.contains("unable to extract") || m.contains("unable to download") {
+        return "Prism couldn't find the video on this page (the site may have changed; Prism updates its video tool by itself).".into();
+    }
+    let first = raw
+        .split(['\n', ';'])
+        .next()
+        .unwrap_or(raw)
+        .split("please report")
+        .next()
+        .unwrap_or(raw)
+        .trim()
+        .trim_end_matches([',', '.', ' ']);
+    let short: String = first.chars().take(160).collect();
+    format!("Prism couldn't read this page: {short}.")
+}
+
+/// `a` is an older version than `b` (dotted numbers; anything unparsable compares as 0).
+pub(crate) fn version_older(a: &str, b: &str) -> bool {
+    let parse = |v: &str| -> Vec<u64> {
+        v.trim()
+            .trim_start_matches('v')
+            .split(['.', '-', '+'])
+            .take(3)
+            .map(|p| p.parse().unwrap_or(0))
+            .collect()
+    };
+    let (mut a, mut b) = (parse(a), parse(b));
+    a.resize(3, 0);
+    b.resize(3, 0);
+    a < b
+}
 
 /// Is this a page on a known video site (as opposed to a direct media file)?
 pub(crate) fn is_video_page(url: &str) -> bool {
@@ -1163,5 +1286,81 @@ mod name_template_tests {
             Some("xyz")
         );
         assert_eq!(video_id("https://vimeo.com/123"), None);
+    }
+}
+
+#[cfg(test)]
+mod probe_message_tests {
+    use super::{not_a_single_video, readable_probe_error, version_older};
+
+    #[test]
+    fn feed_and_profile_pages_of_post_only_sites_are_not_probed() {
+        for url in [
+            "https://www.linkedin.com/feed/",
+            "https://www.linkedin.com/company/nerostech/posts/",
+            "https://www.linkedin.com/in/someone/recent-activity/all/",
+            "https://www.linkedin.com/",
+            "https://www.linkedin.com/search/results/content/?keywords=prism",
+            "https://www.instagram.com/explore/",
+            "https://www.instagram.com/someone/",
+        ] {
+            assert!(not_a_single_video(url).is_some(), "{url}");
+        }
+        for url in [
+            "https://www.linkedin.com/feed/update/urn:li:activity:7151241570371948544/",
+            "https://www.linkedin.com/posts/the-mathworks_2_what-is-mathworks-cloud-center-activity-7151241570371948544-4Gu7",
+            "https://www.linkedin.com/learning/some-course/intro",
+            "https://www.linkedin.com/embed/feed/update/urn:li:share:7151241569537282048",
+            "https://www.linkedin.com/pulse/some-article-someone/",
+            "https://www.instagram.com/p/DBx1yZ2abc/",
+            "https://www.instagram.com/reel/DBx1yZ2abc/",
+            "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+            "https://x.com/home",
+        ] {
+            assert!(not_a_single_video(url).is_none(), "{url}");
+        }
+    }
+
+    #[test]
+    fn yt_dlp_errors_become_readable() {
+        // The company-page report: LinkedIn sent yt-dlp to its sign-in page.
+        let login = "yt-dlp failed (exit code 1): Unsupported URL: https://www.linkedin.com/uas/login?session_redirect=https%3A%2F%2Fwww.linkedin.com%2Fcompany%2Fnerostech%2Fposts%2F\n\nTip: sign in to the site in your browser, then choose that browser under Settings";
+        assert!(readable_probe_error(login).starts_with("The site wants you to sign in"));
+        let unsupported =
+            "yt-dlp failed (exit code 1): Unsupported URL: https://www.reddit.com/r/videos/";
+        assert!(
+            readable_probe_error(unsupported).starts_with("This page doesn't show a single video")
+        );
+        let extract = "yt-dlp failed (exit code 1): [instagram:user] explore: Unable to extract data; please report this issue on https://github.com/yt-dlp/yt-dlp/issues?q= , filling out the appropriate issue template. Confirm you are on the latest version using yt-dlp -U";
+        let r = readable_probe_error(extract);
+        assert!(
+            r.starts_with("Prism couldn't find the video") && !r.contains("report"),
+            "{r}"
+        );
+        let other = "yt-dlp failed (exit code 1): HTTP Error 500: Internal Server Error; please report this issue on https://github.com/yt-dlp/yt-dlp";
+        assert_eq!(
+            readable_probe_error(other),
+            "Prism couldn't read this page: yt-dlp failed (exit code 1): HTTP Error 500: Internal Server Error."
+        );
+        let gone =
+            "yt-dlp failed (exit code 1): [youtube] abc: Video unavailable. This video is private";
+        assert_eq!(
+            readable_probe_error(gone),
+            "This video is private or not available."
+        );
+        let busy = "yt-dlp failed (exit code 1): HTTP Error 503: Service Unavailable";
+        assert!(readable_probe_error(busy).starts_with("Prism couldn't read this page: "));
+        let cookies = "yt-dlp failed (exit code 1): Could not copy Chrome cookie database\n\nTip: Prism couldn't read the cookies of the browser chosen under Settings";
+        assert!(readable_probe_error(cookies).contains("couldn't read the cookies"));
+    }
+
+    #[test]
+    fn versions_compare_by_number() {
+        assert!(version_older("1.0.0", "1.0.6"));
+        assert!(version_older("1.0.5", "1.0.10"));
+        assert!(version_older("0.9", "1.0.0"));
+        assert!(!version_older("1.0.6", "1.0.6"));
+        assert!(!version_older("1.0.7", "1.0.6"));
+        assert!(!version_older("v1.0.6", "1.0.6"));
     }
 }

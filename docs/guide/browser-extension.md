@@ -33,7 +33,7 @@ Prism → Settings → Browser integration → **Open folder**:
 | Windows (setup.exe) | `%LOCALAPPDATA%\Prism\extension\chromium` |
 | Windows (MSI) | `C:\Program Files\Prism\extension\chromium` |
 | Linux (deb / rpm) | `/usr/lib/Prism/extension/chromium` |
-| macOS | inside `Prism.app` — easier to use `prism-chromium.zip` |
+| macOS | `~/Library/Application Support/Prism/extension/chromium` (a copy Prism keeps up to date) |
 
 ## Google Chrome (Windows, macOS, Linux)
 
@@ -70,6 +70,16 @@ Firefox only keeps unsigned extensions until it restarts, so choose one of:
 * **Permanent (Firefox Developer Edition / Nightly / ESR):** open `about:config`, set
   `xpinstall.signatures.required` to `false`, then open `about:addons` → gear icon →
   **Install Add-on From File…** → pick `prism-firefox.zip`.
+
+## After updating Prism
+
+Browsers don't reload an unpacked extension's files by themselves. After Prism updates, open
+the extensions page (`chrome://extensions`, `edge://extensions`, …) and click the reload arrow
+**↻** next to Prism, or restart the browser. Prism shows a reminder in its window while the
+browser still runs an older extension.
+
+The folders in the table above are updated together with Prism. If you loaded an unzipped
+`prism-chromium.zip` instead, unzip the new release's zip over that folder first.
 
 ## Already using IDM or another download manager?
 

@@ -1,41 +1,39 @@
-# Prism 1.0.5 — One beam. Many rays.
+# Prism 1.0.6 — One beam. Many rays.
 
 A fast, open-source download manager for Windows, Linux and macOS, with browser integration
 and video downloads.
 
-## What's new in 1.0.5
+## What's new in 1.0.6
 
-* **LinkedIn: the Download button over a video finds it, also in the feed.** 1.0.4 only found
-  videos whose player shows its files (public post pages); in the signed-in feed it said
-  "No downloadable stream found"
-  ([#1](https://github.com/FortoGraphy/prism-download-manager/issues/1)). Prism now reads the
-  post you point at — as it does for YouTube — and offers its video.
-* **Feeds and timelines** (X, Instagram, Facebook, Reddit, TikTok…): the button reads the post
-  under the pointer, not the page. On Instagram Explore, for example, it showed an error.
-  When a page can't be read, the message says what to do instead of showing yt-dlp's output.
-* **Right-click › Download with Prism** on a streaming video opens Prism's menu for it (it did
-  nothing).
-* **Cookies from browser:** when Prism can't read the browser's cookies (Chrome and Edge on
-  Windows lock them while open), videos that don't need them still download, and the error
-  for those that do explains the fix.
-* **Windows:** a video downloaded by yt-dlp whose title has `?`, `|` or `:` showed up as a
-  missing file.
-* Embedded YouTube players in privacy mode (youtube-nocookie.com), VK and OK.ru get the quality
-  menu; dropdown menus close on Tab and when the page under them scrolls.
-* **After updating, restart your browser** (or click *Reload* for Prism on
-  `chrome://extensions`) so it loads the new extension (1.0.5). If you installed it from a
-  downloaded `prism-chromium.zip`, use the 1.0.5 zip.
+* **Video menus open faster.** Prism now runs yt-dlp's unpacked build, which starts in about
+  a third of the time (on Windows 0.35 s instead of 1–1.4 s per run; it is downloaded once,
+  on the first start after the update). The *Download video* button starts reading the
+  video while the pointer rests on it, a page Prism has read answers at once for 10 minutes
+  (on a LinkedIn post: 2 s the first time, 0.2 s after that), and **Best quality** is
+  offered right away, before the list of qualities arrives.
+* **Prism tells you when the browser still runs an old extension.** Browsers don't reload an
+  unpacked extension after an update, so a new version's fixes didn't reach them until the
+  extension was reloaded. Prism now shows a reminder with the one click it takes, and
+  Settings › Browser integration shows the extension's version.
+* **LinkedIn and Instagram:** feed, company, profile and Explore pages get a clear message at
+  once instead of a slow error; the button recognises more kinds of LinkedIn feed posts.
+  Errors from pages Prism can't read say what to do, also with an older extension.
+* **macOS:** the guide in the DMG now points to the extension folder Prism keeps up to date
+  (`~/Library/Application Support/Prism/extension`), not to a copy that never updates.
+* **After updating, click ↻ next to Prism on `chrome://extensions`** (or restart the browser)
+  so it loads the new extension (1.0.6). If you installed it from a downloaded
+  `prism-chromium.zip`, use the 1.0.6 zip.
 
 ## Downloads
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.0.5_x64-setup.exe` (recommended) · `Prism_1.0.5_x64_en-US.msi` (all users) · `Prism-1.0.5-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.0.5_aarch64.dmg` |
-| macOS — Intel | `Prism_1.0.5_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.0.5_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.0.5-1.x86_64.rpm` |
-| Any Linux | `Prism_1.0.5_amd64.AppImage` |
+| Windows 10 / 11 | `Prism_1.0.6_x64-setup.exe` (recommended) · `Prism_1.0.6_x64_en-US.msi` (all users) · `Prism-1.0.6-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.0.6_aarch64.dmg` |
+| macOS — Intel | `Prism_1.0.6_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.0.6_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.0.6-1.x86_64.rpm` |
+| Any Linux | `Prism_1.0.6_amd64.AppImage` |
 | Browser extension | `prism-chromium.zip` (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·

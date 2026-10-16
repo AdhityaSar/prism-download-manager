@@ -1304,8 +1304,60 @@ impl TorrentJob {
 
 // ----- video probing for the UI & tools -----------------------------------------------------
 
-/// Resolve a page with yt-dlp for the quality picker (raw `prism_video::Probe` JSON).
+/// How long a page's probe answers new requests (the in-page menu opening again, the video
+/// window); the download itself still probes fresh.
+pub(crate) const PROBE_REUSE: Duration = Duration::from_secs(600);
+
+fn recent_probe(core: &Core, page_url: &str) -> Option<serde_json::Value> {
+    let st = core.0.state.lock();
+    st.video_probes
+        .get(page_url)
+        .filter(|(at, _)| at.elapsed() < PROBE_REUSE)
+        .map(|(_, p)| p.clone())
+}
+
+/// Probe a video page for the quality picker: a recent result is reused and a probe of the
+/// same page that is already running is waited for.
 pub(crate) async fn probe_video(core: &Core, page_url: &str) -> Result<serde_json::Value> {
+    if let Some(p) = recent_probe(core, page_url) {
+        return Ok(p);
+    }
+    let lock = core
+        .0
+        .probe_locks
+        .lock()
+        .entry(page_url.to_string())
+        .or_default()
+        .clone();
+    let res = {
+        let _same_page = lock.lock().await;
+        match recent_probe(core, page_url) {
+            Some(p) => Ok(p),
+            None => {
+                let res = run_probe_video(core, page_url).await;
+                if let Ok(p) = &res {
+                    core.0
+                        .state
+                        .lock()
+                        .video_probes
+                        .insert(page_url.to_string(), (std::time::Instant::now(), p.clone()));
+                }
+                res
+            }
+        }
+    };
+    let mut locks = core.0.probe_locks.lock();
+    if locks
+        .get(page_url)
+        .is_some_and(|l| Arc::strong_count(l) <= 2)
+    {
+        locks.remove(page_url);
+    }
+    res
+}
+
+/// Resolve a page with yt-dlp for the quality picker (raw `prism_video::Probe` JSON).
+async fn run_probe_video(core: &Core, page_url: &str) -> Result<serde_json::Value> {
     let video = &core.0.video;
     let status = video.tool_status().await;
     if status.yt_dlp.path.is_none() || status.deno.path.is_none() {

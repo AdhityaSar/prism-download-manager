@@ -156,7 +156,48 @@ pub(crate) type ProgressFn<'a> = &'a (dyn Fn(ToolProgress) + Send + Sync);
 // ---------------------------------------------------------------------------
 
 pub(crate) fn managed_path(tools_dir: &Path, tool: Tool) -> PathBuf {
+    if tool == Tool::YtDlp
+        && let Some(exe) = ytdlp_unpacked_exe(tools_dir)
+    {
+        return exe;
+    }
+    legacy_path(tools_dir, tool)
+}
+
+/// The single-file location (`tools/yt-dlp.exe`, `tools/deno`, ...).
+fn legacy_path(tools_dir: &Path, tool: Tool) -> PathBuf {
     tools_dir.join(tool.exe_name())
+}
+
+/// `tools/yt-dlp.json`: the unpacked yt-dlp build in use (see [`install_ytdlp_unpacked`]).
+const YTDLP_MARKER: &str = "yt-dlp.json";
+
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub(crate) struct YtDlpInstall {
+    /// Folder inside `tools/` (`yt-dlp-<tag>`).
+    pub dir: String,
+    /// Executable inside it (`yt-dlp.exe`, `yt-dlp_macos`, `yt-dlp_linux`).
+    pub exe: String,
+    /// SHA-256 of the release archive it came from (what updates compare).
+    pub sha256: String,
+    pub tag: String,
+}
+
+/// A plain file / folder name: no separators, `..` or drive prefixes.
+fn plain_name(s: &str) -> bool {
+    !s.is_empty() && s != "." && s != ".." && !s.contains(['/', '\\', ':'])
+}
+
+pub(crate) fn ytdlp_install(tools_dir: &Path) -> Option<YtDlpInstall> {
+    let text = std::fs::read_to_string(tools_dir.join(YTDLP_MARKER)).ok()?;
+    let m: YtDlpInstall = serde_json::from_str(&text).ok()?;
+    (plain_name(&m.dir) && plain_name(&m.exe)).then_some(m)
+}
+
+fn ytdlp_unpacked_exe(tools_dir: &Path) -> Option<PathBuf> {
+    let m = ytdlp_install(tools_dir)?;
+    let exe = tools_dir.join(&m.dir).join(&m.exe);
+    exe.is_file().then_some(exe)
 }
 
 /// Search `PATH` for an executable.
@@ -388,6 +429,22 @@ pub fn ytdlp_asset() -> Option<&'static str> {
         ("linux", "x86_64") => "yt-dlp_linux",
         ("linux", "aarch64") => "yt-dlp_linux_aarch64",
         ("macos", _) => "yt-dlp_macos",
+        _ => return None,
+    })
+}
+
+/// Unpacked ("onedir") yt-dlp build for this platform. It starts without first unpacking
+/// itself into a temp folder on every run: ~0.4 s instead of ~1.1 s on Windows, and much less
+/// than the single file on macOS, which checks each unpacked library again on every run.
+pub fn ytdlp_unpacked_asset() -> Option<&'static str> {
+    use std::env::consts::{ARCH, OS};
+    Some(match (OS, ARCH) {
+        ("windows", "x86_64") => "yt-dlp_win.zip",
+        ("windows", "aarch64") => "yt-dlp_win_arm64.zip",
+        ("windows", "x86") => "yt-dlp_win_x86.zip",
+        ("linux", "x86_64") => "yt-dlp_linux.zip",
+        ("linux", "aarch64") => "yt-dlp_linux_aarch64.zip",
+        ("macos", _) => "yt-dlp_macos.zip",
         _ => return None,
     })
 }
@@ -645,7 +702,8 @@ pub(crate) fn atomic_replace(tmp: &Path, dest: &Path) -> std::io::Result<()> {
     }
 }
 
-/// Remove leftovers (`.old-*` from replaced executables, stale `.part` files).
+/// Remove leftovers (`.old-*` from replaced executables, stale `.part` files and folders,
+/// yt-dlp builds no longer in use).
 pub(crate) fn cleanup_tools_dir(dir: &Path) {
     let Ok(rd) = std::fs::read_dir(dir) else {
         return;
@@ -653,9 +711,14 @@ pub(crate) fn cleanup_tools_dir(dir: &Path) {
     for e in rd.flatten() {
         let name = e.file_name().to_string_lossy().to_string();
         if name.contains(".old-") || (name.starts_with('.') && name.ends_with(".part")) {
-            let _ = std::fs::remove_file(e.path());
+            if e.path().is_dir() {
+                let _ = std::fs::remove_dir_all(e.path());
+            } else {
+                let _ = std::fs::remove_file(e.path());
+            }
         }
     }
+    remove_unused_ytdlp(dir);
 }
 
 // ---------------------------------------------------------------------------
@@ -761,20 +824,66 @@ fn install_extracted(
 // Installers
 // ---------------------------------------------------------------------------
 
-/// Latest yt-dlp release info for a channel: (tag, asset url, expected sha256).
-pub(crate) async fn ytdlp_latest(
-    http: &Http,
-    channel: UpdateChannel,
-) -> Result<(String, String, String)> {
-    let asset = ytdlp_asset()
-        .ok_or_else(|| VideoError::Unsupported("no yt-dlp build for this platform".into()))?;
+/// A yt-dlp release asset with its published SHA-256.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct ReleaseAsset {
+    pub url: String,
+    pub sha256: String,
+}
+
+/// Latest yt-dlp release of a channel: the unpacked build when the release has one for this
+/// platform, and the single file (fallback, and the build used where there is no unpacked one).
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct YtDlpRelease {
+    pub tag: String,
+    pub unpacked: Option<ReleaseAsset>,
+    pub single: Option<ReleaseAsset>,
+}
+
+impl YtDlpRelease {
+    /// SHA-256 of the asset Prism installs (what an update compares with the installed one).
+    pub fn preferred_sha256(&self) -> Option<&str> {
+        self.unpacked
+            .as_ref()
+            .or(self.single.as_ref())
+            .map(|a| a.sha256.as_str())
+    }
+}
+
+pub(crate) async fn ytdlp_latest(http: &Http, channel: UpdateChannel) -> Result<YtDlpRelease> {
     let repo = ytdlp_repo(channel);
     let tag = http.latest_tag(repo).await?;
-    let sums = http.text(&release_url(repo, &tag, "SHA2-256SUMS")).await?;
-    let expected = parse_checksums(&sums)
-        .remove(asset)
-        .ok_or_else(|| VideoError::ChecksumMissing(asset.into()))?;
-    Ok((tag.clone(), release_url(repo, &tag, asset), expected))
+    let sums = parse_checksums(&http.text(&release_url(repo, &tag, "SHA2-256SUMS")).await?);
+    let asset = |name: Option<&str>| {
+        let name = name?;
+        sums.get(name).map(|sha| ReleaseAsset {
+            url: release_url(repo, &tag, name),
+            sha256: sha.clone(),
+        })
+    };
+    let rel = YtDlpRelease {
+        unpacked: asset(ytdlp_unpacked_asset()),
+        single: asset(ytdlp_asset()),
+        tag: tag.clone(),
+    };
+    if rel.unpacked.is_none() && rel.single.is_none() {
+        return Err(match ytdlp_asset() {
+            Some(a) => VideoError::ChecksumMissing(a.into()),
+            None => VideoError::Unsupported("no yt-dlp build for this platform".into()),
+        });
+    }
+    Ok(rel)
+}
+
+/// SHA-256 of the installed managed yt-dlp's release asset (the archive for an unpacked build,
+/// the file itself for a single-file one), to compare with [`YtDlpRelease::preferred_sha256`].
+pub(crate) fn installed_ytdlp_sha256(tools_dir: &Path) -> Option<String> {
+    if let Some(m) = ytdlp_install(tools_dir)
+        && tools_dir.join(&m.dir).join(&m.exe).is_file()
+    {
+        return Some(m.sha256);
+    }
+    sha256_file(&legacy_path(tools_dir, Tool::YtDlp)).ok()
 }
 
 pub(crate) async fn install_ytdlp(
@@ -789,19 +898,219 @@ pub(crate) async fn install_ytdlp(
         downloaded: 0,
         total: None,
     });
-    let (tag, url, expected) = ytdlp_latest(http, channel).await?;
-    tracing::info!(%tag, %url, "installing yt-dlp");
-    install_single_binary(http, Tool::YtDlp, &url, &expected, tools_dir, progress).await
+    let rel = ytdlp_latest(http, channel).await?;
+    install_ytdlp_release(http, tools_dir, &rel, progress).await
 }
 
-/// Install yt-dlp from an already-resolved release asset (used by updates).
-pub(crate) async fn install_ytdlp_from(
+/// Install a resolved release: the unpacked build, else (or when that fails) the single file.
+pub(crate) async fn install_ytdlp_release(
     http: &Http,
     tools_dir: &Path,
-    url: &str,
-    expected: &str,
+    rel: &YtDlpRelease,
+    progress: ProgressFn<'_>,
 ) -> Result<PathBuf> {
-    install_single_binary(http, Tool::YtDlp, url, expected, tools_dir, &|_| {}).await
+    if let Some(a) = &rel.unpacked {
+        tracing::info!(tag = %rel.tag, url = %a.url, "installing yt-dlp (unpacked build)");
+        match install_ytdlp_unpacked(http, tools_dir, &rel.tag, a, progress).await {
+            Ok(p) => return Ok(p),
+            Err(e) if rel.single.is_some() => {
+                tracing::warn!(
+                    "unpacked yt-dlp failed to install ({e}); using the single-file build"
+                );
+            }
+            Err(e) => return Err(e),
+        }
+    }
+    let a = rel
+        .single
+        .as_ref()
+        .ok_or_else(|| VideoError::Unsupported("no yt-dlp build for this platform".into()))?;
+    tracing::info!(tag = %rel.tag, url = %a.url, "installing yt-dlp");
+    let p =
+        install_single_binary(http, Tool::YtDlp, &a.url, &a.sha256, tools_dir, progress).await?;
+    // The single file is the one in use now.
+    let _ = std::fs::remove_file(tools_dir.join(YTDLP_MARKER));
+    Ok(p)
+}
+
+/// Download, verify and unpack an unpacked yt-dlp build into `tools/yt-dlp-<tag>/`, then
+/// switch `tools/yt-dlp.json` to it in one rename. A running yt-dlp keeps its old folder (it is
+/// never renamed or deleted while in use; [`cleanup_tools_dir`] removes it on a later start).
+async fn install_ytdlp_unpacked(
+    http: &Http,
+    tools_dir: &Path,
+    tag: &str,
+    asset: &ReleaseAsset,
+    progress: ProgressFn<'_>,
+) -> Result<PathBuf> {
+    tokio::fs::create_dir_all(tools_dir).await?;
+    let archive = temp_path(tools_dir, "yt-dlp-archive");
+    http.download_verified(Tool::YtDlp, &asset.url, &archive, &asset.sha256, progress)
+        .await?;
+    progress(ToolProgress {
+        tool: Tool::YtDlp,
+        phase: ToolPhase::Extracting,
+        downloaded: 0,
+        total: None,
+    });
+    let (a, d, t, sha) = (
+        archive.clone(),
+        tools_dir.to_path_buf(),
+        tag.to_string(),
+        asset.sha256.clone(),
+    );
+    let res = tokio::task::spawn_blocking(move || unpack_ytdlp(&a, &d, &t, &sha))
+        .await
+        .map_err(|e| VideoError::Other(e.to_string()));
+    let _ = tokio::fs::remove_file(&archive).await;
+    let exe = res??;
+    progress(ToolProgress {
+        tool: Tool::YtDlp,
+        phase: ToolPhase::Installed,
+        downloaded: 0,
+        total: None,
+    });
+    Ok(exe)
+}
+
+/// Blocking part of [`install_ytdlp_unpacked`] (also used by tests).
+pub(crate) fn unpack_ytdlp(
+    archive: &Path,
+    tools_dir: &Path,
+    tag: &str,
+    sha256: &str,
+) -> Result<PathBuf> {
+    let base: String = format!("yt-dlp-{tag}")
+        .chars()
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || matches!(c, '.' | '-' | '_') {
+                c
+            } else {
+                '_'
+            }
+        })
+        .collect();
+    // A folder of that name may be in use (same tag reinstalled): pick a fresh one.
+    let mut dir = base.clone();
+    let mut n = 1;
+    while tools_dir.join(&dir).exists() {
+        dir = format!("{base}-{n}");
+        n += 1;
+    }
+    let staging = temp_path(tools_dir, &dir);
+    let res = (|| {
+        let top_files = extract_zip_tree(archive, &staging)?;
+        // The build is one executable next to `_internal/`.
+        let exe = match top_files.as_slice() {
+            [exe] if exe.starts_with("yt-dlp") => exe.clone(),
+            other => {
+                return Err(VideoError::Archive(format!(
+                    "unexpected yt-dlp archive layout: {other:?}"
+                )));
+            }
+        };
+        make_executable(&staging.join(&exe))?;
+        #[cfg(target_os = "macos")]
+        {
+            // Best effort, as for the single file: archives we fetch ourselves are normally
+            // not quarantined, but a quarantined library would not load.
+            let _ = std::process::Command::new("xattr")
+                .args(["-dr", "com.apple.quarantine"])
+                .arg(&staging)
+                .output();
+        }
+        std::fs::rename(&staging, tools_dir.join(&dir))?;
+        Ok(exe)
+    })();
+    let exe = match res {
+        Ok(exe) => exe,
+        Err(e) => {
+            let _ = std::fs::remove_dir_all(&staging);
+            return Err(e);
+        }
+    };
+    let marker = YtDlpInstall {
+        dir: dir.clone(),
+        exe: exe.clone(),
+        sha256: sha256.to_ascii_lowercase(),
+        tag: tag.to_string(),
+    };
+    let json = serde_json::to_vec_pretty(&marker).map_err(|e| VideoError::Other(e.to_string()))?;
+    let tmp = temp_path(tools_dir, YTDLP_MARKER);
+    std::fs::write(&tmp, json)?;
+    std::fs::rename(&tmp, tools_dir.join(YTDLP_MARKER))?;
+    remove_unused_ytdlp(tools_dir);
+    Ok(tools_dir.join(dir).join(exe))
+}
+
+/// Remove yt-dlp builds that are no longer in use: older `yt-dlp-*` folders and the single
+/// file, once an unpacked build is installed. Best effort: something still running is kept.
+fn remove_unused_ytdlp(tools_dir: &Path) {
+    let Some(current) = ytdlp_install(tools_dir) else {
+        return;
+    };
+    if !tools_dir.join(&current.dir).join(&current.exe).is_file() {
+        return;
+    }
+    let _ = std::fs::remove_file(legacy_path(tools_dir, Tool::YtDlp));
+    let Ok(rd) = std::fs::read_dir(tools_dir) else {
+        return;
+    };
+    for e in rd.flatten() {
+        let name = e.file_name().to_string_lossy().to_string();
+        if name.starts_with("yt-dlp-") && name != current.dir && e.path().is_dir() {
+            let _ = std::fs::remove_dir_all(e.path());
+        }
+    }
+}
+
+/// Unpack every entry of a zip below `out_dir` (keeping Unix permissions), refusing paths that
+/// leave it and symbolic links. Returns the names of the files at the top level.
+pub(crate) fn extract_zip_tree(archive: &Path, out_dir: &Path) -> Result<Vec<String>> {
+    let file = std::fs::File::open(archive)?;
+    let mut zip = zip::ZipArchive::new(std::io::BufReader::new(file))
+        .map_err(|e| VideoError::Archive(e.to_string()))?;
+    std::fs::create_dir_all(out_dir)?;
+    let mut top = Vec::new();
+    for i in 0..zip.len() {
+        let mut entry = zip
+            .by_index(i)
+            .map_err(|e| VideoError::Archive(e.to_string()))?;
+        let rel = entry.enclosed_name().ok_or_else(|| {
+            VideoError::Archive(format!(
+                "unsafe path in archive: {}",
+                String::from_utf8_lossy(entry.name_raw())
+            ))
+        })?;
+        let mode = entry.unix_mode();
+        if mode.is_some_and(|m| m & 0o170000 == 0o120000) {
+            return Err(VideoError::Archive(format!(
+                "symbolic link in archive: {}",
+                String::from_utf8_lossy(entry.name_raw())
+            )));
+        }
+        let dest = out_dir.join(&rel);
+        if entry.is_dir() {
+            std::fs::create_dir_all(&dest)?;
+            continue;
+        }
+        if let Some(parent) = dest.parent() {
+            std::fs::create_dir_all(parent)?;
+        }
+        let mut out = std::fs::File::create(&dest)?;
+        std::io::copy(&mut entry, &mut out)?;
+        out.sync_all()?;
+        drop(out);
+        #[cfg(unix)]
+        if let Some(m) = mode {
+            use std::os::unix::fs::PermissionsExt;
+            std::fs::set_permissions(&dest, std::fs::Permissions::from_mode(m & 0o777))?;
+        }
+        if rel.components().count() == 1 {
+            top.push(rel.to_string_lossy().to_string());
+        }
+    }
+    Ok(top)
 }
 
 async fn install_single_binary(
@@ -813,7 +1122,7 @@ async fn install_single_binary(
     progress: ProgressFn<'_>,
 ) -> Result<PathBuf> {
     tokio::fs::create_dir_all(tools_dir).await?;
-    let dest = managed_path(tools_dir, tool);
+    let dest = legacy_path(tools_dir, tool);
     let tmp = temp_path(tools_dir, tool.name());
     http.download_verified(tool, url, &tmp, expected, progress)
         .await?;
@@ -1085,6 +1394,187 @@ mod tests {
         let found = extract_zip(&archive, &names(), &out).unwrap();
         assert!(install_extracted(found, &names(), &out).is_err());
         assert_eq!(std::fs::read_dir(&out).unwrap().count(), 1);
+    }
+
+    /// A zip shaped like yt-dlp's unpacked builds: one executable next to `_internal/`.
+    fn unpacked_zip(path: &Path, files: &[(&str, &[u8], u32)]) {
+        let f = std::fs::File::create(path).unwrap();
+        let mut z = zip::ZipWriter::new(f);
+        for (name, data, mode) in files {
+            let o = zip::write::SimpleFileOptions::default()
+                .compression_method(zip::CompressionMethod::Deflated)
+                .unix_permissions(*mode);
+            z.start_file(*name, o).unwrap();
+            z.write_all(data).unwrap();
+        }
+        z.finish().unwrap();
+    }
+
+    #[test]
+    fn unpacked_ytdlp_install_switches_and_cleans_up() {
+        let dir = tempfile::tempdir().unwrap();
+        let tools = dir.path().join("tools");
+        std::fs::create_dir_all(&tools).unwrap();
+        // An existing single-file install is what resolution uses until the switch.
+        std::fs::write(tools.join(Tool::YtDlp.exe_name()), b"single").unwrap();
+        assert_eq!(
+            managed_path(&tools, Tool::YtDlp),
+            tools.join(Tool::YtDlp.exe_name())
+        );
+        assert_eq!(
+            installed_ytdlp_sha256(&tools).unwrap(),
+            sha256_hex(b"single")
+        );
+
+        let a1 = dir.path().join("a1.zip");
+        unpacked_zip(
+            &a1,
+            &[
+                ("yt-dlp_linux", b"exe-1", 0o755),
+                ("_internal/libpython3.so", b"lib", 0o755),
+                ("_internal/yt_dlp/__init__.pyc", b"pyc", 0o644),
+            ],
+        );
+        let exe = unpack_ytdlp(&a1, &tools, "2026.10.10.233141", "ABC123").unwrap();
+        assert_eq!(
+            exe,
+            tools.join("yt-dlp-2026.10.10.233141").join("yt-dlp_linux")
+        );
+        assert_eq!(managed_path(&tools, Tool::YtDlp), exe);
+        assert_eq!(std::fs::read(&exe).unwrap(), b"exe-1");
+        assert!(
+            tools
+                .join("yt-dlp-2026.10.10.233141/_internal/yt_dlp/__init__.pyc")
+                .is_file()
+        );
+        assert_eq!(installed_ytdlp_sha256(&tools).unwrap(), "abc123");
+        // The single file is gone, no staging folder is left behind.
+        assert!(!tools.join(Tool::YtDlp.exe_name()).exists());
+        assert!(
+            std::fs::read_dir(&tools)
+                .unwrap()
+                .flatten()
+                .all(|e| !e.file_name().to_string_lossy().ends_with(".part"))
+        );
+        #[cfg(unix)]
+        {
+            use std::os::unix::fs::PermissionsExt;
+            let mode = std::fs::metadata(&exe).unwrap().permissions().mode();
+            assert_eq!(mode & 0o111, 0o111);
+        }
+
+        // An update unpacks next to it, switches, and removes the old build.
+        let a2 = dir.path().join("a2.zip");
+        unpacked_zip(
+            &a2,
+            &[
+                ("yt-dlp_linux", b"exe-2", 0o755),
+                ("_internal/x", b"x", 0o644),
+            ],
+        );
+        let exe2 = unpack_ytdlp(&a2, &tools, "2026.10.17", "def").unwrap();
+        assert_eq!(managed_path(&tools, Tool::YtDlp), exe2);
+        assert_eq!(std::fs::read(&exe2).unwrap(), b"exe-2");
+        assert!(!tools.join("yt-dlp-2026.10.10.233141").exists());
+        let (path, source, _) = resolve(Tool::YtDlp, &tools, &VideoOptions::default());
+        assert_eq!((path.unwrap(), source), (exe2.clone(), ToolSource::Managed));
+
+        // The same tag again (reinstall) gets a fresh folder instead of touching the one in use.
+        let exe3 = unpack_ytdlp(&a2, &tools, "2026.10.17", "def").unwrap();
+        assert_eq!(exe3, tools.join("yt-dlp-2026.10.17-1").join("yt-dlp_linux"));
+        assert_eq!(managed_path(&tools, Tool::YtDlp), exe3);
+    }
+
+    #[test]
+    fn unpacked_ytdlp_rejects_bad_archives_and_keeps_the_current_build() {
+        let dir = tempfile::tempdir().unwrap();
+        let tools = dir.path().join("tools");
+        std::fs::create_dir_all(&tools).unwrap();
+        let good = dir.path().join("good.zip");
+        unpacked_zip(
+            &good,
+            &[("yt-dlp.exe", b"ok", 0o755), ("_internal/a", b"a", 0o644)],
+        );
+        let exe = unpack_ytdlp(&good, &tools, "1", "s1").unwrap();
+
+        // Leaves the folder, has a symlink, or is not one executable next to `_internal/`.
+        let evil = dir.path().join("evil.zip");
+        unpacked_zip(
+            &evil,
+            &[("yt-dlp.exe", b"x", 0o755), ("../evil.txt", b"x", 0o644)],
+        );
+        let link = dir.path().join("link.zip");
+        {
+            let mut z = zip::ZipWriter::new(std::fs::File::create(&link).unwrap());
+            let o = zip::write::SimpleFileOptions::default();
+            z.start_file("yt-dlp.exe", o).unwrap();
+            z.write_all(b"x").unwrap();
+            z.add_symlink("_internal/l", "/etc/passwd", o).unwrap();
+            z.finish().unwrap();
+        }
+        let two = dir.path().join("two.zip");
+        unpacked_zip(
+            &two,
+            &[("yt-dlp.exe", b"x", 0o755), ("other.exe", b"x", 0o755)],
+        );
+        for bad in [&evil, &link, &two] {
+            assert!(
+                unpack_ytdlp(bad, &tools, "2", "s2").is_err(),
+                "{}",
+                bad.display()
+            );
+        }
+        assert!(!dir.path().join("evil.txt").exists());
+        assert_eq!(managed_path(&tools, Tool::YtDlp), exe);
+        assert_eq!(installed_ytdlp_sha256(&tools).unwrap(), "s1");
+        let names: Vec<String> = std::fs::read_dir(&tools)
+            .unwrap()
+            .flatten()
+            .map(|e| e.file_name().to_string_lossy().to_string())
+            .collect();
+        assert_eq!(names.len(), 2, "{names:?}"); // yt-dlp-1 and yt-dlp.json
+    }
+
+    #[test]
+    fn ytdlp_marker_is_ignored_when_broken_and_cleanup_removes_leftovers() {
+        let dir = tempfile::tempdir().unwrap();
+        let tools = dir.path();
+        std::fs::write(tools.join(Tool::YtDlp.exe_name()), b"single").unwrap();
+        // Points outside the tools folder / at nothing: the single file stays in use.
+        for marker in [
+            r#"{"dir":"..","exe":"yt-dlp","sha256":"x","tag":"t"}"#,
+            r#"{"dir":"yt-dlp-x","exe":"../../bin/sh","sha256":"x","tag":"t"}"#,
+            r#"{"dir":"yt-dlp-missing","exe":"yt-dlp","sha256":"x","tag":"t"}"#,
+            "not json",
+        ] {
+            std::fs::write(tools.join(YTDLP_MARKER), marker).unwrap();
+            assert_eq!(
+                managed_path(tools, Tool::YtDlp),
+                tools.join(Tool::YtDlp.exe_name()),
+                "{marker}"
+            );
+            cleanup_tools_dir(tools);
+            assert!(tools.join(Tool::YtDlp.exe_name()).exists(), "{marker}");
+        }
+        // Interrupted install (staging folder) and an old build: removed on start.
+        let archive = tools.join("a.zip");
+        unpacked_zip(
+            &archive,
+            &[("yt-dlp", b"new", 0o755), ("_internal/a", b"a", 0o644)],
+        );
+        std::fs::create_dir_all(tools.join(".yt-dlp-9.123-4-5.part/_internal")).unwrap();
+        std::fs::create_dir_all(tools.join("yt-dlp-0.9/_internal")).unwrap();
+        let exe = unpack_ytdlp(&archive, tools, "1.0", "s").unwrap();
+        std::fs::create_dir_all(tools.join("yt-dlp-0.8")).unwrap();
+        cleanup_tools_dir(tools);
+        assert!(exe.is_file());
+        assert!(!tools.join(".yt-dlp-9.123-4-5.part").exists());
+        assert!(!tools.join("yt-dlp-0.9").exists() && !tools.join("yt-dlp-0.8").exists());
+    }
+
+    #[test]
+    fn unpacked_asset_exists_where_the_single_file_does() {
+        assert_eq!(ytdlp_unpacked_asset().is_some(), ytdlp_asset().is_some());
     }
 
     #[test]

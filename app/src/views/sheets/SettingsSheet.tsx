@@ -543,11 +543,23 @@ function BrowserIntegration() {
   return (
     <>
       <p className="lead">The Prism extension hands downloads and videos to this app through a native messaging host.</p>
-      <div className={`banner ${status?.extensionConnected ? "banner--ok" : "banner--warn"}`}>
-        <Icon name={status?.extensionConnected ? "status-completed" : "warning"} size={18} />
+      <div className={`banner ${status?.extensionConnected && !status.extensionOutdated ? "banner--ok" : "banner--warn"}`}>
+        <Icon name={status?.extensionConnected && !status.extensionOutdated ? "status-completed" : "warning"} size={18} />
         <div>
-          <b>{status?.extensionConnected ? "Extension connected" : "Extension not seen recently"}</b>
-          <div className="t-small">{status?.lastSeen ? `Last message ${formatDate(status.lastSeen)}` : "Install the extension, then open any web page."}</div>
+          <b>
+            {status?.extensionOutdated
+              ? `The browser runs an older extension (${status.extensionVersion}, Prism is ${status.appVersion})`
+              : status?.extensionConnected
+                ? `Extension connected${status.extensionVersion ? ` · ${status.extensionVersion}` : ""}`
+                : "Extension not seen recently"}
+          </b>
+          <div className="t-small">
+            {status?.extensionOutdated
+              ? "Browsers don't reload an unpacked extension's files by themselves. Click ↻ Reload next to Prism on the extensions page; if it stays old, remove it and load it again from the folder below."
+              : status?.lastSeen
+                ? `Last message ${formatDate(status.lastSeen)}`
+                : "Install the extension, then open any web page."}
+          </div>
         </div>
         <span className="spacer" />
         <button type="button" className="btn btn--primary" disabled={busy} onClick={repair}>

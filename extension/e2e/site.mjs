@@ -24,9 +24,9 @@ const feed = () => `<!doctype html>
 <html><head><meta charset="utf-8"><title>Feed | Prism e2e</title>
 <style>body{font:15px system-ui;margin:24px;background:#f4f2ee} .post{background:#fff;margin:0 0 40px;padding:12px;width:640px} video{display:block;background:#123}</style></head>
 <body>
-  <div class="post" data-urn="urn:li:activity:1"><p>Promoted</p>
+  <div class="post" data-urn="urn:li:fsd_update:(urn:li:activity:7000000000000000001,MAIN_FEED,EMPTY,DEFAULT,false)"><p>Promoted</p>
     <video id="ad" class="vjs-tech" src="/media/ad.mp4" width="640" height="360" muted autoplay loop playsinline preload="auto"></video></div>
-  <div class="post" data-urn="urn:li:activity:2"><p>A post with a video</p>
+  <div class="post" data-urn="urn:li:activity:7000000000000000002"><p>A post with a video</p>
     <video id="post" class="vjs-tech" src="/media/post-640p.mp4" width="640" height="360" muted playsinline preload="auto"
       data-sources='[{"src":"/media/post-360p.mp4","type":"video/mp4"},{"src":"/media/post-720p.mp4","type":"video/mp4"},{"src":"/media/post-640p.mp4","type":"video/mp4"}]'></video></div>
   <p style="height:600px">filler</p>
@@ -42,6 +42,8 @@ const timeline = () => `<!doctype html>
     <video id="t1" src="/media/clip.mp4" width="640" height="360" muted preload="auto"></video></article>
   <article><a href="/bob">Bob</a> · <a href="/bob/status/222/analytics">stats</a> · <a href="/bob/status/222">3h</a>
     <video id="t2" src="/media/post-640p.mp4" width="640" height="360" muted preload="auto"></video></article>
+  <article><a href="/carol">Carol</a> · <a href="/carol/status/333">5h</a>
+    <video id="t4" src="/media/clip.mp4" width="640" height="360" muted preload="auto"></video></article>
   <a href="/reel/R1abc/" title="Instagram Explore style tile"><video id="t3" src="/media/post-360p.mp4" width="640" height="360" muted preload="auto"></video></a>
   <p style="height:600px">filler</p>
 </body></html>`;

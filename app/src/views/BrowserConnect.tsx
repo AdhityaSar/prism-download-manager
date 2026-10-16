@@ -230,6 +230,7 @@ function FakeButton({ label }: { label: string }) {
 }
 
 const DISMISS_KEY = "prism.connectBanner.dismissed";
+const OUTDATED_DISMISS_KEY = "prism.extensionOutdatedDismissed";
 
 /**
  * Slim reminder above the download list until the extension has ever connected (for people who
@@ -244,9 +245,29 @@ export function ConnectBanner({ onOpen }: { onOpen: () => void }) {
       return false;
     }
   });
+  // An extension older than the app: after an update the browser keeps running the old files
+  // of an unpacked extension until it is reloaded. Hidden per version pair once dismissed.
+  const outdatedKey = status?.extensionOutdated ? `${status.extensionVersion}>${status.appVersion}` : "";
+  const [outdatedDismissed, setOutdatedDismissed] = useState<string | null>(() => {
+    try {
+      return localStorage.getItem(OUTDATED_DISMISS_KEY);
+    } catch {
+      return null;
+    }
+  });
   const onboarded = useApp((st) => st.settings?.onboardingDone ?? true);
-  const show = onboarded && !!status && !status.lastSeen && !dismissed;
+  const outdated = !!outdatedKey && outdatedDismissed !== outdatedKey;
+  const show = outdated || (onboarded && !!status && !status.lastSeen && !dismissed);
   const dismiss = () => {
+    if (outdated) {
+      setOutdatedDismissed(outdatedKey);
+      try {
+        localStorage.setItem(OUTDATED_DISMISS_KEY, outdatedKey);
+      } catch {
+        /* private storage unavailable: hide for this session only */
+      }
+      return;
+    }
     setDismissed(true);
     try {
       localStorage.setItem(DISMISS_KEY, "1");
@@ -270,11 +291,17 @@ export function ConnectBanner({ onOpen }: { onOpen: () => void }) {
               <span className="cbanner__icon">
                 <Icon name="browser" size={16} />
               </span>
-              <span className="cbanner__txt">
-                <b>Catch downloads straight from your browser.</b> Add the Prism extension — it takes about a minute.
-              </span>
+              {outdated ? (
+                <span className="cbanner__txt">
+                  <b>Your browser still runs an older Prism extension</b> ({status?.extensionVersion}, Prism is {status?.appVersion}). Reload it: on {OS === "mac" ? "chrome://extensions" : "chrome://extensions or edge://extensions"} click ↻ next to Prism.
+                </span>
+              ) : (
+                <span className="cbanner__txt">
+                  <b>Catch downloads straight from your browser.</b> Add the Prism extension — it takes about a minute.
+                </span>
+              )}
               <button type="button" className="btn btn--primary btn--sm" onClick={onOpen}>
-                Connect browser
+                {outdated ? "Show how" : "Connect browser"}
               </button>
               <button type="button" className="tb-btn" aria-label="Hide this reminder" data-tip="Hide" onClick={dismiss}>
                 <Icon name="close" size={14} />

@@ -18,6 +18,7 @@ if (!window.__prismContentLoaded) {
   const apply = (raw: unknown) => {
     const st = normalizeState(raw);
     setBypassKey(st.settings.bypassKey);
+    button.setVideoSites(st.settings.videoSites);
     const enable = () => button.setEnabled(st.settings.showVideoButton);
     if (document.documentElement) enable();
     else document.addEventListener('DOMContentLoaded', enable, { once: true });

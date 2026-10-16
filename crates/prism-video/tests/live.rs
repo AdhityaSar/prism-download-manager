@@ -91,8 +91,9 @@ async fn ensure_tools_downloads_ytdlp_and_deno_with_checksums() {
     eprintln!("update #1: {up:?}");
     assert!(matches!(up, UpdateOutcome::UpToDate { .. }));
 
-    // Corrupt the managed copy -> hash differs -> re-downloaded and verified.
-    let managed = dir.path().join(Tool::YtDlp.exe_name());
+    // Damage the managed copy (the unpacked build's executable) -> it no longer starts ->
+    // re-downloaded and verified.
+    let managed = status.yt_dlp.path.clone().unwrap();
     std::fs::write(&managed, b"not yt-dlp").unwrap();
     let up = svc.update_ytdlp().await.unwrap();
     eprintln!("update #2: {up:?}");
@@ -506,4 +507,62 @@ async fn linkedin_post_permalink_with_session_cookies() {
         kinds.contains(&"video".to_string()) && kinds.contains(&"audio".to_string()),
         "{kinds:?}"
     );
+}
+
+/// Managed yt-dlp is the unpacked build: installed fresh, migrated from a single-file install by
+/// the automatic update, up to date afterwards, and quick to start.
+#[tokio::test]
+#[ignore]
+async fn unpacked_ytdlp_install_migration_update_and_start_time() {
+    let dir = tempfile::tempdir().unwrap();
+    let tools = dir.path().join("tools");
+    // An old single-file install (what 1.0.5 and earlier left behind).
+    std::fs::create_dir_all(&tools).unwrap();
+    std::fs::write(tools.join(Tool::YtDlp.exe_name()), b"old single-file build").unwrap();
+    let svc = VideoService::new(tools.clone(), VideoOptions::default());
+    let out = svc.update_ytdlp().await.expect("update");
+    eprintln!("update from the single file: {out:?}");
+    assert!(matches!(out, UpdateOutcome::Updated { .. }), "{out:?}");
+    let st = svc.tool_status().await;
+    let yt = st.get(Tool::YtDlp);
+    let exe = yt.path.clone().expect("yt-dlp path");
+    eprintln!("yt-dlp {:?} at {}", yt.version, exe.display());
+    assert_eq!(yt.source, ToolSource::Managed);
+    assert!(
+        exe.parent()
+            .unwrap()
+            .file_name()
+            .unwrap()
+            .to_string_lossy()
+            .starts_with("yt-dlp-"),
+        "{}",
+        exe.display()
+    );
+    assert!(
+        !tools.join(Tool::YtDlp.exe_name()).exists(),
+        "single file removed"
+    );
+    let again = svc.update_ytdlp().await.expect("update again");
+    assert!(matches!(again, UpdateOutcome::UpToDate { .. }), "{again:?}");
+    // Start time of the unpacked build.
+    let mut times = Vec::new();
+    for _ in 0..3 {
+        let t = std::time::Instant::now();
+        let o = Command::new(&exe).arg("--version").output().unwrap();
+        assert!(o.status.success());
+        times.push(t.elapsed().as_millis());
+    }
+    eprintln!("unpacked yt-dlp --version: {times:?} ms");
+    // And it works: a real probe.
+    let svc2 = VideoService::new(tools.clone(), VideoOptions::default());
+    let t = std::time::Instant::now();
+    let probe = svc2
+        .probe(
+            "https://www.linkedin.com/feed/update/urn:li:activity:7151241570371948544/",
+            &RequestContext::default(),
+        )
+        .await
+        .expect("probe");
+    eprintln!("probe {} ms", t.elapsed().as_millis());
+    assert!(matches!(probe, Probe::Video(_)));
 }

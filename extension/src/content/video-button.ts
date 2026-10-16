@@ -5,7 +5,8 @@
  */
 import { sendInternal } from '../shared/api';
 import { icons, prismMark } from '../shared/icons';
-import { type ElementSource, elementSources, postUrl } from '../shared/media';
+import { type ElementSource, elementSources, linkedinPostPath, postUrl } from '../shared/media';
+import { siteMatches } from '../shared/rules';
 import type { ActionResult, VideoOption, VideoOptionsResult } from '../shared/messages';
 import { VIDEO_BUTTON_CSS } from './styles';
 
@@ -55,10 +56,18 @@ function postUrlOf(v: HTMLVideoElement, pageUrl: string): string | undefined {
   // A grid tile that links to its post (Instagram Explore, profile grids).
   const tile = postUrl((composedClosest(v, 'a[href]') as HTMLAnchorElement | null)?.href, pageUrl);
   if (tile) return tile;
-  // LinkedIn: feed posts are <div data-urn="urn:li:activity:…"> without a link to themselves.
-  const li = composedClosest(v, '[data-urn^="urn:li:activity:"], [data-id^="urn:li:activity:"]');
-  const urn = [li?.getAttribute('data-urn'), li?.getAttribute('data-id')].find((x) => x && /^urn:li:activity:\d+$/.test(x));
-  if (urn) return postUrl(`/feed/update/${urn}/`, pageUrl);
+  // LinkedIn: feed posts carry their id in attributes (data-urn, data-id, composite ids), not
+  // a link to themselves. The nearest container with one is the post (for a reshare: the
+  // original); stop before a container that holds another video (that's the feed around it).
+  if (/(^|\.)linkedin\.com$/.test(location.hostname)) {
+    for (let n: Element | null = v, i = 0; n && i < 30; i++) {
+      if (n !== v && n.querySelectorAll('video').length > 1) break;
+      const path = linkedinPostPath([...n.attributes].map((a) => a.value));
+      if (path) return postUrl(path, pageUrl);
+      const root = n.getRootNode();
+      n = n.parentElement ?? (root instanceof ShadowRoot ? root.host : null);
+    }
+  }
   const post = composedClosest(v, 'article, [role="article"], shreddit-post');
   if (!post) return undefined;
   const links = [post.getAttribute('permalink'), ...[...post.querySelectorAll<HTMLAnchorElement>('a[href]')].map((a) => a.href)];
@@ -90,11 +99,18 @@ export class VideoButton {
   private overUi = false;
   private menuOpen = false;
   private enabled = false;
+  private videoSites: string[] = [];
+  private prefetchTimer: ReturnType<typeof setTimeout> | undefined;
+  private restPrefetch: Promise<void> | undefined;
   private observer: MutationObserver | null = null;
   private cache = new Map<string, { at: number; res: Promise<VideoOptionsResult | undefined> }>();
   private scanQueued = false;
   /** The video under the last right-click (for the context menu's "Download with Prism"). */
   private contextVideo: { v: HTMLVideoElement; at: number } | null = null;
+
+  setVideoSites(sites: string[]): void {
+    this.videoSites = sites;
+  }
 
   setEnabled(on: boolean): void {
     if (on === this.enabled) return;
@@ -293,6 +309,17 @@ export class VideoButton {
     this.ensureHost();
     this.attachHost();
     this.current = v;
+    // Start reading the qualities while the pointer rests on the video, so the menu is ready
+    // (or nearly) when it opens. A short wait skips videos merely crossed on the way; one at a
+    // time, as scrolling a feed under a resting pointer would start one per video.
+    clearTimeout(this.prefetchTimer);
+    this.prefetchTimer = setTimeout(() => {
+      if (this.current !== v || this.restPrefetch) return;
+      const done = () => {
+        this.restPrefetch = undefined;
+      };
+      this.restPrefetch = this.options().then(done, done);
+    }, 400);
     this.resetPill();
     this.position();
     this.wrap.classList.add('show');
@@ -308,6 +335,7 @@ export class VideoButton {
 
   private hide(force = false): void {
     if (!this.host) return;
+    clearTimeout(this.prefetchTimer);
     if (!force && (this.menuOpen || this.overUi)) return;
     this.closeMenu();
     this.wrap.classList.remove('show');
@@ -414,7 +442,7 @@ export class VideoButton {
   private options(): Promise<VideoOptionsResult | undefined> {
     const c = this.context();
     const hit = this.cache.get(c.key);
-    if (hit && Date.now() - hit.at < 60_000) return hit.res;
+    if (hit && Date.now() - hit.at < 600_000) return hit.res;
     const res = sendInternal<VideoOptionsResult>({ kind: 'videoOptions', pageUrl: c.pageUrl, title: c.title, sources: c.sources, ...(c.postUrl ? { postUrl: c.postUrl } : {}) });
     this.cache.set(c.key, { at: Date.now(), res });
     // Don't cache failures/empties for long.
@@ -446,6 +474,19 @@ export class VideoButton {
     this.position();
     const ctx = this.context();
     this.menu.innerHTML = `<div class="loading"><span class="spin"></span>Finding qualities…</div>`;
+    // On a video site's single post / video page "Best quality" works right away: the app picks
+    // the best format (within the preferred quality) once it has read the page.
+    const best = this.bestTarget(ctx);
+    if (best) {
+      this.menu.insertAdjacentHTML(
+        'beforeend',
+        `<button class="item" role="menuitem" data-id="best"><span class="ic">${icons.film(18)}</span><span class="tx"><span class="l">Best quality</span><span class="d">Download now, without waiting for the list</span></span><span class="go">${icons.download(16)}</span></button>`,
+      );
+      this.menu.querySelector<HTMLButtonElement>('.item[data-id="best"]')!.addEventListener('click', (e) => {
+        e.stopPropagation();
+        void this.choose({ id: 'fmt:best', label: 'Best quality', group: 'video', formatId: 'best' }, ctx.title, best);
+      });
+    }
     const res = await this.options();
     if (!this.menuOpen) return;
     this.renderMenu(ctx.title, res);
@@ -486,6 +527,12 @@ export class VideoButton {
         if (opt) void this.choose(opt, res.title || title, opt.formatId ? res.pageUrl : undefined);
       });
     });
+  }
+
+  /** Where "Best quality" can go before the list is in: a video site's single post or video page. */
+  private bestTarget(c: { pageUrl: string; postUrl?: string }): string | undefined {
+    const page = c.postUrl ?? (postUrl(c.pageUrl, c.pageUrl) ? c.pageUrl : undefined);
+    return page && this.videoSites.some((s) => siteMatches(page, s)) ? page : undefined;
   }
 
   /** `pageUrl`: the page the app read this format from (the post on a feed), else this page. */
