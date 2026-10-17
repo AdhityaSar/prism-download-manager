@@ -7,12 +7,13 @@ on:
       - "site/**"
       - ".github/workflows/pages.yml"
   # Refreshes the README badge data (site/release.json, downloads.json, tests.json): after CI and
-  # release builds finish, and hourly for the download count.
+  # release builds finish, and every 15 minutes for the download count (GitHub delays or skips
+  # scheduled runs under load: hourly ones left the badge hours behind).
   workflow_run:
     workflows: ["CI", "Release builds"]
     types: [completed]
   schedule:
-    - cron: "23 * * * *"
+    - cron: "8,23,38,53 * * * *"
   workflow_dispatch:
 
 permissions:
