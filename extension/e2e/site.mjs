@@ -74,6 +74,23 @@ const timeline = () => `<!doctype html>
   <p style="height:600px">filler</p>
 </body></html>`;
 
+// A player that loads HLS manifests from script (as hls.js does): `src` is the manifest path on this
+// host, or a full URL (another host: the cross-site case); a second one on `/slow/` hangs in the app.
+const hlsPage = (src) => `<!doctype html>
+<html><head><meta charset="utf-8"><title>HLS player | Prism e2e</title></head>
+<body style="margin:24px"><video id="hv" width="640" height="360" muted style="display:block;background:#123"></video>
+<script>fetch(${JSON.stringify(src)}, { mode: 'no-cors' }); fetch('/hls/slow/master.m3u8');</script>
+<p style="height:600px">filler</p></body></html>`;
+
+const MASTER = `#EXTM3U
+#EXT-X-STREAM-INF:BANDWIDTH=800000,RESOLUTION=640x360
+v360.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=5000000,RESOLUTION=1920x1080
+v1080.m3u8
+#EXT-X-STREAM-INF:BANDWIDTH=2000000,RESOLUTION=1280x720
+v720.m3u8
+`;
+
 const PNG = Buffer.from('89504e470d0a1a0a0000000d4948445200000001000000010806000000' + '1f15c4890000000d49444154789c6360000002000154a24f5d0000000049454e44ae426082', 'hex');
 
 export async function startSite() {
@@ -102,6 +119,14 @@ export async function startSite() {
     if (url.pathname === '/cards.html') {
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
       return res.end(cards());
+    }
+    if (url.pathname === '/hls.html') {
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' });
+      return res.end(hlsPage(url.searchParams.get('src') ?? '/hls/master.m3u8'));
+    }
+    if (url.pathname.startsWith('/hls/') && url.pathname.endsWith('.m3u8')) {
+      res.writeHead(200, { 'Content-Type': 'application/vnd.apple.mpegurl', 'Access-Control-Allow-Origin': '*' });
+      return res.end(MASTER);
     }
     if (url.pathname === '/about.html') {
       res.writeHead(200, { 'Content-Type': 'text/html' });

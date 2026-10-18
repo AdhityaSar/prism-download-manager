@@ -4,6 +4,7 @@ import { type ElementSource, type MediaItem, elementMedia, mediaDetail, mediaLab
 import type { VideoOption, VideoOptionsResult } from '../shared/messages';
 import type { VideoRequest, VideoStream } from '../shared/protocol';
 import { siteMatches } from '../shared/rules';
+import { variantOptions } from '../shared/variants';
 import { actionTimeout, cookieHeaderFor, tabInfo, userAgent } from './context';
 import { native } from './native';
 import { getTabMedia } from './sniffer';
@@ -25,6 +26,43 @@ export function streamOf(m: MediaItem): VideoStream {
 }
 
 const rank = (m: MediaItem) => (m.kind === 'hls' || m.kind === 'dash' ? 0 : m.kind === 'video' ? 1 : 2);
+
+const option = (m: MediaItem, group: VideoOption['group']): VideoOption => ({ id: `s:${m.key}`, label: mediaLabel(m), detail: mediaDetail(m), group, stream: streamOf(m) });
+
+/** At most this many manifests are read for their qualities per menu, each for at most this long:
+ *  the menu waits for them, and a slow or failing one keeps its single entry. */
+const EXPAND_MAX = 4;
+const EXPAND_TIMEOUT_MS = 3000;
+
+/**
+ * A sniffed HLS/DASH manifest is one request, but it can declare several qualities, of which the
+ * player fetches one. The app reads the manifest and the menu lists them all; on any failure the
+ * stream keeps its single entry.
+ */
+async function expandStream(m: MediaItem, group: VideoOption['group'], pageUrl: string, incognito: boolean): Promise<VideoOption[]> {
+  const base = option(m, group);
+  if (m.kind !== 'hls' && m.kind !== 'dash') return [base];
+  try {
+    const reply = await native.request(
+      {
+        type: 'probeStream',
+        url: m.url,
+        kind: m.kind,
+        ...(m.headers ? { headers: m.headers } : {}),
+        // Opening the menu is not picking this stream: as for a captured download, no SameSite=Strict
+        // cookie unless the page that loaded the manifest is on the manifest's own host.
+        cookies: await cookieHeaderFor(m.url, incognito, undefined, { initiator: m.frameUrl ?? m.headers?.Referer }),
+        pageUrl,
+        userAgent: userAgent(),
+      },
+      { timeoutMs: EXPAND_TIMEOUT_MS },
+    );
+    return variantOptions(base, m.kind, reply.variants ?? []) ?? [base];
+  } catch {
+    // Timeout, an older app without probeStream, or a manifest the app declined (live, DRM).
+    return [base];
+  }
+}
 
 function noticeFor(err: NativeError): string {
   switch (err.code) {
@@ -90,8 +128,12 @@ export async function videoOptions(
   const own = elementMedia(msg.sources ?? [], media, msg.pageUrl);
   const ownKeys = new Set(own.map((m) => m.key));
   const rest = media.filter((m) => !ownKeys.has(m.key)).sort((a, b) => rank(a) - rank(b) || (b.size ?? 0) - (a.size ?? 0));
-  const option = (m: MediaItem, group: VideoOption['group']): VideoOption => ({ id: `s:${m.key}`, label: mediaLabel(m), detail: mediaDetail(m), group, stream: streamOf(m) });
-  const options = [...own.map((m) => option(m, 'element')), ...rest.map((m) => option(m, 'stream'))];
+  const incognito = !!tab?.incognito;
+  let budget = EXPAND_MAX;
+  const entries = (m: MediaItem, group: VideoOption['group']) =>
+    (m.kind === 'hls' || m.kind === 'dash') && budget-- > 0 ? expandStream(m, group, msg.pageUrl, incognito) : Promise.resolve([option(m, group)]);
+  const expanded = await Promise.all([...own.map((m) => entries(m, 'element')), ...rest.map((m) => entries(m, 'stream'))]);
+  const options = expanded.flat();
   return { source: 'sniffed', options, ...(notice ? { notice } : {}) };
 }
 

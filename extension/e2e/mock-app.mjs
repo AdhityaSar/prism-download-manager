@@ -22,6 +22,13 @@ export const MOCK_FORMATS = [
   { id: '140', label: 'Audio · M4A · 4 MB', kind: 'audio', ext: 'm4a', size: 4194304 },
 ];
 
+/** The qualities every sniffed manifest declares (`probeStream`), in manifest order. */
+export const MOCK_VARIANTS = [
+  { index: 0, url: 'v360.m3u8', bandwidth: 800000, width: 640, height: 360 },
+  { index: 1, url: 'v1080.m3u8', bandwidth: 5000000, width: 1920, height: 1080 },
+  { index: 2, url: 'v720.m3u8', bandwidth: 2000000, width: 1280, height: 720 },
+];
+
 function reply(msg) {
   switch (msg.type) {
     case 'hello':
@@ -36,6 +43,8 @@ function reply(msg) {
       return { ok: true, accepted: true };
     case 'probeVideo':
       return { ok: true, title: 'Mock video', formats: MOCK_FORMATS };
+    case 'probeStream':
+      return { ok: true, variants: MOCK_VARIANTS.map((v) => ({ ...v, url: new URL(v.url, msg.url).href })) };
     case 'open':
       return { ok: true };
     default:
@@ -77,7 +86,9 @@ export async function startMockApp(dataDir) {
       }
       // A post that takes a while to read (the "Best quality" item shows while waiting).
       const slow = msg.type === 'probeVideo' && String(msg.pageUrl).endsWith('/status/333');
-      setTimeout(() => send(200, reply(msg)), slow ? 2000 : 0);
+      // A manifest server that hangs: the video menu must not wait for it.
+      const hung = msg.type === 'probeStream' && String(msg.url).includes('/slow/');
+      setTimeout(() => send(200, reply(msg)), hung ? 10000 : slow ? 2000 : 0);
     });
   });
   await new Promise((r) => server.listen(0, '127.0.0.1', r));

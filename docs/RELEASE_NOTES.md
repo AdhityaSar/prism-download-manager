@@ -1,63 +1,55 @@
-# Prism 1.0.8 — One beam. Many rays.
+# Prism 1.0.9 — One beam. Many rays.
 
 A fast, open-source download manager for Windows, Linux and macOS, with browser integration
 and video downloads.
 
-## What's new in 1.0.8 — security fixes
+## What's new in 1.0.9
 
-* **Linux: your browser cookies are no longer readable by other accounts on the computer.**
-  When Prism handed a page's cookies to yt-dlp for a video, it wrote them to a file in `/tmp`
-  that every account could read. The file is now private to you (0600) and has a random
-  name, and files a crash left behind are removed. macOS and Windows keep temporary files per
-  user and weren't affected.
-* **The browser extension no longer adds SameSite=Strict cookies to downloads another site
-  started.** A web page could start a download of a URL on another site, and Prism fetched it
-  with that site's Strict cookies, which the browser had deliberately left out. Prism now adds
-  them only where the browser itself would send them.
-* The in-page *Download video* button now reacts only to your own clicks, not to clicks a page
-  script fakes.
-* Both issues were reported privately by [@pepopepopepo](https://github.com/pepopepopepo) —
-  thank you!
+* **Choose the quality of a stream a page plays.** When a page plays an HLS or DASH stream,
+  the video menu lists its qualities (1080p, 720p, …) instead of a single *Stream* entry, and
+  Prism downloads the one you pick.
+* **Picking a video quality opens the Download File window**, where you can rename the file or
+  choose the folder, as for any other download. To start right away, turn off *Show the
+  Download File dialog* in Settings › General.
+* **"Open a progress window for new downloads" works.** The setting did nothing. A new download
+  now opens a small progress window, which closes when the download finishes.
+* Videos you need to be signed in for list their qualities on the first try: Prism reads the
+  page with your browser's cookies, as it already did for the download.
+* Qualities are named as the video names them: some videos showed *1608p* instead of *1080p*.
+* Smaller fixes: a slow speed no longer shows as *7.083333333333334 B/s*; the speed chart stays
+  inside its panel; Settings › Browser integration shows *Repair* only when something needs
+  repairing; the details and progress windows can't be shrunk until their content overlaps; an
+  unknown file size shows *N/A*.
+* These come from a pull request by [@uuc110](https://github.com/uuc110) — thank you!
 * **After updating, click ↻ next to Prism on `chrome://extensions`** (or restart the browser)
-  so it loads the new extension (1.0.8). If you installed it from a downloaded
-  `prism-chromium.zip`, use the 1.0.8 zip.
+  so it loads the new extension (1.0.9). If you installed it from a downloaded
+  `prism-chromium.zip`, use the 1.0.9 zip.
 
-### Also new since 1.0.6 (Prism 1.0.7)
+### Also new since 1.0.7 (Prism 1.0.8): security fixes
 
-* **LinkedIn: the Download video button finds the post in LinkedIn's new design** (feed, search
-  and company pages), where nothing around the video names its post
-  ([#1](https://github.com/FortoGraphy/prism-download-manager/issues/1)). Prism reads the post
-  from its text and offers that post's video, never a neighbour's. For a post without text,
-  Prism says to open the post.
-* **Updates are found sooner:** Prism looks for a new version every hour, and again when you
-  come back to it after half an hour (it was every 6 hours).
-* **AppImage: the browser keeps the extension after Prism restarts.** The folder Prism showed
-  for the extension disappeared with every restart of the AppImage. Prism now keeps it in
-  `~/.local/share/prism/extension` — open Settings › Browser integration and load the extension
-  from the folder shown there once.
-* The reminder about an older browser extension also suggests restarting the browser.
+* Linux: the browser cookies Prism hands to yt-dlp for a video are no longer readable by other
+  accounts on the computer.
+* The browser extension no longer adds SameSite=Strict cookies to downloads another site
+  started, and the in-page *Download video* button reacts only to your own clicks.
+* Both were reported privately by [@pepopepopepo](https://github.com/pepopepopepo) — thank you!
 
-### Prism 1.0.6
+### Prism 1.0.7
 
-* Video menus open faster: Prism runs yt-dlp's unpacked build (about a third of the start-up
-  time), reads the video while the pointer rests on it, answers at once for a page it read in
-  the last 10 minutes and offers **Best quality** right away.
-* Prism tells you when the browser still runs an older extension; Settings › Browser
-  integration shows the extension's version.
-* LinkedIn and Instagram feed, company, profile and Explore pages get a clear message at once;
-  errors from pages Prism can't read say what to do. The macOS DMG guide points to the
-  extension folder Prism keeps up to date.
+* LinkedIn: the Download video button finds the post in LinkedIn's new design
+  ([#1](https://github.com/FortoGraphy/prism-download-manager/issues/1)).
+* Updates are found sooner (every hour, and when you come back to Prism after half an hour).
+* AppImage: the browser keeps the extension after Prism restarts.
 
 ## Downloads
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.0.8_x64-setup.exe` (recommended) · `Prism_1.0.8_x64_en-US.msi` (all users) · `Prism-1.0.8-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.0.8_aarch64.dmg` |
-| macOS — Intel | `Prism_1.0.8_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.0.8_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.0.8-1.x86_64.rpm` |
-| Any Linux | `Prism_1.0.8_amd64.AppImage` |
+| Windows 10 / 11 | `Prism_1.0.9_x64-setup.exe` (recommended) · `Prism_1.0.9_x64_en-US.msi` (all users) · `Prism-1.0.9-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.0.9_aarch64.dmg` |
+| macOS — Intel | `Prism_1.0.9_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.0.9_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.0.9-1.x86_64.rpm` |
+| Any Linux | `Prism_1.0.9_amd64.AppImage` |
 | Browser extension | `prism-chromium.zip` (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·

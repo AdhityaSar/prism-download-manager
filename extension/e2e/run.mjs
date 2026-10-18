@@ -341,6 +341,65 @@ try {
     }
   });
 
+  await step('(2h) an HLS stream lists its qualities, a hung manifest does not hold the menu, the pick reaches the app', async () => {
+    const u = new URL(site.origin);
+    await context.addCookies([{ name: 'strictsess', value: 's1', domain: u.hostname, path: '/', sameSite: 'Strict', httpOnly: true }]);
+    const hp = await context.newPage();
+    try {
+      // Load the player page, wait until both manifests are sniffed, hover the player, open the menu.
+      const openMenu = async (pageUrl, manifest) => {
+        await hp.goto(pageUrl);
+        await until(() => sw.evaluate(async ([url, a]) => {
+          const id = (await chrome.tabs.query({})).find((t) => t.url === url)?.id;
+          const list = id === undefined ? [] : ((await chrome.storage.session.get(`media:${id}`))[`media:${id}`] ?? []);
+          return list.some((m) => m.url === a) && list.some((m) => m.url.includes('/hls/slow/'));
+        }, [pageUrl, manifest]), 5000, `sniffed ${manifest}`);
+        const box = await hp.locator('#hv').boundingBox();
+        const since = Date.now();
+        await hp.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+        await hp.mouse.move(box.x + box.width / 2 + 10, box.y + box.height / 2 + 5);
+        const pill = hp.locator('[data-prism-video-button] .pill');
+        await pill.waitFor({ state: 'visible', timeout: 3000 });
+        const clicked = Date.now();
+        await pill.click();
+        await hp.locator('[data-prism-video-button] .item').first().waitFor({ state: 'visible', timeout: 8000 });
+        const waited = Date.now() - clicked;
+        const labels = await hp.locator('[data-prism-video-button] .item .l').allTextContents();
+        return { since, waited, labels };
+      };
+
+      const master = `${site.origin}/hls/master.m3u8`;
+      const own = await openMenu(`${site.origin}/hls.html`, master);
+      assert.ok(own.waited < 4500, `the menu waited ${own.waited} ms for a hung manifest`);
+      assert.deepEqual(own.labels.slice(0, 3), ['1080p', '720p', '360p'], `menu: ${own.labels.join(' | ')}`);
+      assert.equal(own.labels.length, 4, `the hung manifest keeps one entry: ${own.labels.join(' | ')}`);
+      const probe = (await mock.waitFor((m) => m.type === 'probeStream' && m.url === master, 3000, { since: own.since })).msg;
+      assert.equal(probe.kind, 'hls');
+      assert.match(probe.cookies, /(^|; )strictsess=s1(;|$)/, `the site's own manifest lost the Strict cookie: ${probe.cookies}`);
+      await hp.screenshot({ path: join(shots, 'video-button-hls.png') });
+      const since = Date.now();
+      await hp.locator('[data-prism-video-button] .item', { hasText: '720p' }).click();
+      const { msg } = await mock.waitFor((m) => m.type === 'video', 3000, { since });
+      assert.equal(msg.streams.length, 1);
+      assert.equal(msg.streams[0].url, master);
+      assert.equal(msg.streams[0].kind, 'hls');
+      assert.equal(msg.streams[0].variantIndex, 2, 'MOCK_VARIANTS lists 720p third');
+      assert.equal(msg.streams[0].quality, '720p');
+      await hp.keyboard.press('Escape');
+
+      // Another site's player loads this site's manifest: reading its qualities sends no Strict cookie.
+      const xManifest = `${site.origin}/hls/x/master.m3u8`;
+      const other = `http://localhost:${u.port}/hls.html?src=${encodeURIComponent(xManifest)}`;
+      const cross = await openMenu(other, xManifest);
+      const xProbe = (await mock.waitFor((m) => m.type === 'probeStream' && m.url === xManifest, 3000, { since: cross.since })).msg;
+      assert.ok(!/(^|; )strictsess=/.test(xProbe.cookies), `Strict cookie sent for another site's manifest: ${xProbe.cookies}`);
+      return `menu in ${own.waited} ms: ${own.labels.join(' | ')} · picked 720p (index 2) · cross-site cookies: "${xProbe.cookies}"`;
+    } finally {
+      await hp.close();
+      await context.clearCookies({ name: 'strictsess' });
+    }
+  });
+
   await step('(2b) on a "video site" the button lists app formats (probeVideo) and sends the chosen formatId', async () => {
     // Treat the test origin as a yt-dlp site (local override), then reload so the content script starts fresh.
     await sw.evaluate(async () => {

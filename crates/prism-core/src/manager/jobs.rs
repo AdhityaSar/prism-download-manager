@@ -11,7 +11,7 @@ use parking_lot::Mutex;
 use prism_engine::{
     ConflictPolicy, Credentials, DownloadEvent, DownloadHandle, DownloadRequest, DownloadState,
     EngineConfig, EngineError, ExpectedChecksum, HttpPreference, MediaKind, MediaRequest,
-    ProxyConfig, ResumeState, SegmentStatus, Url,
+    ProxyConfig, ResumeState, SegmentStatus, Url, VariantSelection,
 };
 use prism_video::{
     AudioFormat, Choice, ChoiceKind, Container, OutputOptions, Plan, Probe, RequestContext,
@@ -561,6 +561,16 @@ fn spawn_engine(core: &Core, item: &DownloadItem, media: bool) -> Result<Job> {
         m.connections = req.connections;
         m.speed_limit = req.speed_limit;
         m.max_retries = req.max_retries;
+        // The quality picked from the page menu (`NewItem::variant`), stored next to the
+        // request: `DownloadRequest` has no such field.
+        if let Some(sel) = item
+            .request
+            .as_ref()
+            .and_then(|r| r.get("variant"))
+            .and_then(|v| serde_json::from_value::<VariantSelection>(v.clone()).ok())
+        {
+            m.variant = sel;
+        }
         core.0.engine.start_media(m, resume, limiters)
     } else {
         core.0.engine.start(req, resume, limiters)
@@ -1318,7 +1328,11 @@ fn recent_probe(core: &Core, page_url: &str) -> Option<serde_json::Value> {
 
 /// Probe a video page for the quality picker: a recent result is reused and a probe of the
 /// same page that is already running is waited for.
-pub(crate) async fn probe_video(core: &Core, page_url: &str) -> Result<serde_json::Value> {
+pub(crate) async fn probe_video(
+    core: &Core,
+    page_url: &str,
+    ctx: RequestContext,
+) -> Result<serde_json::Value> {
     if let Some(p) = recent_probe(core, page_url) {
         return Ok(p);
     }
@@ -1334,7 +1348,7 @@ pub(crate) async fn probe_video(core: &Core, page_url: &str) -> Result<serde_jso
         match recent_probe(core, page_url) {
             Some(p) => Ok(p),
             None => {
-                let res = run_probe_video(core, page_url).await;
+                let res = run_probe_video(core, page_url, ctx).await;
                 if let Ok(p) = &res {
                     core.0
                         .state
@@ -1356,8 +1370,13 @@ pub(crate) async fn probe_video(core: &Core, page_url: &str) -> Result<serde_jso
     res
 }
 
-/// Resolve a page with yt-dlp for the quality picker (raw `prism_video::Probe` JSON).
-async fn run_probe_video(core: &Core, page_url: &str) -> Result<serde_json::Value> {
+/// Resolve a page with yt-dlp for the quality picker (raw `prism_video::Probe` JSON). The
+/// extension's cookies and User-Agent for the page come along in `ctx`.
+async fn run_probe_video(
+    core: &Core,
+    page_url: &str,
+    ctx: RequestContext,
+) -> Result<serde_json::Value> {
     let video = &core.0.video;
     let status = video.tool_status().await;
     if status.yt_dlp.path.is_none() || status.deno.path.is_none() {
@@ -1374,7 +1393,7 @@ async fn run_probe_video(core: &Core, page_url: &str) -> Result<serde_json::Valu
             .map_err(|e| anyhow!("{e}"))?;
     }
     let probe = video
-        .probe(page_url, &RequestContext::default())
+        .probe(page_url, &ctx)
         .await
         .map_err(|e| anyhow!("{e}"))?;
     Ok(serde_json::to_value(probe)?)

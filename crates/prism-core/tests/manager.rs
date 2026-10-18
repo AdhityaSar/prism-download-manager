@@ -5,8 +5,9 @@
 use prism_core::events::{CaptureSource, CoreEvent};
 use prism_core::ipc::IpcHandler;
 use prism_core::manager::{CaptureDecision, Core, CoreOptions, NewItem, StartMode};
-use prism_core::model::{DownloadItem, Queue, Status};
-use prism_testserver::{ServerConfig, TestServer, expected_sha256, sha256_hex};
+use prism_core::model::{DownloadItem, ItemKind, Queue, Status};
+use prism_core::settings::ConflictAction;
+use prism_testserver::{HlsFixture, ServerConfig, TestServer, expected_sha256, sha256_hex};
 use std::path::{Path, PathBuf};
 use std::time::Duration;
 use tokio::sync::broadcast;
@@ -337,6 +338,169 @@ async fn browser_messages_follow_protocol() {
         .await;
     assert_eq!(unknown["ok"], false);
     assert_eq!(unknown["error"]["code"], "bad_request");
+}
+
+/// Picking a quality from the video panel (a sniffed stream or a probed format) must open the
+/// same "Download File" dialog other captures do, not start downloading on its own — the user
+/// may want to rename the file or change where it saves first.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn video_quality_pick_opens_a_capture_dialog_instead_of_starting() {
+    let server = TestServer::start(ServerConfig::default()).await.unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core_in(tmp.path()).await;
+    core.update_settings(&serde_json::json!({"general": {"showCaptureDialog": true}}))
+        .unwrap();
+    let mut rx = core.subscribe();
+    let url = server.url("/file/clip.mp4?size=1000");
+    let reply = core
+        .handle(serde_json::json!({
+            "id": "1", "type": "video", "pageUrl": "https://example.com/watch",
+            "streams": [{"url": url, "kind": "direct", "quality": "720p"}],
+        }))
+        .await;
+    assert_eq!(reply["ok"], true, "{reply}");
+    assert_eq!(reply["accepted"], true);
+    let info = wait_event(&mut rx, 5, |ev| match ev {
+        CoreEvent::CaptureRequested(info) => Some(info.clone()),
+        _ => None,
+    })
+    .await;
+    // Pending confirmation, not an in-progress download.
+    assert!(core.pending_capture(&info.id).is_some());
+    assert!(core.item(&info.id).is_none());
+    // Confirming it starts the download, same as any other capture.
+    let decision = CaptureDecision {
+        id: info.id,
+        mode: StartMode::Now,
+        ..Default::default()
+    };
+    assert!(core.confirm_capture(decision).is_ok());
+}
+
+/// A format picked in the video menu of a site Prism reads (YouTube and the like) also goes through
+/// the "Download File" dialog, and stays a video job (the page, the chosen format, the cookies).
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_picked_video_format_opens_the_dialog_and_stays_a_video_job() {
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core_in(tmp.path()).await;
+    core.update_settings(&serde_json::json!({"general": {"showCaptureDialog": true}}))
+        .unwrap();
+    let mut rx = core.subscribe();
+    let page = "https://www.youtube.com/watch?v=jNQXAC9IVRw";
+    let reply = core
+        .handle(serde_json::json!({
+            "id": "1", "type": "video", "pageUrl": page, "title": "Me at the zoo",
+            "formatId": "best", "formatLabel": "Best quality", "streams": [],
+            "cookies": "PREF=1", "userAgent": "test UA",
+        }))
+        .await;
+    assert_eq!(reply["accepted"], true, "{reply}");
+    let info = wait_event(&mut rx, 5, |ev| match ev {
+        CoreEvent::CaptureRequested(info) => Some(info.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(info.kind, ItemKind::Video);
+    assert!(!info.probing, "a video page is not probed as a file");
+    assert!(
+        info.file_name.starts_with("Me at the zoo"),
+        "{}",
+        info.file_name
+    );
+    assert!(
+        core.item(&info.id).is_none(),
+        "nothing starts before the dialog"
+    );
+    let item = core
+        .confirm_capture(CaptureDecision {
+            id: info.id,
+            file_name: Some("Zoo.mp4".into()),
+            mode: StartMode::Later,
+            ..Default::default()
+        })
+        .unwrap();
+    assert_eq!(item.kind, ItemKind::Video);
+    assert_eq!(item.file_name, "Zoo.mp4");
+    let request = item.request.unwrap();
+    assert_eq!(request["pageUrl"], page);
+    assert_eq!(request["choice"]["id"], "best");
+    assert_eq!(request["context"]["cookies"], "PREF=1");
+}
+
+/// A sniffed HLS stream's qualities are listed for the page menu, and the one picked there is the
+/// one downloaded, under the name and overwrite choice made in the "Download File" dialog.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn a_quality_picked_from_a_stream_downloads_that_variant() {
+    let fixture = HlsFixture::synthetic(3, 4, 20_000, 7);
+    let server = TestServer::start(ServerConfig {
+        hls: Some(fixture.clone()),
+        ..Default::default()
+    })
+    .await
+    .unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core_in(tmp.path()).await;
+    // The fixture's segments are not real video: kept as downloaded (no ffmpeg remux).
+    core.update_settings(&serde_json::json!({
+        "general": {"showCaptureDialog": true},
+        "video": {"ffmpegPath": tmp.path().join("no-ffmpeg.exe")},
+    }))
+    .unwrap();
+    let master = server.url("/hls/master.m3u8");
+
+    let reply = core
+        .handle(serde_json::json!({
+            "id": "1", "type": "probeStream", "url": master, "kind": "hls",
+            "pageUrl": "https://example.com/watch", "userAgent": "test",
+        }))
+        .await;
+    assert_eq!(reply["ok"], true, "{reply}");
+    let listed: Vec<(u64, u64)> = reply["variants"]
+        .as_array()
+        .unwrap()
+        .iter()
+        .map(|v| (v["index"].as_u64().unwrap(), v["height"].as_u64().unwrap()))
+        .collect();
+    assert_eq!(listed, [(0, 360), (1, 720), (2, 1080)]);
+
+    // A file of the chosen name already exists: the dialog says to overwrite it.
+    let dl = tmp.path().join("dl");
+    std::fs::create_dir_all(&dl).unwrap();
+    std::fs::write(dl.join("Picked.ts"), b"old").unwrap();
+    server.reset_stats();
+    let mut rx = core.subscribe();
+    let reply = core
+        .handle(serde_json::json!({
+            "id": "2", "type": "video", "pageUrl": "https://example.com/watch", "title": "Clip",
+            "streams": [{"url": master, "kind": "hls", "variantIndex": 1}],
+        }))
+        .await;
+    assert_eq!(reply["accepted"], true, "{reply}");
+    let info = wait_event(&mut rx, 5, |ev| match ev {
+        CoreEvent::CaptureRequested(info) => Some(info.clone()),
+        _ => None,
+    })
+    .await;
+    let item = core
+        .confirm_capture(CaptureDecision {
+            id: info.id,
+            file_name: Some("Picked.ts".into()),
+            save_dir: Some(dl.clone()),
+            conflict: Some(ConflictAction::Overwrite),
+            mode: StartMode::Now,
+            ..Default::default()
+        })
+        .unwrap();
+    let path = wait_completed(&mut rx, &item.id).await;
+    assert_eq!(path, dl.join("Picked.ts"));
+    assert_eq!(
+        sha256_file(&path),
+        sha256_hex(&fixture.expected_variant_bytes(1))
+    );
+    let stats = server.stats();
+    assert!(stats.requests_to("/hls/v1/") > 0);
+    assert_eq!(stats.requests_to("/hls/v0/"), 0);
+    assert_eq!(stats.requests_to("/hls/v2/"), 0);
 }
 
 #[tokio::test(flavor = "multi_thread", worker_threads = 4)]

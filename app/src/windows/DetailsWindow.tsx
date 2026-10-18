@@ -12,9 +12,10 @@ import { useApp } from "../lib/store";
 import { attempt } from "../lib/ui";
 import { copyText, win } from "../lib/win";
 
-export default function DetailsWindow({ id }: { id: string }) {
+export default function DetailsWindow({ id, simple }: { id: string; simple?: boolean }) {
   const item = useApp((s) => s.items[id]);
   const progress = useApp((s) => s.progress[id]);
+  const settings = useApp((s) => s.settings);
   const details = useItemDetails(id, 500);
   const [pinned, setPinned] = useState(false);
   const [confirmCancel, setConfirmCancel] = useState(false);
@@ -132,37 +133,40 @@ export default function DetailsWindow({ id }: { id: string }) {
         )}
       </div>
 
-      <div className="panel">
+      <div className={`panel${simple ? " panel--single" : ""}`}>
         <div className="panel__conn">
           <div className="ph">Connections</div>
           {status === "completed" ? <p className="lanes__empty">Download complete.</p> : <ConnectionLanes segments={segments} max={12} />}
         </div>
-        <div className="panel__speed">
-          <div className="ph">
-            Speed <span>last 60 s</span>
+        {!simple && (
+          <div className="panel__speed">
+            <div className="ph">
+              Speed <span>last 60 s</span>
+            </div>
+            <SpeedChart samples={samples} height={150} />
+            <div className="sstats">
+              <div className="sstat">
+                <div className="k">Now</div>
+                <div className="v tnum">{formatSpeed(speed)}</div>
+              </div>
+              <div className="sstat">
+                <div className="k">Average</div>
+                <div className="v tnum">{formatSpeed(avg)}</div>
+              </div>
+              <div className="sstat">
+                <div className="k">Peak</div>
+                <div className="v tnum">{formatSpeed(Math.max(0, ...history))}</div>
+              </div>
+            </div>
           </div>
-          <SpeedChart samples={samples} height={150} />
-          <div className="sstats">
-            <div className="sstat">
-              <div className="k">Now</div>
-              <div className="v tnum">{formatSpeed(speed)}</div>
-            </div>
-            <div className="sstat">
-              <div className="k">Average</div>
-              <div className="v tnum">{formatSpeed(avg)}</div>
-            </div>
-            <div className="sstat">
-              <div className="k">Peak</div>
-              <div className="v tnum">{formatSpeed(Math.max(0, ...history))}</div>
-            </div>
-          </div>
-        </div>
+        )}
       </div>
 
       <footer className="dialog__footer">
-        <label className="opt">
+        <label className="opt" data-tip={limit === 0 && settings?.downloads.speedLimiterEnabled ? `Also shares the global ${formatSpeed(settings.downloads.speedLimit)} limit (Settings → Speed & queues)` : undefined}>
           <Switch checked={limit > 0} label="Limit speed" onChange={(on) => setLimit(on ? limit || 2 * 1024 * 1024 : 0)} />
           Limit
+          {limit === 0 && settings?.downloads.speedLimiterEnabled && <span className="text-tertiary"> (global {formatSpeed(settings.downloads.speedLimit)} applies)</span>}
         </label>
         {limit > 0 && <RateField value={limit} onCommit={setLimit} label="Speed limit" width={120} />}
         <span className="spacer" />
