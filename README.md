@@ -13,6 +13,7 @@
   <a href="https://github.com/FortoGraphy/prism-download-manager/releases/latest"><img alt="Latest release" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fprismdl.site%2Frelease.json&style=flat-square&cacheSeconds=300"></a>
   <a href="https://github.com/FortoGraphy/prism-download-manager/releases"><img alt="Downloads" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fprismdl.site%2Fdownloads.json&style=flat-square&cacheSeconds=300"></a>
   <a href="https://github.com/FortoGraphy/prism-download-manager/actions/workflows/ci.yml"><img alt="CI" src="https://img.shields.io/endpoint?url=https%3A%2F%2Fprismdl.site%2Ftests.json&style=flat-square&cacheSeconds=300"></a>
+  <a href="https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl"><img alt="Chrome Web Store" src="https://img.shields.io/chrome-web-store/v/mmcdeiglkbfbicdjboocmhehodogilfl?style=flat-square&label=Chrome%20Web%20Store&color=4285f4"></a>
   <a href="LICENSE"><img alt="MIT License" src="https://img.shields.io/badge/license-MIT-2ecc71?style=flat-square"></a>
   <img alt="Platforms" src="https://img.shields.io/badge/Windows%20·%20macOS%20·%20Linux-555?style=flat-square">
 </p>
@@ -74,20 +75,14 @@ Grab the file for your system from the **[latest release](https://github.com/For
 > once (or *System Settings → Privacy & Security → Open Anyway*).
 > Step-by-step for every system: **[Installation guide](docs/guide/installation.md)**.
 
-## 🌐 Browser extension (2 minutes)
+## 🌐 Browser extension (1 minute)
 
-Prism walks you through this on first start (and any time from **Settings → Browser integration**):
-it copies the right address, opens your browser and turns green the moment the extension connects.
-By hand:
+**[Add Prism from the Chrome Web Store](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl)**
+— Chrome, Edge, Brave, Opera, Vivaldi and Helium. Click **Add to Chrome**, pin the Prism icon, and it
+says **Connected**. The store keeps it up to date.
 
-1. Download **`prism-chromium.zip`** (or `prism-firefox.zip`) from the
-   [latest release](https://github.com/FortoGraphy/prism-download-manager/releases/latest) and
-   unzip it into a folder that stays.
-2. Open `chrome://extensions` (Edge: `edge://extensions`, Brave: `brave://extensions`, …).
-3. Turn on **Developer mode** → **Load unpacked** → pick the unzipped `chromium` folder.
-4. Pin the Prism icon — it should say **Connected**.
-
-Firefox, Opera, Vivaldi, troubleshooting and privacy details:
+Prism also walks you through this on first start (and any time from **Settings → Browser
+integration**). Firefox, Edge/Opera notes, troubleshooting and privacy details:
 **[Browser extension guide](docs/guide/browser-extension.md)**.
 
 ## 📸 Screenshots

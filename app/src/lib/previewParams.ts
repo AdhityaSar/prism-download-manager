@@ -1,7 +1,7 @@
 // Browser-preview helpers (never active inside Tauri): query parameters that put the
 // UI into a given state for design reviews and automated screenshots, e.g.
 //   /?theme=dark&select=demo0#/              selected row + details pane
-//   /?sheet=settings:appearance#/            open a sheet (settings[:section] | scheduler[:queue] | grabber[:project])
+//   /?sheet=settings:appearance#/            open a sheet (settings[:section] | scheduler[:queue] | grabber[:project] | whatsnew)
 //   /?dialog=properties:demo1#/              open a dialog (properties | delete | batch | category | speedLimit | refreshUrl)
 //   /?menu=demo2#/                           open the context menu of a row
 //   /?post=sleep#/                           show the post-queue countdown
@@ -32,6 +32,7 @@ export function applyPreviewParams() {
     if (kind === "settings") ui.openSheet({ kind, section: arg });
     if (kind === "scheduler") ui.openSheet({ kind, queueId: arg });
     if (kind === "grabber") ui.openSheet({ kind, projectId: arg ?? null });
+    if (kind === "whatsnew") ui.openSheet({ kind });
   }
   const dialog = q.get("dialog");
   if (dialog) {

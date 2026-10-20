@@ -857,7 +857,7 @@ impl VideoJob {
             r = video.probe(&page_url, &ctx) => r.map_err(|e| anyhow!("{e}"))?,
             _ = self.cancel.cancelled() => return Err(anyhow!("stopped")),
         };
-        let info = match probe {
+        let mut info = match probe {
             Probe::Video(info) => info,
             Probe::Playlist(_) => {
                 return Err(anyhow!(
@@ -865,6 +865,11 @@ impl VideoJob {
                 ));
             }
         };
+        // The formats for the container asked for (the dialog's, else Settings › Video): the
+        // choice's container is what the file is merged into.
+        info.choices = video.choices(&info, wanted_container(spec.get("options"), &settings));
+        let renamed = adopt_title(core, item, &info, &settings, &page_url);
+        let item = &renamed;
 
         let opts = output_options(&spec, item, &settings);
         let stored_choice: Option<Choice> = spec
@@ -1392,11 +1397,87 @@ async fn run_probe_video(
             .await
             .map_err(|e| anyhow!("{e}"))?;
     }
-    let probe = video
+    let probe = match video
         .probe(page_url, &ctx)
         .await
-        .map_err(|e| anyhow!("{e}"))?;
+        .map_err(|e| anyhow!("{e}"))?
+    {
+        // yt-dlp's result names its choices for MP4: list them for the container in Settings.
+        Probe::Video(mut info) => {
+            info.choices = video.choices(&info, wanted_container(None, &core.settings()));
+            Probe::Video(info)
+        }
+        playlist => playlist,
+    };
     Ok(serde_json::to_value(probe)?)
+}
+
+/// The container the user asked for: the video dialog's choice, else Settings › Video.
+fn wanted_container(options: Option<&serde_json::Value>, settings: &Settings) -> Container {
+    let name = options
+        .and_then(|o| o.get("container"))
+        .and_then(|v| v.as_str())
+        .unwrap_or(&settings.video.container);
+    match name {
+        "mkv" => Container::Mkv,
+        "webm" => Container::Webm,
+        _ => Container::Mp4,
+    }
+}
+
+/// A video added without its title (a playlist that didn't list one) is still named "Video …":
+/// name it after the video now that its page is read, before anything is written. A file
+/// renamed in the meantime keeps its name; a playlist number in front stays.
+fn adopt_title(
+    core: &Core,
+    item: &DownloadItem,
+    info: &prism_video::VideoInfo,
+    settings: &Settings,
+    page_url: &str,
+) -> DownloadItem {
+    let untitled = item.media.as_ref().is_some_and(|m| m.title.is_none());
+    if !untitled || info.title.trim().is_empty() || item.downloaded > 0 {
+        return item.clone();
+    }
+    let template = &settings.video.file_template;
+    let id = super::capture::video_id(page_url);
+    let file = Path::new(&item.file_name);
+    let stem = file
+        .file_stem()
+        .map(|s| s.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    let placeholder = super::sanitize_name(&super::capture::render_name_template(
+        template,
+        "Video",
+        id.as_deref(),
+    ));
+    let Some(prefix) = stem.strip_suffix(placeholder.as_str()) else {
+        return item.clone();
+    };
+    let numbered = prefix
+        .strip_suffix(" - ")
+        .is_some_and(|n| !n.is_empty() && n.chars().all(|c| c.is_ascii_digit()));
+    if !prefix.is_empty() && !numbered {
+        return item.clone();
+    }
+    let titled = super::sanitize_name(&super::capture::render_name_template(
+        template,
+        &info.title,
+        id.as_deref(),
+    ));
+    let name = match file.extension() {
+        Some(ext) => format!("{prefix}{titled}.{}", ext.to_string_lossy()),
+        None => format!("{prefix}{titled}"),
+    };
+    core.with_item(&item.id, |i| {
+        i.file_name = name.clone();
+        if let Some(m) = i.media.as_mut() {
+            m.title = Some(info.title.clone());
+            m.thumbnail = m.thumbnail.take().or_else(|| info.thumbnail.clone());
+            m.duration = m.duration.or(info.duration);
+        }
+    });
+    core.item(&item.id).unwrap_or_else(|| item.clone())
 }
 
 impl Core {

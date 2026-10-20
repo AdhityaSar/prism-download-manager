@@ -25,6 +25,8 @@ const GB = 1024 * MB;
 const now = Date.now();
 /** Demo: when the browser extension last said hello (0 = never; `?ext=1` = already connected). */
 let mockExtSeen = /[?&]ext=1/.test(location.search) ? Date.now() : 0;
+/** The demo extension was "installed" from the Chrome Web Store (install type "normal"). */
+let mockExtFromStore = false;
 const listeners = new Set<(e: CoreEvent) => void>();
 const emit = (e: CoreEvent) => listeners.forEach((l) => l(e));
 
@@ -159,12 +161,14 @@ const settings: Settings = {
   connection: { userAgent: "", connectTimeoutSecs: 15, readTimeoutSecs: 30, httpVersion: "http1", maxConnectionsPerHost: 0 },
   proxy: { mode: "system", address: "", username: "", password: "", bypass: [] },
   capture: { enabled: true, extensions: ["zip", "rar", "7z", "exe", "msi", "iso", "mp4", "mkv", "mp3", "pdf"], mimeTypes: ["application/octet-stream"], excludedSites: ["*.update.microsoft.com"], minSizeKb: 0, bypassKey: "alt", videoButton: true, videoMinDurationSecs: 0 },
-  sounds: { enabled: true, onComplete: true, onFailed: true, onQueueDone: true, volume: 0.6 },
+  sounds: { enabled: true, onComplete: true, onFailed: true, onQueueDone: true, volume: 0.6, completeSound: "classic" },
   clipboard: { monitor: true, ask: true },
   grabber: { defaultDepth: 2, maxPages: 2000, concurrentRequests: 6, respectRobots: true },
   antivirus: { enabled: false, kind: "auto", command: "", args: "", extensions: [] },
-  video: { ytdlpPath: "", ffmpegPath: "", autoUpdate: true, preferredHeight: 1080, container: "mp4", audioFormat: "m4a", embedSubtitles: false, subtitleLangs: "en.*", embedThumbnail: true, embedMetadata: true, embedChapters: true, sponsorblock: "off", accelerate: true, cookiesFromBrowser: "", fileTemplate: "%(title)s [%(id)s].%(ext)s" },
+  video: { ytdlpPath: "", ffmpegPath: "", autoUpdate: true, preferredHeight: 1080, container: "mp4", audioFormat: "m4a", embedSubtitles: false, subtitleLangs: "en.*", embedThumbnail: true, embedMetadata: true, embedChapters: true, sponsorblock: "off", accelerate: true, cookiesFromBrowser: "", fileTemplate: "%(title)s [%(id)s].%(ext)s", numberPlaylistVideos: false },
   shortcuts: {},
+  // The demo bootstrap version: "What's new" opens with ?sheet=whatsnew, or by itself with ?lastseen=1.0.9 (an update).
+  lastSeenVersion: (typeof location === "undefined" ? null : new URLSearchParams(location.search).get("lastseen")) ?? "1.1.0",
   onboardingDone: typeof location === "undefined" || !new URLSearchParams(location.search).has("onboarding"),
 };
 
@@ -380,7 +384,11 @@ function demoCapture(url: string): CaptureInfo {
 
 const demoVideo: VideoCapture = {
   id: "vid1",
-  pageUrl: "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
+  // ?playlist shows the video window for a playlist.
+  pageUrl:
+    typeof location !== "undefined" && new URLSearchParams(location.search).has("playlist")
+      ? "https://www.youtube.com/playlist?list=PLdemo"
+      : "https://www.youtube.com/watch?v=aqz-KE-bpKQ",
   title: "Big Buck Bunny 60fps 4K — Official Blender Foundation Short Film",
   streams: [],
   preselected: null,
@@ -416,7 +424,7 @@ function details(id: string): ItemDetails | null {
 
 const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
   bootstrap: (): Bootstrap => ({
-    version: "1.0.0",
+    version: "1.1.0",
     items: Object.values(items),
     categories,
     queues,
@@ -427,8 +435,9 @@ const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
   }),
   update_settings: ({ patch }) => {
     deepMerge(settings as unknown as Record<string, unknown>, patch as Record<string, unknown>);
-    emit({ type: "settingsChanged", payload: settings });
-    return settings;
+    // A fresh copy, as the real backend sends: the same object wouldn't re-render the UI.
+    emit({ type: "settingsChanged", payload: structuredClone(settings) });
+    return structuredClone(settings);
   },
   toggle_speed_limiter: () => {
     settings.downloads.speedLimiterEnabled = !settings.downloads.speedLimiterEnabled;
@@ -490,12 +499,24 @@ const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
   get_video: () => demoVideo,
   open_video_url: ({ url }) => ({ ...demoVideo, pageUrl: String(url) }),
   confirm_video: ({ decision }) => {
-    const d = decision as { title?: string; entries: string[]; choice: { label: string; kind: string }; mode: StartMode; duration?: number; thumbnail?: string; pageUrl: string };
-    const list = d.entries.length ? d.entries : [d.pageUrl];
-    list.forEach((u, i) =>
-      newItem(`${d.title ?? "Video"}${list.length > 1 ? ` ${i + 1}` : ""}.${d.choice.kind === "audio" ? "m4a" : "mp4"}`, u, 400 * MB, d.choice.kind === "audio" ? "music" : "video", {
+    const d = decision as {
+      title?: string;
+      entries: (string | { url: string; title?: string | null; index?: number })[];
+      choice: { label: string; kind: string };
+      options?: { container?: string };
+      mode: StartMode;
+      duration?: number;
+      thumbnail?: string;
+      pageUrl: string;
+    };
+    // The last request, for checks in the demo.
+    (globalThis as { __prismLastVideo?: unknown }).__prismLastVideo = d;
+    const list = d.entries.length ? d.entries.map((e) => (typeof e === "string" ? { url: e, title: null } : e)) : [{ url: d.pageUrl, title: d.title }];
+    const ext = d.choice.kind === "audio" ? "mp3" : (d.options?.container ?? "mp4");
+    list.forEach((e) =>
+      newItem(`${e.title ?? "Video"}.${ext}`, e.url, 400 * MB, d.choice.kind === "audio" ? "music" : "video", {
         kind: "video",
-        media: { title: d.title, quality: d.choice.label, site: "youtube.com", duration: d.duration, thumbnail: d.thumbnail },
+        media: { title: e.title ?? undefined, quality: d.choice.label, site: "youtube.com", duration: d.duration, thumbnail: d.thumbnail },
         ...startStatus(d.mode),
       }),
     );
@@ -629,6 +650,11 @@ const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
     // Demo: pretend the user installs the extension a few seconds after the page opens.
     if (!mockExtSeen) setTimeout(() => (mockExtSeen = Date.now()), 6000);
   },
+  open_extension_store: () => {
+    // Demo: pretend the user clicks "Add to Chrome" a few seconds after the store page opens.
+    mockExtFromStore = true;
+    if (!mockExtSeen) setTimeout(() => (mockExtSeen = Date.now()), 4000);
+  },
   cancel_post_action: () => undefined,
   item_details: ({ id }) => details(id as string),
   grabber_projects: () => grabberProjects,
@@ -694,10 +720,10 @@ const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
   integration_status: () => ({
     hostPath: "C:\\Program Files\\Prism\\prism-native-host.exe",
     extensionConnected: mockExtSeen > 0,
-    extensionVersion: mockExtSeen > 0 ? (demoParam("oldext") ? "1.0.0" : "1.0.9") : null,
-    extensionInstallType: mockExtSeen > 0 ? (demoParam("exttype") ?? "development") : null,
+    extensionVersion: mockExtSeen > 0 ? (demoParam("oldext") ? "1.0.0" : "1.1.0") : null,
+    extensionInstallType: mockExtSeen > 0 ? (demoParam("exttype") ?? (mockExtFromStore ? "normal" : "development")) : null,
     extensionOutdated: mockExtSeen > 0 && !!demoParam("oldext") && !["normal", "admin"].includes(demoParam("exttype") ?? ""),
-    appVersion: "1.0.9",
+    appVersion: "1.1.0",
     lastSeen: mockExtSeen || null,
     browsers: (
       [
@@ -707,7 +733,9 @@ const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
         ["firefox", "Firefox", true, false],
         ["opera", "Opera", false, false],
         ["vivaldi", "Vivaldi", false, false],
+        ["helium", "Helium", false, false],
         ["chromium", "Chromium", false, false],
+        ["zen", "Zen Browser", true, false],
       ] as const
     ).map(([browser, name, installed, registered]) => ({ browser, name, installed, supported: true, registered, pointsToThisHost: registered, manifestPath: null })),
   }),

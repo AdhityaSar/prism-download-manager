@@ -546,6 +546,18 @@ pub async fn open_browser(browser: String) -> CmdResult<()> {
     crate::integration::open_browser(&browser)
 }
 
+/// Opens Prism's Chrome Web Store page in `browser`, or in the default browser when that one
+/// can't be started.
+#[tauri::command]
+pub async fn open_extension_store(app: AppHandle, browser: String) -> CmdResult<()> {
+    if crate::integration::open_extension_store(&browser).is_ok() {
+        return Ok(());
+    }
+    app.opener()
+        .open_url(crate::integration::EXTENSION_STORE_URL, None::<&str>)
+        .map_err(err)
+}
+
 // ----- shell / windows ---------------------------------------------------------------------
 
 #[tauri::command]

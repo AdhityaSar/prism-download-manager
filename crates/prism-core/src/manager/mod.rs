@@ -11,7 +11,10 @@ mod grab;
 mod jobs;
 mod queues;
 
-pub use capture::{BatchDecision, CaptureDecision, NewItem, StartMode, VideoDecision};
+pub use capture::{
+    BatchDecision, CaptureDecision, NewItem, ONE_AT_A_TIME_QUEUE, StartMode, VideoDecision,
+    VideoEntry,
+};
 pub use jobs::ItemDetails;
 
 use crate::categories;

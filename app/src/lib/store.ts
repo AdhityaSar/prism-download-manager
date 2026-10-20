@@ -3,6 +3,7 @@
 
 import { create } from "zustand";
 import { api, onCoreEvent } from "./api";
+import { soundFile } from "./sounds";
 import type {
   Bootstrap,
   Category,
@@ -194,10 +195,11 @@ if (typeof window !== "undefined") {
 
 const soundCache: Record<string, HTMLAudioElement> = {};
 
-export function playSound(kind: string) {
+/** Plays `kind`'s sound; `completeSound` previews a complete sound other than the chosen one. */
+export function playSound(kind: string, completeSound?: string) {
   const s = useApp.getState().settings;
   if (!s?.sounds.enabled) return;
-  const file = kind === "failed" ? "failed" : kind === "queue" ? "queue" : "complete";
+  const file = soundFile(kind, completeSound ?? s.sounds.completeSound);
   const audio = (soundCache[file] ??= new Audio(`/sounds/${file}.wav`));
   audio.volume = Math.max(0, Math.min(1, s.sounds.volume));
   audio.currentTime = 0;

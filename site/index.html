@@ -732,9 +732,9 @@
       <article class="tile reveal">
         <div class="tile-icon" aria-hidden="true"><svg class="i"><use href="#i-puzzle"/></svg></div>
         <h3 class="h3">Browser extension</h3>
-        <p>Install the app first, then add the extension — it’s what lets Prism catch downloads and videos. <a href="#guide-extension">Step-by-step guide</a>.</p>
+        <p>Install the app first, then add the extension — it’s what lets Prism catch downloads and videos. One click from the Chrome Web Store, and it updates by itself. <a href="#guide-extension">Step-by-step guide</a>.</p>
         <div class="mini-links">
-          <a class="btn btn-glass btn-sm" href="https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.9/prism-chromium.zip" data-asset="ext-chromium"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Chrome, Edge, Brave, Opera, Vivaldi</a>
+          <a class="btn btn-primary btn-sm" href="https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl" rel="noopener"><svg class="i" aria-hidden="true"><use href="#i-puzzle"/></svg>Chrome Web Store</a>
           <a class="btn btn-glass btn-sm" href="https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.9/prism-firefox.zip" data-asset="ext-firefox"><svg class="i" aria-hidden="true"><use href="#i-download"/></svg>Firefox</a>
         </div>
       </article>
@@ -870,22 +870,21 @@ sha256sum -c SHA256SUMS.txt --ignore-missing</pre><button class="copy-btn" type=
           <div>
             <span class="step-num-big">Part 2</span>
             <h3 class="h3">Install the browser extension</h3>
-            <p>Download <a href="https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.9/prism-chromium.zip" data-asset="ext-chromium"><code>prism-chromium.zip</code></a> or <a href="https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.9/prism-firefox.zip" data-asset="ext-firefox"><code>prism-firefox.zip</code></a> and unzip it into a folder that will <strong>stay</strong> (e.g. <code>Documents/Prism Extension</code>) — the browser loads it from there.</p>
+            <p>Chrome, Edge, Brave, Opera, Vivaldi and Helium add Prism from the <a href="https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl" rel="noopener">Chrome Web Store</a> in one click, and the store keeps it up to date. Prism also walks you through it on first start.</p>
           </div>
           <div class="tablist" role="tablist" aria-label="Browser" data-tabs="browser">
             <button class="tab" role="tab" type="button" id="tab-chrome" aria-controls="panel-chrome" aria-selected="true" data-key="chrome">Chrome</button>
             <button class="tab" role="tab" type="button" id="tab-edge" aria-controls="panel-edge" aria-selected="false" tabindex="-1" data-key="edge">Edge</button>
-            <button class="tab" role="tab" type="button" id="tab-other" aria-controls="panel-other" aria-selected="false" tabindex="-1" data-key="other">Brave · Opera · Vivaldi</button>
-            <button class="tab" role="tab" type="button" id="tab-firefox" aria-controls="panel-firefox" aria-selected="false" tabindex="-1" data-key="firefox">Firefox</button>
+            <button class="tab" role="tab" type="button" id="tab-other" aria-controls="panel-other" aria-selected="false" tabindex="-1" data-key="other">Brave · Opera · Vivaldi · Helium</button>
+            <button class="tab" role="tab" type="button" id="tab-firefox" aria-controls="panel-firefox" aria-selected="false" tabindex="-1" data-key="firefox">Firefox · Zen</button>
           </div>
         </div>
 
         <div class="panel reveal" role="tabpanel" id="panel-chrome" aria-labelledby="tab-chrome" tabindex="0">
           <div class="panel-grid">
             <ol class="steps">
-              <li><div><h4>Open <code>chrome://extensions</code></h4><p>Type it into the address bar and press Enter.</p></div></li>
-              <li><div><h4>Turn on <strong>Developer mode</strong></h4><p>The switch is at the top right.</p></div></li>
-              <li><div><h4>Click <strong>Load unpacked</strong> and choose the <code>chromium</code> folder</h4><p>The one that contains <code>manifest.json</code>.</p></div></li>
+              <li><div><h4>Open <a href="https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl" rel="noopener">Prism in the Chrome Web Store</a></h4><p>Or search for “Prism Download Manager” in the store.</p></div></li>
+              <li><div><h4>Click <strong>Add to Chrome</strong>, then <strong>Add extension</strong></h4><p>It’s free, and Chrome keeps it up to date.</p></div></li>
               <li><div><h4>Pin Prism</h4><p>Click the puzzle icon in the toolbar and pin <strong>Prism</strong>.</p></div></li>
               <li><div><h4>Click the Prism icon — it should say <strong>Connected</strong></h4><p>Done. Click any download link to try it.</p></div></li>
             </ol>
@@ -894,18 +893,17 @@ sha256sum -c SHA256SUMS.txt --ignore-missing</pre><button class="copy-btn" type=
                 <div class="mb-top">
                   <div class="mb-dots"><i></i><i></i><i></i></div>
                   <span class="mk">1</span>
-                  <div class="mb-url">chrome://extensions</div>
+                  <div class="mb-url">chromewebstore.google.com</div>
                   <div class="mb-ext"><svg class="i"><use href="#i-puzzle"/></svg></div>
-                  <span class="mk">4</span>
+                  <span class="mk">3</span>
                   <div class="mb-ext"><svg viewBox="0 0 64 64" fill="none"><use href="#i-prism"/></svg></div>
                 </div>
                 <div class="ext-main" style="min-height:16rem">
-                  <div class="ext-bar"><span class="t">Extensions</span><span class="devmode">Developer mode <span class="sw"></span><span class="mk">2</span></span></div>
-                  <div class="ext-actions"><span class="ext-btn hl">Load unpacked</span><span class="mk">3</span><span class="ext-btn">Pack extension</span><span class="ext-btn">Update</span></div>
-                  <div class="ext-card"><img src="assets/img/app-icon.webp" width="160" height="160" alt="" loading="lazy"><div><div class="n">Prism Download Manager 1.0.0</div><div class="d">Download with Prism — capture downloads and videos</div></div><span class="sw"></span></div>
+                  <div class="ext-bar"><span class="t">chrome web store</span></div>
+                  <div class="ext-card ext-store"><img src="assets/img/app-icon.webp" width="160" height="160" alt="" loading="lazy"><div><div class="n">Prism Download Manager</div><div class="d">Hand downloads, videos and links to the Prism download manager.</div></div><span style="display:inline-flex;align-items:center;gap:.35rem"><span class="mk">2</span><span class="ext-btn hl">Add to Chrome</span></span></div>
                 </div>
                 <div class="ext-popup">
-                  <div class="row"><svg viewBox="0 0 64 64" fill="none" width="18" height="18"><use href="#i-prism"/></svg>Prism <span class="mk" style="margin-left:auto">5</span></div>
+                  <div class="row"><svg viewBox="0 0 64 64" fill="none" width="18" height="18"><use href="#i-prism"/></svg>Prism <span class="mk" style="margin-left:auto">4</span></div>
                   <div class="ok"><i></i>Connected</div>
                   <div class="tg">Capture downloads <span class="sw"></span></div>
                 </div>
@@ -918,30 +916,29 @@ sha256sum -c SHA256SUMS.txt --ignore-missing</pre><button class="copy-btn" type=
         <div class="panel" role="tabpanel" id="panel-edge" aria-labelledby="tab-edge" tabindex="0" hidden>
           <div class="panel-grid">
             <ol class="steps">
-              <li><div><h4>Open <code>edge://extensions</code></h4><p>Type it into the address bar and press Enter.</p></div></li>
-              <li><div><h4>Turn on <strong>Developer mode</strong></h4><p>In the left sidebar, at the bottom.</p></div></li>
-              <li><div><h4>Click <strong>Load unpacked</strong> → select the <code>chromium</code> folder</h4><p>Then click the Prism icon in the toolbar — it should say <strong>Connected</strong>.</p></div></li>
+              <li><div><h4>Open <a href="https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl" rel="noopener">Prism in the Chrome Web Store</a></h4><p>The first time, Edge shows <em>Allow extensions from other stores</em> at the top of the page: click <strong>Allow</strong>.</p></div></li>
+              <li><div><h4>Click <strong>Add to Chrome</strong>, then <strong>Add extension</strong></h4><p>It works in Edge too, and Edge keeps it up to date.</p></div></li>
+              <li><div><h4>Pin Prism</h4><p>Click the puzzle icon in the toolbar and pin <strong>Prism</strong>.</p></div></li>
+              <li><div><h4>Click the Prism icon — it should say <strong>Connected</strong></h4><p>Done. Click any download link to try it.</p></div></li>
             </ol>
             <div class="panel-aside">
               <div class="illo" aria-hidden="true">
                 <div class="mb-top">
                   <div class="mb-dots"><i></i><i></i><i></i></div>
                   <span class="mk">1</span>
-                  <div class="mb-url">edge://extensions</div>
+                  <div class="mb-url">chromewebstore.google.com</div>
+                  <div class="mb-ext"><svg class="i"><use href="#i-puzzle"/></svg></div>
+                  <span class="mk">3</span>
                   <div class="mb-ext"><svg viewBox="0 0 64 64" fill="none"><use href="#i-prism"/></svg></div>
                 </div>
-                <div class="ext-page">
-                  <div class="ext-side">
-                    <div class="t">Extensions</div>
-                    <div class="it on">Installed</div>
-                    <div class="it">Keyboard shortcuts</div>
-                    <div class="grow"></div>
-                    <div class="devmode"><span class="mk">2</span>Developer mode <span class="sw"></span></div>
-                  </div>
-                  <div class="ext-main">
-                    <div class="ext-actions"><span class="mk">3</span><span class="ext-btn hl">Load unpacked</span><span class="ext-btn">Pack extension</span></div>
-                    <div class="ext-card"><img src="assets/img/app-icon.webp" width="160" height="160" alt="" loading="lazy"><div><div class="n">Prism Download Manager</div><div class="d">1.0.0 · loaded from …\chromium</div></div><span class="sw"></span></div>
-                  </div>
+                <div class="ext-main" style="min-height:16rem">
+                  <div class="ext-bar"><span class="t">chrome web store</span></div>
+                  <div class="ext-card ext-store"><img src="assets/img/app-icon.webp" width="160" height="160" alt="" loading="lazy"><div><div class="n">Prism Download Manager</div><div class="d">Hand downloads, videos and links to the Prism download manager.</div></div><span style="display:inline-flex;align-items:center;gap:.35rem"><span class="mk">2</span><span class="ext-btn hl">Add to Chrome</span></span></div>
+                </div>
+                <div class="ext-popup">
+                  <div class="row"><svg viewBox="0 0 64 64" fill="none" width="18" height="18"><use href="#i-prism"/></svg>Prism <span class="mk" style="margin-left:auto">4</span></div>
+                  <div class="ok"><i></i>Connected</div>
+                  <div class="tg">Capture downloads <span class="sw"></span></div>
                 </div>
               </div>
               <p class="illo-caption">Numbers match the steps on the left.</p>
@@ -952,21 +949,22 @@ sha256sum -c SHA256SUMS.txt --ignore-missing</pre><button class="copy-btn" type=
         <div class="panel" role="tabpanel" id="panel-other" aria-labelledby="tab-other" tabindex="0" hidden>
           <div class="panel-grid">
             <ol class="steps">
-              <li><div><h4>Open your browser’s extensions page</h4>
+              <li><div><h4>Open <a href="https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl" rel="noopener">Prism in the Chrome Web Store</a></h4><p><strong>Opera</strong> first offers its free <em>Install Chrome Extensions</em> add-on: add it, then come back to the page.</p></div></li>
+              <li><div><h4>Click the store’s add button, then <strong>Add extension</strong></h4>
                 <div class="table-wrap" style="margin-top:.7rem"><table>
-                  <thead><tr><th scope="col">Browser</th><th scope="col">Address</th></tr></thead>
+                  <thead><tr><th scope="col">Browser</th><th scope="col">Button</th></tr></thead>
                   <tbody>
-                    <tr><td>Brave</td><td><code>brave://extensions</code></td></tr>
-                    <tr><td>Opera</td><td><code>opera://extensions</code></td></tr>
-                    <tr><td>Vivaldi</td><td><code>vivaldi://extensions</code></td></tr>
-                    <tr><td>Chromium</td><td><code>chrome://extensions</code></td></tr>
+                    <tr><td>Brave</td><td>Add to Brave</td></tr>
+                    <tr><td>Opera</td><td>Add to Opera</td></tr>
+                    <tr><td>Vivaldi</td><td>Add to Chrome</td></tr>
+                    <tr><td>Helium</td><td>the store’s add button (Helium installs store extensions through its own proxy)</td></tr>
                   </tbody>
                 </table></div></div></li>
-              <li><div><h4>Turn on <strong>Developer mode</strong></h4><p>Usually a switch at the top right.</p></div></li>
-              <li><div><h4><strong>Load unpacked</strong> → the <code>chromium</code> folder</h4><p>Pin the Prism icon and check that it says <strong>Connected</strong>.</p></div></li>
+              <li><div><h4>Pin the Prism icon</h4><p>Click it — it should say <strong>Connected</strong>.</p></div></li>
             </ol>
             <div class="panel-aside">
-              <p class="note"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg><span>All Chromium-based browsers use the same <code>prism-chromium.zip</code>. The app registers its helper for Brave, Vivaldi and Opera automatically every time it starts.</span></p>
+              <p class="note"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg><span>Every Chromium-based browser uses the same store version, and the store keeps it up to date. The app registers its helper for Brave, Vivaldi, Opera and Helium automatically every time it starts.</span></p>
+              <p class="note panel-note"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg><span><strong>Added Prism by hand before?</strong> Versions before 1.1.0 used <em>Developer mode → Load unpacked</em>. Remove that copy on the browser’s extensions page first, then add Prism from the store.</span></p>
             </div>
           </div>
         </div>
@@ -974,6 +972,7 @@ sha256sum -c SHA256SUMS.txt --ignore-missing</pre><button class="copy-btn" type=
         <div class="panel" role="tabpanel" id="panel-firefox" aria-labelledby="tab-firefox" tabindex="0" hidden>
           <div class="panel-grid">
             <ol class="steps">
+              <li><div><h4>Download <a href="https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.9/prism-firefox.zip" data-asset="ext-firefox"><code>prism-firefox.zip</code></a></h4><p>Prism isn’t in Firefox Add-ons yet. Unzip it into a folder that will <strong>stay</strong> (e.g. <code>Documents/Prism Extension</code>).</p></div></li>
               <li><div><h4>Try it now (until Firefox restarts)</h4><p>Open <code>about:debugging#/runtime/this-firefox</code> → <strong>Load Temporary Add-on…</strong> → pick <code>manifest.json</code> in the unzipped <code>firefox</code> folder.</p></div></li>
               <li><div><h4>Or keep it permanently</h4><p>On Firefox Developer Edition, Nightly or ESR: in <code>about:config</code> set <code>xpinstall.signatures.required</code> to <code>false</code>, then <code>about:addons</code> → gear icon → <strong>Install Add-on From File…</strong> → <code>prism-firefox.zip</code>.</p></div></li>
             </ol>
@@ -991,10 +990,12 @@ sha256sum -c SHA256SUMS.txt --ignore-missing</pre><button class="copy-btn" type=
                 </div>
               </div>
               <p class="note panel-note"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg><span>Firefox only keeps extensions that aren’t signed by Mozilla until it restarts — that’s why the permanent route needs Developer Edition, Nightly or ESR.</span></p>
+              <p class="note panel-note"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg><span><strong>Zen</strong> is built on Firefox: the same steps work there, and Prism connects to it like to Firefox.</span></p>
             </div>
           </div>
         </div>
 
+        <p class="note reveal" style="margin-top:1rem"><svg class="i" aria-hidden="true"><use href="#i-info"/></svg><span><strong>Prefer to add it by hand?</strong> Download <a href="https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.9/prism-chromium.zip" data-asset="ext-chromium"><code>prism-chromium.zip</code></a>, unzip it into a folder that stays, then on your browser’s extensions page turn on <strong>Developer mode</strong> → <strong>Load unpacked</strong> → that folder. A copy added by hand doesn’t update by itself.</span></p>
         <p class="note warn reveal" style="margin-top:1rem"><svg class="i" aria-hidden="true"><use href="#i-warning"/></svg><span><strong>Already using IDM or another download manager?</strong> Their extensions compete for the same downloads. Disable (or remove) the <em>IDM Integration Module</em> or similar extensions, otherwise they may grab downloads before Prism sees them.</span></p>
       </div>
 
@@ -1017,8 +1018,10 @@ sha256sum -c SHA256SUMS.txt --ignore-missing</pre><button class="copy-btn" type=
               <div class="acc-body"><p>Hover the video. Check <em>Show video button</em> in the extension options, and reload the page after installing the extension.</p></div></details>
           </div>
           <div class="accordion">
+            <details class="acc"><summary>The store says Prism is already added<svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
+              <div class="acc-body"><p>That’s the copy you added by hand with an older Prism. Remove it on the browser’s extensions page (<code>chrome://extensions</code>, <code>edge://extensions</code>, …), then add Prism from the Chrome Web Store: the store version updates by itself.</p></div></details>
             <details class="acc"><summary>“Extension ID” mismatch<svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
-              <div class="acc-body"><p>You loaded a modified copy. Use the official zip — its ID is <code>mmcdeiglkbfbicdjboocmhehodogilfl</code>.</p></div></details>
+              <div class="acc-body"><p>You loaded a modified copy. Use the Chrome Web Store version — its ID is <code>mmcdeiglkbfbicdjboocmhehodogilfl</code>.</p></div></details>
             <details class="acc"><summary>Flatpak or Snap browsers on Linux<svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>
               <div class="acc-body"><p>Flatpak browsers can’t run native helpers — a browser limitation. Snap Firefox asks for permission once. For full integration use a browser installed from a deb or rpm package.</p></div></details>
             <details class="acc"><summary>What does the extension send, and where?<svg class="i" aria-hidden="true"><use href="#i-chevron-down"/></svg></summary>

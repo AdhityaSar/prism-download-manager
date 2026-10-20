@@ -41,19 +41,25 @@ pub enum Browser {
     Brave,
     Vivaldi,
     Opera,
+    /// Helium (imput), Chromium-based.
+    Helium,
     Firefox,
+    /// Zen Browser, Firefox-based: Firefox's extension and Firefox's native messaging locations.
+    Zen,
 }
 
 impl Browser {
-    pub const ALL: [Browser; 8] = [
+    pub const ALL: [Browser; 10] = [
         Browser::Chrome,
         Browser::Edge,
         Browser::Brave,
         Browser::Vivaldi,
         Browser::Opera,
+        Browser::Helium,
         Browser::Chromium,
         Browser::ChromeForTesting,
         Browser::Firefox,
+        Browser::Zen,
     ];
 
     /// Stable lowercase id (`chrome`, `chrome-for-testing`, ...).
@@ -66,7 +72,9 @@ impl Browser {
             Browser::Brave => "brave",
             Browser::Vivaldi => "vivaldi",
             Browser::Opera => "opera",
+            Browser::Helium => "helium",
             Browser::Firefox => "firefox",
+            Browser::Zen => "zen",
         }
     }
 
@@ -79,12 +87,15 @@ impl Browser {
             Browser::Brave => "Brave",
             Browser::Vivaldi => "Vivaldi",
             Browser::Opera => "Opera",
+            Browser::Helium => "Helium",
             Browser::Firefox => "Mozilla Firefox",
+            Browser::Zen => "Zen Browser",
         }
     }
 
+    /// Firefox-family: Firefox's manifest format and extension ID.
     pub fn is_firefox(self) -> bool {
-        self == Browser::Firefox
+        matches!(self, Browser::Firefox | Browser::Zen)
     }
 }
 
@@ -106,7 +117,9 @@ impl FromStr for Browser {
             "brave" => Browser::Brave,
             "vivaldi" => Browser::Vivaldi,
             "opera" => Browser::Opera,
+            "helium" => Browser::Helium,
             "firefox" | "mozilla" => Browser::Firefox,
+            "zen" | "zen-browser" => Browser::Zen,
             _ => return Err(format!("unknown browser: {s}")),
         })
     }
@@ -337,7 +350,12 @@ mod platform {
             Browser::ChromeForTesting => &["Chromium"],
             Browser::Chromium => &["Chromium"],
             Browser::Edge => &["Microsoft\\Edge"],
-            Browser::Firefox => &["Mozilla"],
+            // Chromium's key under Helium's company and product name ("imput", "Helium"), from
+            // imputnet/helium-windows patches/helium/windows/change-branding.patch.
+            Browser::Helium => &["imput\\Helium"],
+            // Gecko reads `Software\Mozilla\NativeMessagingHosts` (NativeManifests.sys.mjs); Zen
+            // doesn't change it (zen-browser/desktop#10622: it uses Firefox's locations).
+            Browser::Firefox | Browser::Zen => &["Mozilla"],
         }
     }
 
@@ -375,7 +393,9 @@ mod platform {
             Browser::Brave => local.map(|d| d.join("BraveSoftware\\Brave-Browser\\User Data")),
             Browser::Vivaldi => local.map(|d| d.join("Vivaldi\\User Data")),
             Browser::Opera => roaming.map(|d| d.join("Opera Software\\Opera Stable")),
+            Browser::Helium => local.map(|d| d.join("imput\\Helium\\User Data")),
             Browser::Firefox => roaming.map(|d| d.join("Mozilla\\Firefox")),
+            Browser::Zen => roaming.map(|d| d.join("zen")),
         };
         p.is_some_and(|p| p.exists())
     }
@@ -438,7 +458,9 @@ mod platform {
         let chromium_left = Browser::ALL
             .iter()
             .any(|o| !o.is_firefox() && !browsers.contains(o));
-        let firefox_left = !browsers.contains(&Browser::Firefox);
+        let firefox_left = Browser::ALL
+            .iter()
+            .any(|o| o.is_firefox() && !browsers.contains(o));
         for (b, keep) in [
             (Browser::Chrome, chromium_left),
             (Browser::Firefox, firefox_left),
@@ -485,6 +507,9 @@ mod platform {
         if matches!(b, Browser::Brave | Browser::Vivaldi | Browser::Opera) {
             st.note = Some("uses Google Chrome's registry key on Windows".into());
         }
+        if b == Browser::Zen {
+            st.note = Some("uses Firefox's registry key".into());
+        }
         st
     }
 }
@@ -527,7 +552,12 @@ mod platform {
                     base.join("com.operasoftware.Opera"),
                     vec![nmh("Google/Chrome"), nmh("Opera")],
                 ),
+                // Helium's product dir (helium-macos change-product-dir-name.patch); it also
+                // falls back to Chrome's directory (helium scan-chrome-native-messaging-hosts.patch).
+                Browser::Helium => (base.join("net.imput.helium"), vec![nmh("net.imput.helium")]),
                 Browser::Firefox => (base.join("Firefox"), vec![nmh("Mozilla")]),
+                // Zen keeps its profiles in "zen" but reads Firefox's NativeMessagingHosts.
+                Browser::Zen => (base.join("zen"), vec![nmh("Mozilla")]),
             })
         } else {
             let config = std::env::var_os("XDG_CONFIG_HOME")
@@ -553,8 +583,18 @@ mod platform {
                     config.join("opera"),
                     vec![nmh("opera"), nmh("google-chrome")],
                 ),
+                // Helium's config dir (helium-linux change-chromium-branding.patch).
+                Browser::Helium => (
+                    config.join("net.imput.helium"),
+                    vec![nmh("net.imput.helium")],
+                ),
                 Browser::Firefox => (
                     home.join(".mozilla/firefox"),
+                    vec![home.join(".mozilla/native-messaging-hosts")],
+                ),
+                // zen-browser/desktop#10622: Zen reads ~/.mozilla/native-messaging-hosts.
+                Browser::Zen => (
+                    home.join(".zen"),
                     vec![home.join(".mozilla/native-messaging-hosts")],
                 ),
             })
@@ -574,7 +614,8 @@ mod platform {
             Browser::Vivaldi => "com.vivaldi.Vivaldi",
             Browser::Opera => "com.opera.Opera",
             Browser::Firefox => "org.mozilla.firefox",
-            Browser::ChromeForTesting => return None,
+            Browser::Zen => "app.zen_browser.zen",
+            Browser::ChromeForTesting | Browser::Helium => return None,
         })
     }
 
@@ -814,6 +855,61 @@ mod tests {
         if cfg!(windows) {
             assert!(status(&[Browser::Chrome], &host, &loc)[0].registered);
         }
+        let st = unregister(&[], &loc).unwrap();
+        assert!(st.iter().all(|s| !s.registered), "{st:?}");
+        #[cfg(windows)]
+        {
+            let _ =
+                winreg::RegKey::predef(winreg::enums::HKEY_CURRENT_USER).delete_subkey_all(&unique);
+        }
+    }
+
+    /// Helium gets the Chromium manifest in its own place; Zen gets Firefox's manifest where
+    /// Firefox reads it, and unregistering Zen alone keeps Firefox's registration.
+    #[test]
+    fn helium_and_zen_register_where_they_read() {
+        let dir = tempfile::tempdir().unwrap();
+        let host = dir.path().join(crate::HOST_BINARY_NAME);
+        fs::write(&host, b"").unwrap();
+        let unique = format!("Software\\PrismTestHZ{}", std::process::id());
+        let loc = Locations {
+            manifest_dir: Some(dir.path().join("nm")),
+            home: Some(dir.path().join("home")),
+            registry_root: Some(unique.clone()),
+        };
+        let mut opts = RegisterOptions::new(&host);
+        opts.browsers = vec![Browser::Helium, Browser::Zen, Browser::Firefox];
+        opts.locations = loc.clone();
+        let st = register(&opts).unwrap();
+        let get = |b: Browser| st.iter().find(|s| s.browser == b).unwrap().clone();
+        let (helium, zen, firefox) = (
+            get(Browser::Helium),
+            get(Browser::Zen),
+            get(Browser::Firefox),
+        );
+        for s in [&helium, &zen, &firefox] {
+            assert!(s.registered && s.points_to_this_host, "{s:?}");
+        }
+        assert_eq!(helium.allowed, vec![chrome_origin(CHROME_EXTENSION_ID)]);
+        assert_eq!(zen.allowed, vec![FIREFOX_EXTENSION_ID.to_string()]);
+        assert_eq!(
+            zen.location, firefox.location,
+            "Zen reads Firefox's location"
+        );
+        let helium_place = if cfg!(windows) {
+            "imput\\Helium\\NativeMessagingHosts"
+        } else {
+            "net.imput.helium"
+        };
+        assert!(
+            helium.location.contains(helium_place),
+            "{}",
+            helium.location
+        );
+        assert_eq!("zen-browser".parse::<Browser>().unwrap(), Browser::Zen);
+
+        unregister(&[Browser::Zen], &loc).unwrap();
+        assert!(status(&[Browser::Firefox], &host, &loc)[0].registered);
         let st = unregister(&[], &loc).unwrap();
         assert!(st.iter().all(|s| !s.registered), "{st:?}");
         #[cfg(windows)]

@@ -130,73 +130,105 @@ pub fn refresh_extension_copies(app: &AppHandle) {
 /// pages (`chrome://extensions`) from the command line, so the UI copies that address for the
 /// user to paste.
 pub fn open_browser(browser: &str) -> Result<(), String> {
-    launch(browser).map_err(|e| format!("Could not start the browser: {e}"))
+    launch(browser, None).map_err(|e| format!("Could not start the browser: {e}"))
+}
+
+/// Prism's extension in the Chrome Web Store (Chrome, Edge, Brave, Opera, Vivaldi, Chromium).
+pub const EXTENSION_STORE_URL: &str = "https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl";
+
+/// Opens the extension's Chrome Web Store page in `browser`.
+pub fn open_extension_store(browser: &str) -> Result<(), String> {
+    launch(browser, Some(EXTENSION_STORE_URL))
+        .map_err(|e| format!("Could not start the browser: {e}"))
 }
 
 #[cfg(windows)]
-fn launch(browser: &str) -> std::io::Result<()> {
+fn launch(browser: &str, url: Option<&str>) -> std::io::Result<()> {
     use winreg::RegKey;
     use winreg::enums::{HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE};
-    let exe = match browser {
-        "edge" => "msedge.exe",
-        "brave" => "brave.exe",
-        "vivaldi" => "vivaldi.exe",
-        "opera" => "opera.exe",
-        "firefox" => "firefox.exe",
-        _ => "chrome.exe",
-    };
     // Browsers register their executable under "App Paths" (what the Run dialog uses).
-    let key = format!(r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\{exe}");
-    let path = [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE]
-        .into_iter()
-        .find_map(|root| {
-            let v: String = RegKey::predef(root)
-                .open_subkey(&key)
-                .ok()?
-                .get_value("")
-                .ok()?;
-            let p = PathBuf::from(v.trim_matches('"'));
-            p.exists().then_some(p)
-        })
-        .ok_or_else(|| std::io::Error::other(format!("{exe} is not installed")))?;
-    std::process::Command::new(path).spawn().map(|_| ())
+    let app_path = |exe: &str| {
+        let key = format!(r"SOFTWARE\Microsoft\Windows\CurrentVersion\App Paths\{exe}");
+        [HKEY_CURRENT_USER, HKEY_LOCAL_MACHINE]
+            .into_iter()
+            .find_map(|root| {
+                let v: String = RegKey::predef(root)
+                    .open_subkey(&key)
+                    .ok()?
+                    .get_value("")
+                    .ok()?;
+                let p = PathBuf::from(v.trim_matches('"'));
+                p.exists().then_some(p)
+            })
+    };
+    let under = |var: &str, rel: &str| {
+        std::env::var_os(var)
+            .map(|d| PathBuf::from(d).join(rel))
+            .filter(|p| p.exists())
+    };
+    let path = match browser {
+        // Helium registers no App Paths (its chrome.exe would clash with Chrome's): it installs
+        // to imput\Helium\Application (imputnet/helium-windows installer/helium.nsi).
+        "helium" => under("LOCALAPPDATA", r"imput\Helium\Application\chrome.exe")
+            .or_else(|| under("ProgramFiles", r"imput\Helium\Application\chrome.exe")),
+        "zen" => app_path("zen.exe").or_else(|| under("ProgramFiles", r"Zen Browser\zen.exe")),
+        "edge" => app_path("msedge.exe"),
+        "brave" => app_path("brave.exe"),
+        "vivaldi" => app_path("vivaldi.exe"),
+        "opera" => app_path("opera.exe"),
+        "firefox" => app_path("firefox.exe"),
+        _ => app_path("chrome.exe"),
+    }
+    .ok_or_else(|| std::io::Error::other(format!("{browser} is not installed")))?;
+    std::process::Command::new(path)
+        .args(url)
+        .spawn()
+        .map(|_| ())
 }
 
 #[cfg(target_os = "macos")]
-fn launch(browser: &str) -> std::io::Result<()> {
-    let app = match browser {
-        "edge" => "Microsoft Edge",
-        "brave" => "Brave Browser",
-        "vivaldi" => "Vivaldi",
-        "opera" => "Opera",
-        "chromium" => "Chromium",
-        "firefox" => "Firefox",
-        _ => "Google Chrome",
+fn launch(browser: &str, url: Option<&str>) -> std::io::Result<()> {
+    let apps: &[&str] = match browser {
+        "edge" => &["Microsoft Edge"],
+        "brave" => &["Brave Browser"],
+        "vivaldi" => &["Vivaldi"],
+        "opera" => &["Opera"],
+        "chromium" => &["Chromium"],
+        "helium" => &["Helium"],
+        "firefox" => &["Firefox"],
+        // Zen.app (older releases: "Zen Browser.app").
+        "zen" => &["Zen", "Zen Browser"],
+        _ => &["Google Chrome"],
     };
-    let status = std::process::Command::new("open")
-        .args(["-a", app])
-        .status()?;
-    if status.success() {
-        Ok(())
-    } else {
-        Err(std::io::Error::other(format!("{app} not found")))
+    for &app in apps {
+        let status = std::process::Command::new("open")
+            .args(["-a", app])
+            .args(url)
+            .status()?;
+        if status.success() {
+            return Ok(());
+        }
     }
+    Err(std::io::Error::other(format!("{browser} not found")))
 }
 
 #[cfg(all(unix, not(target_os = "macos")))]
-fn launch(browser: &str) -> std::io::Result<()> {
+fn launch(browser: &str, url: Option<&str>) -> std::io::Result<()> {
     let candidates: &[&str] = match browser {
         "edge" => &["microsoft-edge", "microsoft-edge-stable"],
         "brave" => &["brave-browser", "brave"],
         "vivaldi" => &["vivaldi", "vivaldi-stable"],
         "opera" => &["opera"],
         "chromium" => &["chromium", "chromium-browser"],
+        "helium" => &["helium", "helium-browser"],
         "firefox" => &["firefox"],
+        "zen" => &["zen-browser", "zen"],
         _ => &["google-chrome", "google-chrome-stable"],
     };
     let mut last = std::io::Error::from(std::io::ErrorKind::NotFound);
     for exe in candidates {
         match std::process::Command::new(exe)
+            .args(url)
             .stdin(std::process::Stdio::null())
             .stdout(std::process::Stdio::null())
             .stderr(std::process::Stdio::null())

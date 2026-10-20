@@ -20,6 +20,8 @@ export interface MediaInfo {
   quality?: string | null;
   site?: string | null;
   pageUrl?: string | null;
+  /** 1-based position in the playlist it was picked from. */
+  playlistIndex?: number | null;
 }
 
 export interface DownloadItem {
@@ -222,7 +224,7 @@ export interface Settings {
     videoButton: boolean;
     videoMinDurationSecs: number;
   };
-  sounds: { enabled: boolean; onComplete: boolean; onFailed: boolean; onQueueDone: boolean; volume: number };
+  sounds: { enabled: boolean; onComplete: boolean; onFailed: boolean; onQueueDone: boolean; volume: number; completeSound: string };
   clipboard: { monitor: boolean; ask: boolean };
   grabber: { defaultDepth: number; maxPages: number; concurrentRequests: number; respectRobots: boolean };
   antivirus: {
@@ -248,9 +250,13 @@ export interface Settings {
     accelerate: boolean;
     cookiesFromBrowser: string;
     fileTemplate: string;
+    /** Start playlist videos' file names with their position ("01 - Title"). */
+    numberPlaylistVideos: boolean;
   };
   shortcuts: Record<string, string>;
   onboardingDone: boolean;
+  /** The app version whose "What's new" was shown ("" before 1.1.0). */
+  lastSeenVersion: string;
 }
 
 export type CaptureSource = "manual" | "browser" | "clipboard" | "batch" | "grabber";

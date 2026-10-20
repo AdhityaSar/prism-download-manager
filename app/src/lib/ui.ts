@@ -8,7 +8,8 @@ import type { Category } from "./types";
 export type Sheet =
   | { kind: "settings"; section?: string }
   | { kind: "scheduler"; queueId?: string }
-  | { kind: "grabber"; projectId?: string | null };
+  | { kind: "grabber"; projectId?: string | null }
+  | { kind: "whatsnew" };
 
 export type Dialog =
   | { kind: "category"; category?: Category }

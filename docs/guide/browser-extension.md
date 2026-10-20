@@ -14,73 +14,46 @@ The extension is what makes Prism feel like magic in the browser:
 > status of every browser and repairs it with one click.
 
 > **Easiest way:** Prism guides you through this on first start, and any time from
-> **Settings → Browser integration**. It copies the extensions-page address, opens your
-> browser, shows exactly which folder to pick, and turns green when the extension connects.
-> The steps below are the same thing by hand.
+> **Settings → Browser integration**: it opens the store page in the browser you pick and
+> turns green when the extension connects.
 
-## Get the extension files
+## Chrome, Edge, Brave, Opera, Vivaldi, Helium (Chrome Web Store)
 
-Download **`prism-chromium.zip`** (Chrome, Edge, Brave, Opera, Vivaldi, Chromium) and/or
-**`prism-firefox.zip`** from the [latest release](https://github.com/FortoGraphy/prism-download-manager/releases/latest) and unzip them
-into a folder that will **stay** there (for example `Documents/Prism Extension`). Don't
-delete the folder afterwards — the browser loads the extension from it.
+**[Prism Download Manager in the Chrome Web Store](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl)**
 
-Tip: the installed app also contains the unpacked extension —
-Prism → Settings → Browser integration → **Open folder**:
+1. Open the link above in your browser.
+2. Click **Add to Chrome** (Brave: *Add to Brave*, Opera: *Add to Opera*), then **Add
+   extension**.
+3. Pin the Prism icon: click the puzzle icon in the toolbar → pin **Prism**.
+4. Click the Prism icon — it should say **Connected**.
 
-| System | Folder |
-|---|---|
-| Windows (setup.exe) | `%LOCALAPPDATA%\Prism\extension\chromium` |
-| Windows (MSI) | `C:\Program Files\Prism\extension\chromium` |
-| Linux (deb / rpm) | `/usr/lib/Prism/extension/chromium` |
-| Linux (AppImage) | `~/.local/share/prism/extension/chromium` (a copy Prism keeps up to date) |
-| macOS | `~/Library/Application Support/Prism/extension/chromium` (a copy Prism keeps up to date) |
+The store keeps the extension up to date by itself.
 
-## Google Chrome (Windows, macOS, Linux)
+* **Edge:** the first time, Edge asks to *Allow extensions from other stores* at the top of
+  the page — click **Allow**, then **Add to Chrome**.
+* **Opera:** Opera first offers its free *Install Chrome Extensions* add-on — add it, then come
+  back to the store page.
 
-1. Open **`chrome://extensions`**.
-2. Turn on **Developer mode** (top right).
-3. Click **Load unpacked** and select the unzipped **`chromium`** folder (the one containing
-   `manifest.json`).
-4. Pin the Prism icon: click the puzzle icon in the toolbar → pin **Prism**.
-5. Click the Prism icon — it should say **Connected**.
+### Added Prism by hand before?
 
-## Microsoft Edge
+Versions before 1.1.0 loaded the extension with *Developer mode → Load unpacked*. That copy
+doesn't update by itself, and the browser won't add the store version while it's installed:
+open `chrome://extensions` (`edge://extensions`, `brave://extensions`, …), click **Remove**
+under Prism, then add it from the store. Prism keeps working with both, so nothing else
+changes.
 
-1. Open **`edge://extensions`**.
-2. Turn on **Developer mode** (left sidebar, bottom).
-3. **Load unpacked** → select the **`chromium`** folder.
+## Firefox and Zen
 
-## Brave · Opera · Vivaldi · Chromium
-
-Same steps as Chrome, at:
-
-| Browser | Address |
-|---|---|
-| Brave | `brave://extensions` |
-| Opera | `opera://extensions` (Developer mode toggle at top right) |
-| Vivaldi | `vivaldi://extensions` |
-| Chromium | `chrome://extensions` |
-
-## Firefox
-
+Zen is built on Firefox: the same steps work there. Prism isn't in Firefox Add-ons yet, and
 Firefox only keeps unsigned extensions until it restarts, so choose one of:
 
 * **Try it now (until restart):** open **`about:debugging#/runtime/this-firefox`** →
-  **Load Temporary Add-on…** → pick `manifest.json` inside the unzipped **`firefox`** folder.
+  **Load Temporary Add-on…** → pick `manifest.json` inside the **`firefox`** folder. Prism →
+  Settings → Browser integration shows the folder (it's also in `prism-firefox.zip` on the
+  [latest release](https://github.com/FortoGraphy/prism-download-manager/releases/latest)).
 * **Permanent (Firefox Developer Edition / Nightly / ESR):** open `about:config`, set
   `xpinstall.signatures.required` to `false`, then open `about:addons` → gear icon →
   **Install Add-on From File…** → pick `prism-firefox.zip`.
-
-## After updating Prism
-
-Browsers don't reload an unpacked extension's files by themselves. After Prism updates, open
-the extensions page (`chrome://extensions`, `edge://extensions`, …) and click the reload arrow
-**↻** next to Prism, or restart the browser. Prism shows a reminder in its window while the
-browser still runs an older extension.
-
-The folders in the table above are updated together with Prism. If you loaded an unzipped
-`prism-chromium.zip` instead, unzip the new release's zip over that folder first.
 
 ## Already using IDM or another download manager?
 
@@ -95,8 +68,20 @@ grab downloads before Prism sees them.
 | Popup says **Not connected** / *Prism isn't reachable* | Start Prism (it lives in the tray), then click **Retry** in the popup. Still failing → Prism → Settings → Browser integration → **Repair**, then restart the browser. |
 | Downloads still go to the browser | Make sure *Capture downloads* is on in the popup; check the file type is in Settings → File types (e.g. images are not captured by default); `blob:` downloads (some web apps) can't be handed over. |
 | No **Download video** button | Hover the video; check *Show video button* in the extension options; reload the page after installing. |
-| "Extension ID" mismatch in Browser integration | You loaded a modified copy — use the official zip; its ID is `mmcdeiglkbfbicdjboocmhehodogilfl`. |
+| The store says Prism is already added, but it's the old copy | Remove the copy you added by hand (see *Added Prism by hand before?*), then add it from the store. |
+| "Extension ID" mismatch in Browser integration | You loaded a modified copy — use the store version; its ID is `mmcdeiglkbfbicdjboocmhehodogilfl`. |
 | Linux Flatpak/Snap browsers | Flatpak browsers can't run native helpers (browser limitation). Snap Firefox asks for permission once. Use a deb/rpm browser for full integration. |
+
+## Adding it by hand instead
+
+Rather not use the store? Download `prism-chromium.zip` from the
+[latest release](https://github.com/FortoGraphy/prism-download-manager/releases/latest) (or
+build it with `npm run build --prefix extension`), unzip it into a folder that stays, then on
+the browser's extensions page turn on **Developer mode** → **Load unpacked** → that folder.
+Prism → Settings → Browser integration → *Add it by hand instead* walks you through it with
+the folder Prism keeps up to date. A copy added by hand doesn't update by itself (click ↻ next
+to Prism after a Prism update), and it has the same ID as the store version, so only one of
+them can be installed at a time.
 
 ## Privacy
 

@@ -186,6 +186,7 @@ fn main() {
             commands::extension_dir,
             commands::extension_folder,
             commands::open_browser,
+            commands::open_extension_store,
             commands::open_details,
             commands::open_window,
             commands::toggle_mini,

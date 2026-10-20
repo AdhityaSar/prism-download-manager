@@ -8,6 +8,7 @@ import { api } from "../lib/api";
 import { useApp } from "../lib/store";
 import { toast, useUi } from "../lib/ui";
 import { BottomPane } from "./BottomPane";
+import { useWhatsNew } from "./sheets/WhatsNewSheet";
 import { ConnectBanner } from "./BrowserConnect";
 import { Dialogs } from "./dialogs/Dialogs";
 import { DownloadTable } from "./DownloadTable";
@@ -48,6 +49,7 @@ export function MainWindow() {
 
   useGlobalShortcuts();
   useCoreNotifications();
+  useWhatsNew();
 
   // ---- drag & drop of links / .torrent files anywhere on the window -------------------
   const onDragOver = (e: React.DragEvent) => {

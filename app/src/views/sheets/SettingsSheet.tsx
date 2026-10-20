@@ -7,7 +7,9 @@ import { Icon, type IconName } from "../../design/icons";
 import { type DeepPartial, patchSettings } from "../../lib/actions";
 import { api, type IntegrationStatus, type ToolStatus } from "../../lib/api";
 import { formatDate } from "../../lib/format";
+import { needsRepair } from "../../lib/integration";
 import { categoryIcon } from "../../lib/present";
+import { COMPLETE_SOUNDS } from "../../lib/sounds";
 import { playSound, useApp } from "../../lib/store";
 import type { Settings } from "../../lib/types";
 import { attempt, toast, useUi } from "../../lib/ui";
@@ -288,6 +290,17 @@ function SectionBody({ id, s }: { id: string; s: Settings }) {
           <Group title="Sounds">
             <Toggle title="Play sounds" value={s.sounds.enabled} onChange={(v) => save({ sounds: { enabled: v } })} />
             <Toggle title="Download complete" value={s.sounds.onComplete} onChange={(v) => save({ sounds: { onComplete: v } })} />
+            <Row title="Download complete sound" hint="Plays when you pick one">
+              <Select
+                label="Download complete sound"
+                value={COMPLETE_SOUNDS.some((c) => c.id === s.sounds.completeSound) ? s.sounds.completeSound : "classic"}
+                onChange={(v) => {
+                  save({ sounds: { completeSound: v } });
+                  playSound("complete", v);
+                }}
+                options={COMPLETE_SOUNDS.map((c) => ({ value: c.id, label: c.name }))}
+              />
+            </Row>
             <Toggle title="Download failed" value={s.sounds.onFailed} onChange={(v) => save({ sounds: { onFailed: v } })} />
             <Toggle title="Queue finished" value={s.sounds.onQueueDone} onChange={(v) => save({ sounds: { onQueueDone: v } })} />
             <Row title="Volume">
@@ -556,7 +569,7 @@ function BrowserIntegration() {
           <div className="t-small">
             {status?.extensionOutdated
               ? status.extensionInstallType === "development"
-                ? "Browsers don't reload an unpacked extension's files by themselves. Click ↻ Reload next to Prism on the extensions page; if it stays old, remove it and load it again from the folder below."
+                ? "This one was added by hand and doesn't update by itself. Prism's extension is now in the Chrome Web Store: remove this one and add it from the store (steps below)."
                 : "Browsers don't reload an unpacked extension's files by themselves. Click ↻ Reload next to Prism on the extensions page, or restart the browser; if it stays old, remove it and load it again from the folder below."
               : status?.lastSeen
                 ? `Last message ${formatDate(status.lastSeen)}`
@@ -564,7 +577,7 @@ function BrowserIntegration() {
           </div>
         </div>
         <span className="spacer" />
-        {(!status?.extensionConnected || status.extensionOutdated) && (
+        {needsRepair(status) && (
           <button type="button" className="btn btn--primary" disabled={busy} onClick={repair}>
             <Icon name="refresh-url" size={15} /> {busy ? "Repairing…" : "Repair"}
           </button>
@@ -672,6 +685,7 @@ function Video({ s }: { s: Settings }) {
         <Row title="File name template">
           <TextField value={s.video.fileTemplate} onCommit={(v) => save({ video: { fileTemplate: v } })} label="File name template" mono />
         </Row>
+        <Toggle title="Number playlist videos" hint="Starts each file name with the video's position in the playlist: 01 - Title" value={s.video.numberPlaylistVideos} onChange={(v) => save({ video: { numberPlaylistVideos: v } })} />
       </Group>
       <Group title="Custom tool paths">
         <Row title="yt-dlp" hint="Empty = managed by Prism">
@@ -838,6 +852,9 @@ function About() {
       <div className="inline" style={{ justifyContent: "center" }}>
         <button type="button" className="btn" onClick={() => void checkForUpdates(true)}>
           <Icon name="refresh-url" size={15} /> Check for updates
+        </button>
+        <button type="button" className="btn btn--ghost" onClick={() => useUi.getState().openSheet({ kind: "whatsnew" })}>
+          <Icon name="star" size={15} /> What's new
         </button>
       </div>
       <p className="lead">One beam, many rays. A fast multi-connection download manager with browser integration, video downloading, queues, a scheduler and a site grabber.</p>

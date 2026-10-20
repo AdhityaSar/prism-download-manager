@@ -99,12 +99,56 @@ pub struct VideoDecision {
     pub title: Option<String>,
     pub thumbnail: Option<String>,
     pub duration: Option<f64>,
-    /// For playlists: the entry URLs to download with the same choice.
-    pub entries: Vec<String>,
+    /// For playlists: the entries to download with the same choice.
+    pub entries: Vec<VideoEntry>,
     pub mode: StartMode,
     /// Browser context (cookies, user agent, referer) for sites that need a session.
     pub context: Option<serde_json::Value>,
+    /// Playlists: download the entries one after another (the "One at a time" queue).
+    pub one_at_a_time: bool,
 }
+
+/// One playlist entry picked in the video dialog. A plain URL string is accepted too.
+#[derive(Debug, Clone, Default, PartialEq, Deserialize)]
+#[serde(from = "VideoEntryIn")]
+pub struct VideoEntry {
+    pub url: String,
+    pub title: Option<String>,
+    /// 1-based position in the playlist.
+    pub index: Option<u32>,
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum VideoEntryIn {
+    Url(String),
+    Entry {
+        url: String,
+        #[serde(default)]
+        title: Option<String>,
+        #[serde(default)]
+        index: Option<u32>,
+    },
+}
+
+impl From<VideoEntryIn> for VideoEntry {
+    fn from(e: VideoEntryIn) -> Self {
+        match e {
+            VideoEntryIn::Url(url) => VideoEntry {
+                url,
+                ..Default::default()
+            },
+            VideoEntryIn::Entry { url, title, index } => VideoEntry {
+                url,
+                title: title.filter(|t| !t.trim().is_empty()),
+                index,
+            },
+        }
+    }
+}
+
+/// The queue the video dialog's "One at a time" puts a playlist into.
+pub const ONE_AT_A_TIME_QUEUE: &str = "one-at-a-time";
 
 fn new_id() -> String {
     uuid::Uuid::new_v4().simple().to_string()
@@ -584,6 +628,7 @@ impl Core {
                 .ok()
                 .and_then(|u| u.host_str().map(String::from)),
             page_url: Some(url.clone()),
+            playlist_index: None,
         };
         let title = media.title.clone().unwrap_or_else(|| "Video".into());
         let ext = jobs::video_ext(choice, options, settings);
@@ -619,30 +664,90 @@ impl Core {
             self.0.state.lock().videos.remove(&d.capture_id);
         }
         let settings = self.settings();
-        let urls = if d.entries.is_empty() {
-            vec![d.page_url.clone()]
+        let playlist = !d.entries.is_empty();
+        // Numbers as wide as the last position: 01..99, 001..120.
+        let width = d
+            .entries
+            .iter()
+            .filter_map(|e| e.index)
+            .max()
+            .map_or(2, |m| m.to_string().len().max(2));
+        let entries: Vec<NewItem> = if playlist {
+            d.entries
+                .iter()
+                .map(|e| {
+                    // Each entry by its own title (the playlist's title is not the video's).
+                    let mut n = self.video_item(
+                        &settings,
+                        e.url.clone(),
+                        &d.choice,
+                        &d.options,
+                        d.context.clone(),
+                        e.title.clone(),
+                        None,
+                        None,
+                    );
+                    if let Some(m) = n.media.as_mut() {
+                        m.playlist_index = e.index;
+                    }
+                    if settings.video.number_playlist_videos
+                        && let (Some(i), Some(name)) = (e.index, n.file_name.as_mut())
+                    {
+                        *name = numbered_name(name, i, width);
+                    }
+                    n.save_dir = d.save_dir.clone();
+                    n
+                })
+                .collect()
         } else {
-            d.entries.clone()
+            let mut n = self.video_item(
+                &settings,
+                d.page_url.clone(),
+                &d.choice,
+                &d.options,
+                d.context.clone(),
+                d.title.clone(),
+                d.thumbnail.clone(),
+                d.duration,
+            );
+            n.save_dir = d.save_dir.clone();
+            vec![n]
         };
-        let single = urls.len() == 1;
-        let entries: Vec<NewItem> = urls
-            .into_iter()
-            .map(|url| {
-                let mut n = self.video_item(
-                    &settings,
-                    url,
-                    &d.choice,
-                    &d.options,
-                    d.context.clone(),
-                    if single { d.title.clone() } else { None },
-                    if single { d.thumbnail.clone() } else { None },
-                    if single { d.duration } else { None },
-                );
-                n.save_dir = d.save_dir.clone();
-                n
-            })
-            .collect();
+        if playlist && d.one_at_a_time && matches!(d.mode, StartMode::Now | StartMode::Later) {
+            let queue = self.one_at_a_time_queue()?;
+            let items = self.add_items(entries, StartMode::Queue(queue.clone()))?;
+            if d.mode == StartMode::Now {
+                self.start_queue(&queue);
+            }
+            return Ok(items);
+        }
         self.add_items(entries, d.mode)
+    }
+
+    /// The "One at a time" queue (one download at a time), created on first use.
+    fn one_at_a_time_queue(&self) -> Result<String> {
+        let existing = self
+            .queues()
+            .into_iter()
+            .find(|q| q.id == ONE_AT_A_TIME_QUEUE);
+        match existing {
+            Some(q) if q.max_concurrent == 1 => {}
+            Some(mut q) => {
+                q.max_concurrent = 1;
+                self.upsert_queue(q)?;
+            }
+            None => {
+                let position = self.queues().len() as i64;
+                self.upsert_queue(crate::model::Queue {
+                    id: ONE_AT_A_TIME_QUEUE.into(),
+                    name: "One at a time".into(),
+                    max_concurrent: 1,
+                    position,
+                    ..Default::default()
+                })?;
+            }
+        }
+        Ok(ONE_AT_A_TIME_QUEUE.into())
     }
 
     /// Download a sniffed HLS/DASH/direct stream (no yt-dlp involved).
@@ -1354,7 +1459,12 @@ mod tests {
 
 /// Applies the user's yt-dlp style name template (`%(title)s [%(id)s].%(ext)s`) to the fields
 /// Prism knows; unknown fields and the brackets left empty by them are dropped.
-fn render_name_template(template: &str, title: &str, id: Option<&str>) -> String {
+/// `01 - Name.mkv`: a playlist video's file name with its position, `width` digits at least.
+pub(crate) fn numbered_name(name: &str, index: u32, width: usize) -> String {
+    format!("{index:0width$} - {name}")
+}
+
+pub(crate) fn render_name_template(template: &str, title: &str, id: Option<&str>) -> String {
     let tpl = template.trim();
     let tpl = tpl.strip_suffix(".%(ext)s").unwrap_or(tpl);
     if tpl.is_empty() {
@@ -1383,7 +1493,7 @@ fn render_name_template(template: &str, title: &str, id: Option<&str>) -> String
 }
 
 /// The site's video id where it is in the URL (YouTube watch/shorts/youtu.be links).
-fn video_id(page_url: &str) -> Option<String> {
+pub(crate) fn video_id(page_url: &str) -> Option<String> {
     let u = url::Url::parse(page_url).ok()?;
     let host = u
         .host_str()?

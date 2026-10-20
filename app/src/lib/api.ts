@@ -94,8 +94,17 @@ export interface VideoDecision {
   title?: string;
   thumbnail?: string;
   duration?: number;
-  entries: string[];
+  /** Playlist entries to download (each with its title and 1-based position). */
+  entries: VideoEntry[];
   mode: StartMode;
+  /** Playlists: one video after another (the "One at a time" queue). */
+  oneAtATime?: boolean;
+}
+
+export interface VideoEntry {
+  url: string;
+  title?: string | null;
+  index?: number;
 }
 
 export interface TorrentMeta {
@@ -169,6 +178,8 @@ export const api = {
   extensionFolder: (firefox: boolean) => invoke<string | null>("extension_folder", { firefox }),
   /** Starts (or focuses) the browser. It can't be sent to `chrome://extensions` directly. */
   openBrowser: (browser: string) => invoke<void>("open_browser", { browser }),
+  /** Prism's Chrome Web Store page in that browser (the default browser if it can't start). */
+  openExtensionStore: (browser: string) => invoke<void>("open_extension_store", { browser }),
 
   assignToQueue: (ids: string[], queueId: string | null) => invoke<void>("assign_to_queue", { ids, queueId }),
   moveInQueue: (ids: string[], delta: number) => invoke<void>("move_in_queue", { ids, delta }),

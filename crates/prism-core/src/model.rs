@@ -181,6 +181,8 @@ pub struct MediaInfo {
     pub quality: Option<String>,
     pub site: Option<String>,
     pub page_url: Option<String>,
+    /// 1-based position in the playlist it was picked from.
+    pub playlist_index: Option<u32>,
 }
 
 /// Live, non-persisted progress of a running item (sent ~4×/s to the UI).

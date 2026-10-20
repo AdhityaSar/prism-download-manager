@@ -63,7 +63,11 @@ export default function VideoWindow({ id }: { id: string }) {
   const [chapters, setChapters] = useState(settings?.video.embedChapters ?? true);
   const [sponsor, setSponsor] = useState<Sponsor>(settings?.video.sponsorblock ?? "off");
   const [dir, setDir] = useState("");
+  const [oneByOne, setOneByOne] = useState(false);
   const [busy, setBusy] = useState(false);
+  // The container set in Settings › Video & streams (MP4, MKV or WebM).
+  const container = (["mp4", "mkv", "webm"] as const).find((c) => c === settings?.video.container) ?? "mp4";
+  const containerName = container === "webm" ? "WebM" : container.toUpperCase();
 
   useEffect(() => {
     void (async () => {
@@ -103,7 +107,7 @@ export default function VideoWindow({ id }: { id: string }) {
         pageUrl: cap.pageUrl,
         choice: picked,
         options: {
-          container: "mp4",
+          container,
           audioFormat: "mp3",
           embedSubtitles: subs,
           subLangs: langs.split(/[\s,]+/).filter(Boolean),
@@ -116,7 +120,11 @@ export default function VideoWindow({ id }: { id: string }) {
         title,
         thumbnail: info?.thumbnail ?? undefined,
         duration: info?.duration ?? undefined,
-        entries: probe?.kind === "playlist" ? [...entries] : [],
+        entries:
+          probe?.kind === "playlist"
+            ? probe.entries.flatMap((e, i) => (entries.has(e.url) ? [{ url: e.url, title: e.title ?? null, index: i + 1 }] : []))
+            : [],
+        oneAtATime: probe?.kind === "playlist" && oneByOne,
         mode,
       }),
       "Could not add the video",
@@ -165,6 +173,13 @@ export default function VideoWindow({ id }: { id: string }) {
         )}
 
         {probe?.kind === "playlist" && <Playlist entries={probe.entries} checked={entries} onChange={setEntries} />}
+        {probe?.kind === "playlist" && (
+          <div className="vopt vopt--plist">
+            <Checkbox checked={oneByOne} onChange={setOneByOne}>
+              One at a time <span className="text-tertiary">— each video starts when the one before it is done</span>
+            </Checkbox>
+          </div>
+        )}
 
         {probe && (
           <div className="vformat">
@@ -173,7 +188,7 @@ export default function VideoWindow({ id }: { id: string }) {
               value={format}
               onChange={setFormat}
               options={[
-                { value: "mp4", label: "MP4 video" },
+                { value: "mp4", label: `${containerName} video` },
                 { value: "mp3", label: "MP3 audio" },
               ]}
             />
@@ -281,7 +296,7 @@ export default function VideoWindow({ id }: { id: string }) {
         </div>
         <button type="button" className="btn btn--primary" disabled={!picked || busy || (probe?.kind === "playlist" && !entries.size)} onClick={() => confirm({ type: "now" })}>
           <Icon name="download" size={15} />
-          {probe?.kind === "playlist" ? `Download ${entries.size} ${format === "mp3" ? "as MP3" : "videos"}` : format === "mp3" ? "Download MP3" : picked ? `Download ${picked.label.split(" · ")[0]} MP4` : "Download"}
+          {probe?.kind === "playlist" ? `Download ${entries.size} ${format === "mp3" ? "as MP3" : "videos"}` : format === "mp3" ? "Download MP3" : picked ? `Download ${picked.label.split(" · ")[0]} ${containerName}` : "Download"}
         </button>
       </footer>
     </WindowFrame>

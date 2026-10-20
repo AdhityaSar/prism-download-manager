@@ -1,31 +1,49 @@
-# Prism 1.0.9 — One beam. Many rays.
+# Prism 1.1.0 — One beam. Many rays.
 
 A fast, open-source download manager for Windows, Linux and macOS, with browser integration
 and video downloads.
 
-## What's new in 1.0.9
+## What's new in 1.1.0
 
-* **Choose the quality of a stream a page plays.** When a page plays an HLS or DASH stream,
-  the video menu lists its qualities (1080p, 720p, …) instead of a single *Stream* entry, and
-  Prism downloads the one you pick.
-* **Picking a video quality opens the Download File window**, where you can rename the file or
-  choose the folder, as for any other download. To start right away, turn off *Show the
-  Download File dialog* in Settings › General.
-* **"Open a progress window for new downloads" works.** The setting did nothing. A new download
-  now opens a small progress window, which closes when the download finishes.
-* Videos you need to be signed in for list their qualities on the first try: Prism reads the
-  page with your browser's cookies, as it already did for the download.
-* Qualities are named as the video names them: some videos showed *1608p* instead of *1080p*.
-* Smaller fixes: a slow speed no longer shows as *7.083333333333334 B/s*; the speed chart stays
-  inside its panel; Settings › Browser integration shows *Repair* only when something needs
-  repairing; the details and progress windows can't be shrunk until their content overlaps; an
-  unknown file size shows *N/A*.
-* These come from a pull request by [@uuc110](https://github.com/uuc110) — thank you!
-* **After updating, click ↻ next to Prism on `chrome://extensions`** (or restart the browser)
-  so it loads the new extension (1.0.9). If you installed it from a downloaded
-  `prism-chromium.zip`, use the 1.0.9 zip.
+* **The browser extension is in the Chrome Web Store.** Add it to Chrome, Edge, Brave, Opera
+  or Vivaldi in one click, and the store keeps it up to date:
+  [Prism Download Manager](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl).
+  Prism's setup (on first start, and in Settings › Browser integration) opens the store page in
+  the browser you pick.
+* **Added the extension by hand before?** That copy doesn't update by itself. After this update
+  Prism shows what's new and walks you through switching: remove the old copy on
+  `chrome://extensions`, then add Prism from the store. Adding it by hand still works: Settings ›
+  Browser integration › *Add it by hand instead*.
+* **Zen and Helium:** Prism connects to Zen (built on Firefox, it uses the Firefox extension)
+  and to Helium (it adds Prism from the Chrome Web Store), and both show up in Settings ›
+  Browser integration.
+* Settings › Browser integration shows **Repair** whenever a browser in the list needs it, also
+  while the extension is connected in another browser.
+* **Playlists:**
+  * Every video is saved under its own title. Some were saved as *Video [id]*, and a single
+    video picked from a playlist got the playlist's name.
+  * **Number playlist videos** (Settings › Video & streams) starts each file name with the video's
+    position: `01 - Title.mkv`.
+  * **One at a time** in the video window downloads a playlist's videos one after another (in the
+    new *One at a time* queue).
+  * Thanks to [@asalia22](https://github.com/asalia22) for the suggestions!
+* **The container in Settings › Video & streams (MKV, WebM) is used.** Videos were saved as MP4
+  whatever you chose.
+* **Pick your "download complete" sound:** ten new ones in Settings › Sounds (Prism, Pop,
+  Kalimba, Snap, Cascade, Glide, Harp, Droplet, Music box, Sparkle). A sound plays when you pick
+  it.
+* **HLS and DASH downloads show their real connections:** the connections list shows the parts
+  being downloaded right now instead of every part of the stream, and the file map fills as the
+  download goes. Thanks to [@uuc110](https://github.com/uuc110)!
+* A **What's new** window after an update, also in Settings › About Prism.
 
-### Also new since 1.0.7 (Prism 1.0.8): security fixes
+### Also new since 1.0.8 (Prism 1.1.0)
+
+* Choose the quality of an HLS or DASH stream a page plays; picking a video quality opens the
+  Download File window; "Open a progress window for new downloads" works; smaller fixes. From a
+  pull request by [@uuc110](https://github.com/uuc110).
+
+### Prism 1.0.8: security fixes
 
 * Linux: the browser cookies Prism hands to yt-dlp for a video are no longer readable by other
   accounts on the computer.
@@ -33,24 +51,17 @@ and video downloads.
   started, and the in-page *Download video* button reacts only to your own clicks.
 * Both were reported privately by [@pepopepopepo](https://github.com/pepopepopepo) — thank you!
 
-### Prism 1.0.7
-
-* LinkedIn: the Download video button finds the post in LinkedIn's new design
-  ([#1](https://github.com/FortoGraphy/prism-download-manager/issues/1)).
-* Updates are found sooner (every hour, and when you come back to Prism after half an hour).
-* AppImage: the browser keeps the extension after Prism restarts.
-
 ## Downloads
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.0.9_x64-setup.exe` (recommended) · `Prism_1.0.9_x64_en-US.msi` (all users) · `Prism-1.0.9-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.0.9_aarch64.dmg` |
-| macOS — Intel | `Prism_1.0.9_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.0.9_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.0.9-1.x86_64.rpm` |
-| Any Linux | `Prism_1.0.9_amd64.AppImage` |
-| Browser extension | `prism-chromium.zip` (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` |
+| Windows 10 / 11 | `Prism_1.1.0_x64-setup.exe` (recommended) · `Prism_1.1.0_x64_en-US.msi` (all users) · `Prism-1.1.0-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.1.0_aarch64.dmg` |
+| macOS — Intel | `Prism_1.1.0_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.1.0_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.1.0-1.x86_64.rpm` |
+| Any Linux | `Prism_1.1.0_amd64.AppImage` |
+| Browser extension | [Chrome Web Store](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl) (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` (Firefox) |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·
 [installing the browser extension](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/browser-extension.md).
@@ -78,9 +89,8 @@ Verify downloads with `SHA256SUMS.txt`.
   * Windows SmartScreen: click **More info → Run anyway**.
   * macOS: run `xattr -dr com.apple.quarantine /Applications/Prism.app` once (or System
     Settings → Privacy & Security → **Open Anyway**). In-app updates don't need this again.
-* The extension is installed manually (Developer mode → *Load unpacked*); store listings
-  are not available yet. Firefox keeps unsigned add-ons only until restart, except in
-  Developer Edition / Nightly / ESR.
+* Firefox: Prism isn't in Firefox Add-ons yet. Its extension is loaded by hand, and Firefox
+  keeps unsigned add-ons only until restart, except in Developer Edition / Nightly / ESR.
 * macOS builds are produced by CI and tested there; feedback from real Macs is very welcome.
 * Flatpak browsers on Linux can't talk to native apps (a browser sandbox limitation) — use
   the deb/rpm version of your browser.

@@ -24,6 +24,8 @@ pub struct Settings {
     pub video: Video,
     pub shortcuts: BTreeMap<String, String>,
     pub onboarding_done: bool,
+    /// The app version whose "What's new" the user has seen ("" before 1.1.0).
+    pub last_seen_version: String,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -302,6 +304,8 @@ pub struct Sounds {
     pub on_failed: bool,
     pub on_queue_done: bool,
     pub volume: f32,
+    /// The "download complete" sound: "classic" or one of the app's `complete-<id>.wav`.
+    pub complete_sound: String,
 }
 
 impl Default for Sounds {
@@ -312,6 +316,7 @@ impl Default for Sounds {
             on_failed: true,
             on_queue_done: true,
             volume: 0.6,
+            complete_sound: "classic".into(),
         }
     }
 }
@@ -406,6 +411,8 @@ pub struct Video {
     /// Browser to read cookies from for sites that need login ("" = none).
     pub cookies_from_browser: String,
     pub file_template: String,
+    /// Start the file names of playlist videos with their position ("01 - Title").
+    pub number_playlist_videos: bool,
 }
 
 impl Default for Video {
@@ -426,6 +433,7 @@ impl Default for Video {
             accelerate: true,
             cookies_from_browser: String::new(),
             file_template: "%(title)s [%(id)s].%(ext)s".into(),
+            number_playlist_videos: false,
         }
     }
 }

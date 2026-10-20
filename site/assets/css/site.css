@@ -155,6 +155,10 @@ kbd {
   border: 1px solid rgb(var(--accent-rgb) / 0.16);
   font-size: 0.86em; white-space: nowrap;
 }
+/* Phones: a long command (xattr -dr …) may wrap instead of widening the whole page. */
+@media (max-width: 560px) {
+  :not(pre) > code { white-space: normal; overflow-wrap: anywhere; -webkit-box-decoration-break: clone; box-decoration-break: clone; }
+}
 ::selection { background: rgb(var(--accent-rgb) / 0.35); }
 :focus { outline: none; }
 :focus-visible { outline: 2px solid rgb(var(--accent-rgb) / 0.9); outline-offset: 3px; border-radius: 0.4rem; }
@@ -928,8 +932,12 @@ td.num { text-align: right; }
 .ext-popup .ok i { width: 0.45rem; height: 0.45rem; border-radius: 50%; background: var(--success); }
 .ext-popup .tg { margin-top: 0.55rem; display: flex; justify-content: space-between; align-items: center; font-size: 0.7rem; color: var(--text-secondary); }
 .illo .mb-top .mk { margin-left: -0.2rem; }
+/* The store listing in the guide's illustration sits below the popup, so its button stays visible. */
+.ext-store { margin-top: 6.4rem; }
 @media (max-width: 560px) {
   .ext-popup { position: relative; top: auto; right: auto; width: auto; margin: 0 1rem 1rem; }
+  .ext-store { margin-top: 0; grid-template-columns: 2rem minmax(0, 1fr); }
+  .ext-store > :last-child { grid-column: 2; justify-self: start; }
   .ext-page { grid-template-columns: 6.5rem minmax(0, 1fr); }
 }
 .term { background: #0b0c11; color: #d6d9e2; font-family: var(--font-mono); font-size: 0.76rem; line-height: 1.75; padding: 1rem 1.1rem; min-height: 15rem; }
