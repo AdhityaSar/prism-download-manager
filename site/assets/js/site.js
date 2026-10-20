@@ -172,14 +172,14 @@
     linux: { key: "appimage", name: "Linux", what: ".AppImage (any distro)" }
   };
   // Direct links used until (or if) the GitHub API answers — clicking always downloads.
-  var FALLBACK_DL = "https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.0.9/";
+  var FALLBACK_DL = "https://github.com/FortoGraphy/prism-download-manager/releases/download/v1.1.0/";
   var FALLBACK_FILES = {
-    "win-setup": "Prism_1.0.9_x64-setup.exe",
-    "mac-arm": "Prism_1.0.9_aarch64.dmg",
-    "mac-x64": "Prism_1.0.9_x64.dmg",
-    "deb": "Prism_1.0.9_amd64.deb",
-    "rpm": "Prism-1.0.9-1.x86_64.rpm",
-    "appimage": "Prism_1.0.9_amd64.AppImage"
+    "win-setup": "Prism_1.1.0_x64-setup.exe",
+    "mac-arm": "Prism_1.1.0_aarch64.dmg",
+    "mac-x64": "Prism_1.1.0_x64.dmg",
+    "deb": "Prism_1.1.0_amd64.deb",
+    "rpm": "Prism-1.1.0-1.x86_64.rpm",
+    "appimage": "Prism_1.1.0_amd64.AppImage"
   };
 
   var ASSETS = {
