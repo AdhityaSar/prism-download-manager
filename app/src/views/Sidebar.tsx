@@ -6,7 +6,8 @@ import { Icon, type IconName } from "../design/icons";
 import { actions, patchSettings } from "../lib/actions";
 import { api, type IntegrationStatus } from "../lib/api";
 import { formatBytes, formatSpeed } from "../lib/format";
-import { categoryIcon } from "../lib/present";
+import { t, tr } from "../lib/i18n";
+import { categoryIcon, displayName } from "../lib/present";
 import { Ring } from "../lib/ring";
 import { type AppState, counts, useApp, type View } from "../lib/store";
 import { attempt, useUi } from "../lib/ui";
@@ -50,10 +51,10 @@ export function Sidebar() {
     const cat = useApp.getState().categories.find((x) => x.id === id);
     if (!cat) return;
     openMenuAt({ x: e.clientX, y: e.clientY }, [
-      { label: "Edit category…", icon: "rename", onSelect: () => ui().openDialog({ kind: "category", category: cat }) },
-      { label: "Open folder", icon: "folder-open", disabled: !cat.saveDir, onSelect: () => cat.saveDir && void attempt(api.openPath(cat.saveDir)) },
+      { label: t("Edit category…"), icon: "rename", onSelect: () => ui().openDialog({ kind: "category", category: cat }) },
+      { label: t("Open folder"), icon: "folder-open", disabled: !cat.saveDir, onSelect: () => cat.saveDir && void attempt(api.openPath(cat.saveDir)) },
       { separator: true },
-      { label: "Delete category", icon: "delete", danger: true, disabled: cat.builtin, onSelect: () => void attempt(api.deleteCategory(cat.id), "Could not delete the category") },
+      { label: t("Delete category"), icon: "delete", danger: true, disabled: cat.builtin, onSelect: () => void attempt(api.deleteCategory(cat.id), t("Could not delete the category")) },
     ]);
   };
   const queueMenu = (id: string) => (e: React.MouseEvent) => {
@@ -61,16 +62,16 @@ export function Sidebar() {
     if (!q) return;
     openMenuAt({ x: e.clientX, y: e.clientY }, [
       q.running
-        ? { label: "Stop queue", icon: "stop-queue", onSelect: () => void attempt(api.stopQueue(q.id)) }
-        : { label: "Start queue", icon: "start-queue", onSelect: () => void attempt(api.startQueue(q.id)) },
-      { label: "Edit schedule…", icon: "scheduler", onSelect: () => ui().openSheet({ kind: "scheduler", queueId: q.id }) },
+        ? { label: t("Stop queue"), icon: "stop-queue", onSelect: () => void attempt(api.stopQueue(q.id)) }
+        : { label: t("Start queue"), icon: "start-queue", onSelect: () => void attempt(api.startQueue(q.id)) },
+      { label: t("Edit schedule…"), icon: "scheduler", onSelect: () => ui().openSheet({ kind: "scheduler", queueId: q.id }) },
       { separator: true },
-      { label: "Delete queue", icon: "delete", danger: true, disabled: q.builtin, onSelect: () => void attempt(api.deleteQueue(q.id), "Could not delete the queue") },
+      { label: t("Delete queue"), icon: "delete", danger: true, disabled: q.builtin, onSelect: () => void attempt(api.deleteQueue(q.id), t("Could not delete the queue")) },
     ]);
   };
 
   return (
-    <aside className="sidebar glass" aria-label="Library">
+    <aside className="sidebar glass" aria-label={t("Library")}>
       <div className="brand" data-tauri-drag-region>
         <BrandTile size={28} />
         <span className="brand__name" data-tauri-drag-region>
@@ -78,38 +79,38 @@ export function Sidebar() {
         </span>
       </div>
       <nav className="nav">
-        <NavItem view={{ kind: "all" }} icon="all" label="All downloads" extra={<Count n={c.all} />} />
-        <NavItem view={{ kind: "status", id: "unfinished" }} icon="unfinished" label="Unfinished" extra={<Count n={c.unfinished} />} />
-        <NavItem view={{ kind: "status", id: "finished" }} icon="finished" label="Finished" extra={<Count n={c.finished} />} />
+        <NavItem view={{ kind: "all" }} icon="all" label={t("All downloads")} extra={<Count n={c.all} />} />
+        <NavItem view={{ kind: "status", id: "unfinished" }} icon="unfinished" label={t("Unfinished")} extra={<Count n={c.unfinished} />} />
+        <NavItem view={{ kind: "status", id: "finished" }} icon="finished" label={t("Finished")} extra={<Count n={c.finished} />} />
 
-        <Section title="Categories" onAdd={() => ui().openDialog({ kind: "category" })} addLabel="New category" />
+        <Section title={t("Categories")} onAdd={() => ui().openDialog({ kind: "category" })} addLabel={t("New category")} />
         {categories.map((cat) => (
           <NavItem
             key={cat.id}
             view={{ kind: "category", id: cat.id }}
             icon={categoryIcon(cat)}
-            label={cat.name}
+            label={displayName(cat.name)}
             extra={<Count n={c.byCategory[cat.id] ?? 0} />}
             onContext={categoryMenu(cat.id)}
           />
         ))}
 
-        <Section title="Queues" onAdd={() => ui().openSheet({ kind: "scheduler", queueId: "new" })} addLabel="New queue" />
+        <Section title={t("Queues")} onAdd={() => ui().openSheet({ kind: "scheduler", queueId: "new" })} addLabel={t("New queue")} />
         {queues.map((q) => (
           <NavItem
             key={q.id}
             view={{ kind: "queue", id: q.id }}
             icon={q.schedule.enabled && !q.running ? "status-scheduled" : "queue"}
-            label={q.name}
+            label={displayName(q.name)}
             onContext={queueMenu(q.id)}
             extra={
               q.running ? (
-                <span className="q-live" data-tip="Running">
+                <span className="q-live" data-tip={t("Running")}>
                   <span className="status-dot status-dot--live" />
                   {c.byQueue[q.id] ?? 0}
                 </span>
               ) : q.schedule.enabled && q.schedule.startTime ? (
-                <span className="q-time" data-tip="Next scheduled start">
+                <span className="q-time" data-tip={t("Next scheduled start")}>
                   {q.schedule.startTime}
                 </span>
               ) : (
@@ -119,7 +120,7 @@ export function Sidebar() {
           />
         ))}
 
-        <Section title="Grabber" onAdd={() => ui().openSheet({ kind: "grabber", projectId: null })} addLabel="New grabber project" />
+        <Section title={t("Grabber")} onAdd={() => ui().openSheet({ kind: "grabber", projectId: null })} addLabel={t("New grabber project")} />
         {projects.map((p) => (
           <NavItem
             key={p.id}
@@ -129,9 +130,9 @@ export function Sidebar() {
             extra={<Count n={p.results.files?.length ?? 0} />}
             onContext={(e) =>
               openMenuAt({ x: e.clientX, y: e.clientY }, [
-                { label: "Open project…", icon: "grabber", onSelect: () => ui().openSheet({ kind: "grabber", projectId: p.id }) },
+                { label: t("Open project…"), icon: "grabber", onSelect: () => ui().openSheet({ kind: "grabber", projectId: p.id }) },
                 { separator: true },
-                { label: "Delete project", icon: "delete", danger: true, onSelect: () => void attempt(api.deleteGrabberProject(p.id).then(() => api.grabberProjects()).then((g) => useApp.setState({ grabberProjects: g }))) },
+                { label: t("Delete project"), icon: "delete", danger: true, onSelect: () => void attempt(api.deleteGrabberProject(p.id).then(() => api.grabberProjects()).then((g) => useApp.setState({ grabberProjects: g }))) },
               ])
             }
           />
@@ -139,9 +140,9 @@ export function Sidebar() {
         <NavItem
           view={{ kind: "trash" }}
           icon="trash"
-          label="Trash"
+          label={t("Trash")}
           extra={<Count n={c.trash} />}
-          onContext={(e) => openMenuAt({ x: e.clientX, y: e.clientY }, [{ label: "Empty trash", icon: "delete", danger: true, disabled: !c.trash, onSelect: () => void attempt(api.emptyTrash(), "Could not empty the trash") }])}
+          onContext={(e) => openMenuAt({ x: e.clientX, y: e.clientY }, [{ label: t("Empty trash"), icon: "delete", danger: true, disabled: !c.trash, onSelect: () => void attempt(api.emptyTrash(), t("Could not empty the trash")) }])}
         />
       </nav>
       <SpeedCard />
@@ -178,8 +179,8 @@ function SpeedCard() {
       setPeak((p) => Math.max(p, total));
     };
     sample();
-    const t = window.setInterval(sample, 1000);
-    return () => window.clearInterval(t);
+    const timer = window.setInterval(sample, 1000);
+    return () => window.clearInterval(timer);
   }, []);
 
   const now = samples[samples.length - 1] ?? 0;
@@ -191,10 +192,10 @@ function SpeedCard() {
   }, [now]);
 
   return (
-    <section className="speedcard" aria-label="Total speed">
+    <section className="speedcard" aria-label={t("Total speed")}>
       <div className="speedcard__top">
-        <span className="t-overline">Total speed</span>
-        {active > 0 && <span className="badge badge--accent">{active} active</span>}
+        <span className="t-overline">{t("Total speed")}</span>
+        {active > 0 && <span className="badge badge--accent">{t("{count} active", { count: active })}</span>}
       </div>
       <div className="speedcard__val tnum">
         {num}
@@ -202,12 +203,10 @@ function SpeedCard() {
       </div>
       <Sparkline samples={samples.length > 1 ? samples : [0, 0]} />
       <div className="speedcard__row">
-        <button type="button" className="linklike" onClick={() => void actions.toggleLimiter()} data-tip="Toggle speed limiter" data-kbd="Ctrl L">
-          <Icon name="speed-limiter" size={13} /> Limit <b>{limiter ? `${formatBytes(limit)}/s` : "Off"}</b>
+        <button type="button" className="linklike" onClick={() => void actions.toggleLimiter()} data-tip={t("Toggle speed limiter")} data-kbd="Ctrl L">
+          <Icon name="speed-limiter" size={13} /> {tr("Limit {limit}", { limit: <b>{limiter ? `${formatBytes(limit)}/s` : t("Off")}</b> })}
         </button>
-        <span>
-          Peak <b>{formatSpeed(peak)}</b>
-        </span>
+        <span>{tr("Peak {speed}", { speed: <b>{formatSpeed(peak)}</b> })}</span>
       </div>
     </section>
   );
@@ -219,8 +218,8 @@ function SideFooter() {
   useEffect(() => {
     const load = () => void api.integrationStatus().then(setStatus, () => setStatus(null));
     load();
-    const t = window.setInterval(load, 30_000);
-    return () => window.clearInterval(t);
+    const timer = window.setInterval(load, 30_000);
+    return () => window.clearInterval(timer);
   }, []);
   const ok = !!status?.extensionConnected;
   const resolved = document.documentElement.dataset.theme;
@@ -230,23 +229,23 @@ function SideFooter() {
         type="button"
         className="side-foot__status"
         onClick={() => useUi.getState().openSheet({ kind: "settings", section: "browser" })}
-        data-tip={ok ? "The browser extension is connected" : "Set up browser integration"}
+        data-tip={ok ? t("The browser extension is connected") : t("Set up browser integration")}
       >
         <Icon name="browser" size={15} />
         <span className="ellipsis">
-          Browser <span className={ok ? "text-success" : "text-warning"}>{status ? (ok ? "connected" : "not connected") : "…"}</span>
+          {tr("Browser {status}", { status: <span className={ok ? "text-success" : "text-warning"}>{status ? (ok ? t("connected") : t("not connected")) : "…"}</span> })}
         </span>
       </button>
       <button
         type="button"
         className="tb-btn"
-        aria-label="Toggle theme"
-        data-tip={`Theme: ${theme}`}
+        aria-label={t("Toggle theme")}
+        data-tip={theme === "dark" ? t("Theme: dark") : theme === "light" ? t("Theme: light") : t("Theme: system")}
         onClick={() => void patchSettings({ appearance: { theme: resolved === "dark" ? "light" : "dark" } })}
       >
         <Icon name={resolved === "dark" ? "moon" : "sun"} size={16} />
       </button>
-      <button type="button" className="tb-btn" aria-label="Settings" data-tip="Settings" data-kbd="Ctrl ," onClick={() => useUi.getState().openSheet({ kind: "settings" })}>
+      <button type="button" className="tb-btn" aria-label={t("Settings")} data-tip={t("Settings")} data-kbd="Ctrl ," onClick={() => useUi.getState().openSheet({ kind: "settings" })}>
         <Icon name="settings" size={16} />
       </button>
     </div>

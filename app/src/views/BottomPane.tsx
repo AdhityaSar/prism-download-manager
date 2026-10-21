@@ -5,6 +5,7 @@ import { ConnectionLanes, FileMap, SpeedChart } from "../components/Visuals";
 import { Icon } from "../design/icons";
 import { actions } from "../lib/actions";
 import { formatBytes, formatDate, formatDuration, formatSpeed } from "../lib/format";
+import { t, tk } from "../lib/i18n";
 import { fullPath } from "../lib/paths";
 import { progressOf, statusView } from "../lib/present";
 import { Ring } from "../lib/ring";
@@ -14,9 +15,9 @@ import { useUi } from "../lib/ui";
 import { copyText } from "../lib/win";
 
 const TABS = [
-  { id: "connections", label: "Connections" },
-  { id: "speed", label: "Speed" },
-  { id: "info", label: "Info" },
+  { id: "connections", label: tk("Connections") },
+  { id: "speed", label: tk("Speed") },
+  { id: "info", label: tk("Info") },
 ] as const;
 
 /** Collapsible pane under the list showing the focused download (C-style engineering view). */
@@ -47,21 +48,21 @@ export function BottomPane() {
   // The pane only appears for a selection; with nothing selected the list gets the room.
   if (!open || !item) return null;
   return (
-    <section className="pane" aria-label="Selected download">
+    <section className="pane" aria-label={t("Selected download")}>
       <div className="pane__resize" onPointerDown={startResize} aria-hidden="true" />
       <div className="pane__tabs" role="tablist">
-        {TABS.map((t) => (
-          <button key={t.id} type="button" role="tab" aria-selected={tab === t.id} className={`pane__tab${tab === t.id ? " on" : ""}`} onClick={() => useUi.getState().setBottom({ bottomTab: t.id })}>
-            {t.label}
+        {TABS.map((x) => (
+          <button key={x.id} type="button" role="tab" aria-selected={tab === x.id} className={`pane__tab${tab === x.id ? " on" : ""}`} onClick={() => useUi.getState().setBottom({ bottomTab: x.id })}>
+            {t(x.label)}
           </button>
         ))}
         <span className="spacer" />
         <span className="pane__file">
           <span className="ellipsis">{item.fileName}</span>
-          {details?.segments.length ? <span className="badge badge--accent">{details.segments.filter((s) => s.state === "active").length} conn</span> : null}
+          {details?.segments.length ? <span className="badge badge--accent">{t("{count} conn", { count: details.segments.filter((s) => s.state === "active").length })}</span> : null}
         </span>
-        <IconButton icon="external" size={15} label="Open details window" onClick={() => actions.details(item.id)} />
-        <IconButton icon="chevron-down" size={15} label="Hide pane" onClick={() => useUi.getState().setBottom({ bottomOpen: false })} />
+        <IconButton icon="external" size={15} label={t("Open details window")} onClick={() => actions.details(item.id)} />
+        <IconButton icon="chevron-down" size={15} label={t("Hide pane")} onClick={() => useUi.getState().setBottom({ bottomOpen: false })} />
       </div>
       <div className="pane__body">
         {tab === "connections" ? (
@@ -77,16 +78,16 @@ export function BottomPane() {
 }
 
 function ConnectionsTab({ details, done }: { details: ItemDetails | null; done: boolean }) {
-  if (done) return <p className="pane__hint">Download complete — no open connections.</p>;
-  if (!details) return <p className="pane__hint">Loading…</p>;
+  if (done) return <p className="pane__hint">{t("Download complete — no open connections.")}</p>;
+  if (!details) return <p className="pane__hint">{t("Loading…")}</p>;
   const size = details.item.size ?? 0;
   const unit = details.item.kind === "hls" || details.item.kind === "dash" ? "segments" : "bytes";
   return (
     <div className="pane__conn">
       <div className="pane__map">
-        <span>File map</span>
+        <span>{t("File map")}</span>
         <FileMap segments={details.segments} size={size} unit={unit} />
-        <span className="tnum">{details.segments.length} segments</span>
+        <span className="tnum">{t("{count} segments", { count: details.segments.length })}</span>
       </div>
       <ConnectionLanes segments={details.segments} unit={unit} />
     </div>
@@ -116,10 +117,10 @@ function SpeedTab({ details, id }: { details: ItemDetails | null; id: string }) 
     <div className="pane__speed">
       <SpeedChart samples={samples} height={140} />
       <div className="sstats">
-        <Stat k="Now" v={formatSpeed(progress?.speed)} />
-        <Stat k="Average" v={formatSpeed(avg)} />
-        <Stat k="Peak" v={formatSpeed(ring.current.max())} />
-        <Stat k="Time left" v={formatDuration(progress?.etaSecs)} />
+        <Stat k={t("Now")} v={formatSpeed(progress?.speed)} />
+        <Stat k={t("Average")} v={formatSpeed(avg)} />
+        <Stat k={t("Peak")} v={formatSpeed(ring.current.max())} />
+        <Stat k={t("Time left")} v={formatDuration(progress?.etaSecs)} />
       </div>
     </div>
   );
@@ -140,20 +141,20 @@ function InfoTab({ id }: { id: string }) {
   if (!item) return null;
   const p = progressOf(item, progress);
   const rows: [string, ReactNode, string?][] = [
-    ["Address", item.url, item.url],
-    ...(item.finalUrl && item.finalUrl !== item.url ? ([["Final address", item.finalUrl, item.finalUrl]] as [string, ReactNode, string][]) : []),
-    ["Saved to", fullPath(item.saveDir, item.fileName), fullPath(item.saveDir, item.fileName)],
-    ["Status", statusView(item, progress).detail],
-    ["Size", `${formatBytes(p.done)} of ${formatBytes(p.total)}`],
-    ["Resume", item.resumable === false ? "Not supported — restarts from zero" : item.resumable ? "Supported" : "Unknown"],
-    ["Category", cat ?? item.category],
-    ["Queue", queue ?? "—"],
-    ["Connections", String(item.connections)],
-    ["Speed limit", item.speedLimit ? `${formatBytes(item.speedLimit)}/s` : "None"],
-    ["Added", formatDate(item.addedAt)],
-    ["Finished", formatDate(item.finishedAt)],
-    ["Checksum", item.checksum || "—"],
-    ...(item.description ? ([["Description", item.description]] as [string, ReactNode][]) : []),
+    [t("Address"), item.url, item.url],
+    ...(item.finalUrl && item.finalUrl !== item.url ? ([[t("Final address"), item.finalUrl, item.finalUrl]] as [string, ReactNode, string][]) : []),
+    [t("Saved to"), fullPath(item.saveDir, item.fileName), fullPath(item.saveDir, item.fileName)],
+    [t("Status"), statusView(item, progress).detail],
+    [t("Size"), t("{done} of {total}", { done: formatBytes(p.done), total: formatBytes(p.total) })],
+    [t("Resume"), item.resumable === false ? t("Not supported — restarts from zero") : item.resumable ? t("Supported") : t("Unknown")],
+    [t("Category"), cat ?? item.category],
+    [t("Queue"), queue ?? "—"],
+    [t("Connections"), String(item.connections)],
+    [t("Speed limit"), item.speedLimit ? `${formatBytes(item.speedLimit)}/s` : t("None")],
+    [t("Added"), formatDate(item.addedAt)],
+    [t("Finished"), formatDate(item.finishedAt)],
+    [t("Checksum"), item.checksum || "—"],
+    ...(item.description ? ([[t("Description"), item.description]] as [string, ReactNode][]) : []),
   ];
   return (
     <dl className="kv">
@@ -163,7 +164,7 @@ function InfoTab({ id }: { id: string }) {
           <dd className={copy ? "t-mono selectable" : "selectable"}>
             {v}
             {copy && (
-              <button type="button" className="kv__copy" aria-label={`Copy ${k}`} data-tip="Copy" onClick={() => void copyText(copy)}>
+              <button type="button" className="kv__copy" aria-label={t("Copy {field}", { field: k })} data-tip={t("Copy")} onClick={() => void copyText(copy)}>
                 <Icon name="copy" size={13} />
               </button>
             )}

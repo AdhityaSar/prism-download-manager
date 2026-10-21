@@ -1,0 +1,203 @@
+//! Texts the shell shows itself (tray menu, tray tooltip, notifications), in the language the
+//! UI uses. The main window reports its language (`set_ui_language`), which already resolves
+//! "same as the system" the way the rest of the UI does.
+
+use std::sync::RwLock;
+
+static LANGUAGE: RwLock<String> = RwLock::new(String::new());
+
+/// Remembers the UI language; returns whether it changed.
+pub fn set_language(code: &str) -> bool {
+    let mut lang = LANGUAGE.write().unwrap_or_else(|e| e.into_inner());
+    if *lang == code {
+        return false;
+    }
+    *lang = code.to_string();
+    true
+}
+
+/// `key` (the English text) in the UI language, with `{name}` placeholders filled in.
+pub fn tr(key: &str, vars: &[(&str, &str)]) -> String {
+    let lang = LANGUAGE.read().unwrap_or_else(|e| e.into_inner()).clone();
+    let mut text = lookup(&lang, key).unwrap_or(key).to_string();
+    for (name, value) in vars {
+        text = text.replace(&format!("{{{name}}}"), value);
+    }
+    text
+}
+
+fn lookup(lang: &str, key: &str) -> Option<&'static str> {
+    let row = TEXTS.iter().find(|row| row[0] == key)?;
+    let column = match lang {
+        "cs" => 1,
+        "de" => 2,
+        "es" => 3,
+        "fr" => 4,
+        "it" => 5,
+        _ => return None,
+    };
+    Some(row[column])
+}
+
+/// English, Czech, German, Spanish, French, Italian.
+const TEXTS: &[[&str; 6]] = &[
+    [
+        "Open Prism",
+        "Otevřít Prism",
+        "Prism öffnen",
+        "Abrir Prism",
+        "Ouvrir Prism",
+        "Apri Prism",
+    ],
+    [
+        "Add URL…",
+        "Přidat adresu…",
+        "URL hinzufügen…",
+        "Añadir URL…",
+        "Ajouter une URL…",
+        "Aggiungi URL…",
+    ],
+    [
+        "Pause all",
+        "Pozastavit vše",
+        "Alle pausieren",
+        "Pausar todo",
+        "Tout suspendre",
+        "Metti tutto in pausa",
+    ],
+    [
+        "Resume all",
+        "Obnovit vše",
+        "Alle fortsetzen",
+        "Reanudar todo",
+        "Tout reprendre",
+        "Riprendi tutto",
+    ],
+    [
+        "Speed limiter",
+        "Omezení rychlosti",
+        "Geschwindigkeitslimit",
+        "Limitador de velocidad",
+        "Limiteur de vitesse",
+        "Limitatore di velocità",
+    ],
+    [
+        "Mini window",
+        "Mini okno",
+        "Mini-Fenster",
+        "Mini ventana",
+        "Mini-fenêtre",
+        "Mini finestra",
+    ],
+    [
+        "Drop zone",
+        "Odkládací zóna",
+        "Ablagezone",
+        "Zona para soltar",
+        "Zone de dépôt",
+        "Area di rilascio",
+    ],
+    [
+        "Quit Prism",
+        "Ukončit Prism",
+        "Prism beenden",
+        "Salir de Prism",
+        "Quitter Prism",
+        "Esci da Prism",
+    ],
+    [
+        "Prism — idle",
+        "Prism — nic se nestahuje",
+        "Prism — inaktiv",
+        "Prism — inactivo",
+        "Prism — inactif",
+        "Prism — inattivo",
+    ],
+    [
+        "Prism — {count} downloading · {speed}",
+        "Prism — stahuje se: {count} · {speed}",
+        "Prism — {count} aktiv · {speed}",
+        "Prism — {count} descargando · {speed}",
+        "Prism — {count} en cours · {speed}",
+        "Prism — {count} in download · {speed}",
+    ],
+    [
+        "Download added",
+        "Stahování přidáno",
+        "Download hinzugefügt",
+        "Descarga añadida",
+        "Téléchargement ajouté",
+        "Download aggiunto",
+    ],
+    [
+        "Download complete",
+        "Stahování dokončeno",
+        "Download abgeschlossen",
+        "Descarga completada",
+        "Téléchargement terminé",
+        "Download completato",
+    ],
+    [
+        "Download failed",
+        "Stahování selhalo",
+        "Download fehlgeschlagen",
+        "La descarga ha fallado",
+        "Échec du téléchargement",
+        "Download non riuscito",
+    ],
+    [
+        "Queue finished",
+        "Fronta dokončena",
+        "Warteschlange abgeschlossen",
+        "Cola terminada",
+        "File d’attente terminée",
+        "Coda completata",
+    ],
+    [
+        "{name} has no more downloads.",
+        "Ve frontě {name} už nic nezbývá.",
+        "{name} hat keine Downloads mehr.",
+        "{name} no tiene más descargas.",
+        "{name} n’a plus de téléchargements.",
+        "{name} non ha altri download.",
+    ],
+];
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn every_row_keeps_the_placeholders() {
+        let names = |s: &str| {
+            let mut v: Vec<String> = s
+                .split('{')
+                .skip(1)
+                .filter_map(|p| p.split_once('}').map(|(n, _)| n.to_string()))
+                .collect();
+            v.sort();
+            v
+        };
+        for row in TEXTS {
+            for text in &row[1..] {
+                assert_eq!(names(text), names(row[0]), "{text}");
+                assert!(!text.trim().is_empty());
+            }
+        }
+    }
+
+    #[test]
+    fn translates_and_falls_back_to_english() {
+        set_language("cs");
+        assert_eq!(tr("Pause all", &[]), "Pozastavit vše");
+        assert_eq!(
+            tr("{name} has no more downloads.", &[("name", "Noc")]),
+            "Ve frontě Noc už nic nezbývá."
+        );
+        assert_eq!(tr("Something new", &[]), "Something new");
+        set_language("en");
+        assert_eq!(tr("Pause all", &[]), "Pause all");
+        set_language("ja");
+        assert_eq!(tr("Pause all", &[]), "Pause all");
+    }
+}

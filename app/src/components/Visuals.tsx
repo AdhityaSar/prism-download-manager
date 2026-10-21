@@ -4,6 +4,7 @@
 import { memo, useId } from "react";
 import { Icon } from "../design/icons";
 import { formatBytes, formatClock, formatSpeed } from "../lib/format";
+import { t } from "../lib/i18n";
 import { fileVisual, type ProgressState } from "../lib/present";
 import { smoothPath } from "../lib/ring";
 import type { DownloadItem, SegmentInfo } from "../lib/types";
@@ -57,9 +58,9 @@ export function SpeedChart({ samples, height = 160, labels = true }: { samples: 
   return (
     <div className="chart" style={{ height }}>
       {labels &&
-        ticks.map((t) => (
-          <span key={t} className="chart__ylab" style={{ top: `${(1 - t) * 100}%` }}>
-            {formatBytes(max * t, 0).replace(" ", " ")}
+        ticks.map((tick) => (
+          <span key={tick} className="chart__ylab" style={{ top: `${(1 - tick) * 100}%` }}>
+            {formatBytes(max * tick, 0).replace(" ", " ")}
           </span>
         ))}
       <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true">
@@ -69,14 +70,14 @@ export function SpeedChart({ samples, height = 160, labels = true }: { samples: 
             <stop offset="1" stopColor="var(--accent)" stopOpacity="0" />
           </linearGradient>
         </defs>
-        {ticks.map((t) => (
-          <path key={t} d={`M0 ${H - t * H}H${W}`} stroke="var(--divider)" vectorEffect="non-scaling-stroke" />
+        {ticks.map((tick) => (
+          <path key={tick} d={`M0 ${H - tick * H}H${W}`} stroke="var(--divider)" vectorEffect="non-scaling-stroke" />
         ))}
         <path d={area} fill={`url(#${id}a)`} />
         <path d={line} fill="none" stroke="var(--accent)" strokeWidth="1.75" strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
       </svg>
       {samples.length > 1 && <span className="chart__dot" style={{ top: `${(lastY / H) * 100}%` }} />}
-      <span className="sr-only">Current speed {formatSpeed(last)}</span>
+      <span className="sr-only">{t("Current speed {speed}", { speed: formatSpeed(last) })}</span>
     </div>
   );
 }
@@ -112,7 +113,7 @@ export function FileMap({ segments, size, unit = "bytes" }: { segments: SegmentI
   const total = unit === "segments" ? segments.length : size;
   if (!total || !segments.length) return <div className="segbar" />;
   return (
-    <div className="segbar" role="img" aria-label={`${segments.length} segments`}>
+    <div className="segbar" role="img" aria-label={t("{count} segments", { count: segments.length })}>
       {segments.map((s, i) => {
         const span = Math.max(1, s.end - s.start);
         return (
@@ -138,7 +139,7 @@ export function FileMap({ segments, size, unit = "bytes" }: { segments: SegmentI
 export function ConnectionLanes({ segments, max, unit = "bytes" }: { segments: SegmentInfo[]; max?: number; unit?: "bytes" | "segments" }) {
   const active = segments.filter((s) => s.state === "active");
   const shown = max ? active.slice(0, max) : active;
-  if (!active.length) return <p className="lanes__empty">No active connections.</p>;
+  if (!active.length) return <p className="lanes__empty">{t("No active connections.")}</p>;
   return (
     <div className="lanes">
       {shown.map((s, i) => {
@@ -151,13 +152,13 @@ export function ConnectionLanes({ segments, max, unit = "bytes" }: { segments: S
               <span className="lane__fill" style={{ transform: `scaleX(${f})` }} />
               <span className="lane__head" style={{ left: `calc(${f * 100}% - 1px)` }} />
             </span>
-            <span className="lane__range">{unit === "segments" ? `Segment ${s.start + 1}` : `${formatBytes(s.start)}–${formatBytes(s.end)}`}</span>
+            <span className="lane__range">{unit === "segments" ? t("Segment {number}", { number: s.start + 1 }) : `${formatBytes(s.start)}–${formatBytes(s.end)}`}</span>
             {/* The engine measures speed per connection, not per media segment. */}
             <span className="lane__speed">{unit === "segments" ? "" : formatSpeed(s.speed)}</span>
           </div>
         );
       })}
-      {max && active.length > max && <p className="lanes__more">+ {active.length - max} more connections</p>}
+      {max && active.length > max && <p className="lanes__more">{t("+ {count} more connections", { count: active.length - max })}</p>}
     </div>
   );
 }

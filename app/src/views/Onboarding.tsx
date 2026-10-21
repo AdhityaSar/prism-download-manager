@@ -4,6 +4,7 @@ import { BrandTile } from "../components/LogoMark";
 import { Modal } from "../components/Modal";
 import { Icon } from "../design/icons";
 import { patchSettings } from "../lib/actions";
+import { t, tr } from "../lib/i18n";
 import { useApp } from "../lib/store";
 import { pickFolder } from "../lib/win";
 import { BrowserConnect, useExtensionStatus } from "./BrowserConnect";
@@ -35,22 +36,22 @@ export function Onboarding() {
       <footer className="dialog__footer">
         {step > 0 && step < 3 && (
           <button type="button" className="btn btn--ghost" onClick={() => setStep(step - 1)}>
-            Back
+            {t("Back")}
           </button>
         )}
         <span className="spacer" />
         {step < 3 && (
           <button type="button" className="btn btn--ghost" onClick={finish}>
-            Skip
+            {t("Skip")}
           </button>
         )}
         {step < 3 ? (
           <button type="button" className="btn btn--primary" onClick={() => setStep(step + 1)} data-autofocus>
-            {step === 0 ? "Get started" : "Continue"}
+            {step === 0 ? t("Get started") : t("Continue")}
           </button>
         ) : (
           <button type="button" className="btn btn--primary" onClick={finish} data-autofocus>
-            Start using Prism
+            {t("Start using Prism")}
           </button>
         )}
       </footer>
@@ -63,9 +64,9 @@ function Welcome() {
     <div className="onboard__hero">
       <BrandTile size={84} />
       <h1>
-        One beam. <span className="prism-text">Many rays.</span>
+        {t("One beam.")} <span className="prism-text">{t("Many rays.")}</span>
       </h1>
-      <p>Prism splits every download into parallel segments, resumes where it stopped and grabs videos from the pages you visit. Three quick steps and you are ready.</p>
+      <p>{t("Prism splits every download into parallel segments, resumes where it stopped and grabs videos from the pages you visit. Three quick steps and you are ready.")}</p>
     </div>
   );
 }
@@ -74,8 +75,12 @@ function Browser() {
   const { status, connected } = useExtensionStatus();
   return (
     <>
-      <h2>Connect your browser</h2>
-      <p className="text-secondary">Add the Prism extension to your browser once — then clicking a download link, or the “Download video” button on a page, sends it straight to Prism. It takes about a minute.</p>
+      <h2>{t("Connect your browser")}</h2>
+      <p className="text-secondary">
+        {t("Add the Prism extension to your browser once — then clicking a download link, or the “{button}” button on a page, sends it straight to Prism. It takes about a minute.", {
+          button: "Download video",
+        })}
+      </p>
       <BrowserConnect status={status} connected={connected} />
     </>
   );
@@ -86,28 +91,28 @@ function Preferences() {
   if (!s) return null;
   return (
     <>
-      <h2>Make it yours</h2>
+      <h2>{t("Make it yours")}</h2>
       <div className="card">
         <div className="srow">
           <Icon name="folder" size={18} />
           <div className="srow__txt">
-            <div className="srow__t1">Download folder</div>
+            <div className="srow__t1">{t("Download folder")}</div>
             <div className="srow__t2 t-mono">{s.downloads.defaultDir}</div>
           </div>
           <button type="button" className="btn btn--sm" onClick={async () => {
               const p = await pickFolder(s.downloads.defaultDir);
               if (p) await patchSettings({ downloads: { defaultDir: p } });
             }}>
-            Change…
+            {t("Change…")}
           </button>
         </div>
       </div>
       <div className="themes themes--onboard">
         {(
           [
-            ["light", "Light", "pv-light"],
-            ["dark", "Dark", "pv-dark"],
-            ["system", "Match system", "pv-sys"],
+            ["light", t("Light"), "pv-light"],
+            ["dark", t("Dark"), "pv-dark"],
+            ["system", t("Match system"), "pv-sys"],
           ] as const
         ).map(([v, label, cls]) => (
           <button key={v} type="button" className={`tcard${s.appearance.theme === v ? " on" : ""}`} aria-pressed={s.appearance.theme === v} onClick={() => void patchSettings({ appearance: { theme: v } })}>
@@ -140,9 +145,15 @@ function Ready() {
           <Icon name="check" size={30} strokeWidth={2} />
         </span>
       </span>
-      <h1>You’re all set</h1>
+      <h1>{t("You’re all set")}</h1>
       <p>
-        Press <span className="kbd">Ctrl</span> <span className="kbd">N</span> to add a link, drop links anywhere on the window, or just download from your browser.
+        {tr("Press {keys} to add a link, drop links anywhere on the window, or just download from your browser.", {
+          keys: (
+            <>
+              <span className="kbd">Ctrl</span> <span className="kbd">N</span>
+            </>
+          ),
+        })}
       </p>
     </div>
   );

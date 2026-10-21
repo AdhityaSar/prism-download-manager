@@ -178,6 +178,8 @@ export interface Settings {
     confirmDelete: boolean;
     useTrash: boolean;
     checkUpdates: boolean;
+    /** UI language code ("en", "cs", …); "" = the system's language. */
+    language: string;
   };
   appearance: {
     theme: Theme;

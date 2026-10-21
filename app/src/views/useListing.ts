@@ -1,4 +1,5 @@
 import { useShallow } from "zustand/react/shallow";
+import { t } from "../lib/i18n";
 import { matchesFilter } from "../lib/present";
 import { type AppState, useApp, visibleItems } from "../lib/store";
 import { type StatusFilter, useUi } from "../lib/ui";
@@ -21,17 +22,17 @@ export function useViewTitle(): string {
     const v = s.view;
     switch (v.kind) {
       case "all":
-        return "All downloads";
+        return t("All downloads");
       case "trash":
-        return "Trash";
+        return t("Trash");
       case "status":
-        return { unfinished: "Unfinished", finished: "Finished", active: "Active", failed: "Failed" }[v.id];
+        return { unfinished: t("Unfinished"), finished: t("Finished"), active: t("Active"), failed: t("Failed") }[v.id];
       case "category":
-        return s.categories.find((c) => c.id === v.id)?.name ?? "Category";
+        return s.categories.find((c) => c.id === v.id)?.name ?? t("Category");
       case "queue":
-        return s.queues.find((q) => q.id === v.id)?.name ?? "Queue";
+        return s.queues.find((q) => q.id === v.id)?.name ?? t("Queue");
       case "grabber":
-        return s.grabberProjects.find((g) => g.id === v.id)?.name ?? "Grabber project";
+        return s.grabberProjects.find((g) => g.id === v.id)?.name ?? t("Grabber project");
     }
   });
 }

@@ -5,7 +5,9 @@ import { WindowFrame } from "../components/WindowFrame";
 import { Icon } from "../design/icons";
 import { api, type PlaylistEntry, type VideoChoice, type VideoProbe } from "../lib/api";
 import { formatBytes, formatClock, hostOf } from "../lib/format";
+import { t, tk } from "../lib/i18n";
 import { useApp } from "../lib/store";
+import { displayName } from "../lib/present";
 import type { SniffedStream, StartMode, VideoCapture } from "../lib/types";
 import { attempt, toast } from "../lib/ui";
 import { pickFolder, win } from "../lib/win";
@@ -25,9 +27,9 @@ const preset = (id: string, kind: "video" | "audio", label: string, subLabel: st
 });
 
 export const PLAYLIST_CHOICES: VideoChoice[] = [
-  preset("best", "video", "Best available", "Highest resolution per video"),
-  preset("v1080", "video", "1080p", "or the closest below", { height: 1080 }),
-  preset("v720", "video", "720p", "smaller files", { height: 720 }),
+  preset("best", "video", tk("Best available"), tk("Highest resolution per video")),
+  preset("v1080", "video", "1080p", tk("or the closest below"), { height: 1080 }),
+  preset("v720", "video", "720p", tk("smaller files"), { height: 720 }),
   preset("a-mp3", "audio", "MP3", "320 kbps", { audioFormat: "mp3", audioBitrateKbps: 320 }),
 ];
 
@@ -71,8 +73,8 @@ export default function VideoWindow({ id }: { id: string }) {
 
   useEffect(() => {
     void (async () => {
-      const c = await attempt(api.getVideo(id), "Could not load the video");
-      if (!c) return setError("This video request is no longer available.");
+      const c = await attempt(api.getVideo(id), t("Could not load the video"));
+      if (!c) return setError(t("This video request is no longer available."));
       setCap(c);
       try {
         const p = await api.probeVideo(c.pageUrl);
@@ -95,7 +97,9 @@ export default function VideoWindow({ id }: { id: string }) {
   const { video, mp3 } = useMemo(() => splitChoices(choices), [choices]);
   const picked = format === "mp3" ? mp3 : video.find((c) => c.id === choice) ?? video[0];
   const subLangs = useMemo(() => (probe?.kind === "video" ? Object.keys(probe.subtitles ?? {}) : []), [probe]);
-  const title = (probe?.kind === "video" ? probe.title : probe?.kind === "playlist" ? probe.title : null) ?? cap?.title ?? "Video";
+  const named = (probe?.kind === "video" ? probe.title : probe?.kind === "playlist" ? probe.title : null) ?? cap?.title;
+  // The English fallback goes to the core; only the shown one is translated.
+  const title = named ?? "Video";
 
   const confirm = async (mode: StartMode) => {
     if (!cap || !picked) return;
@@ -127,7 +131,7 @@ export default function VideoWindow({ id }: { id: string }) {
         oneAtATime: probe?.kind === "playlist" && oneByOne,
         mode,
       }),
-      "Could not add the video",
+      t("Could not add the video"),
     );
     setBusy(false);
     if (n !== undefined) void win.close();
@@ -138,7 +142,7 @@ export default function VideoWindow({ id }: { id: string }) {
   };
 
   return (
-    <WindowFrame kind="video" title="Download video" icon={<Icon name="video" size={17} className="text-accent" />} onClose={cancel} className="video">
+    <WindowFrame kind="video" title={t("Download video")} icon={<Icon name="video" size={17} className="text-accent" />} onClose={cancel} className="video">
       <div className="wbody">
         <div className="vhead">
           <span className="vthumb" style={probe?.kind === "video" && probe.thumbnail ? { backgroundImage: `url("${probe.thumbnail}")` } : undefined}>
@@ -146,12 +150,12 @@ export default function VideoWindow({ id }: { id: string }) {
             {!probe && !error && <span className="vthumb__shimmer" />}
           </span>
           <div className="vhead__txt">
-            <b>{title}</b>
+            <b>{named ?? t("Video")}</b>
             <small>
               {probe?.kind === "video"
-                ? [probe.uploader ?? probe.channel, probe.isLive ? "Live" : null, hostOf(cap?.pageUrl)].filter(Boolean).join(" · ")
+                ? [probe.uploader ?? probe.channel, probe.isLive ? t("Live") : null, hostOf(cap?.pageUrl)].filter(Boolean).join(" · ")
                 : probe?.kind === "playlist"
-                  ? `Playlist · ${probe.entries.length} videos`
+                  ? t("Playlist · {count} videos", { count: probe.entries.length })
                   : hostOf(cap?.pageUrl)}
             </small>
           </div>
@@ -159,14 +163,14 @@ export default function VideoWindow({ id }: { id: string }) {
 
         {!probe && !error && (
           <div className="vloading">
-            <Icon name="retry" size={15} className="anim-spin" /> Reading available formats…
+            <Icon name="retry" size={15} className="anim-spin" /> {t("Reading available formats…")}
           </div>
         )}
         {error && (
           <div className="banner banner--warn">
             <Icon name="warning" size={16} />
             <div>
-              <b>Couldn’t read this page’s formats</b>
+              <b>{t("Couldn’t read this page’s formats")}</b>
               <div className="t-small">{error}</div>
             </div>
           </div>
@@ -176,7 +180,7 @@ export default function VideoWindow({ id }: { id: string }) {
         {probe?.kind === "playlist" && (
           <div className="vopt vopt--plist">
             <Checkbox checked={oneByOne} onChange={setOneByOne}>
-              One at a time <span className="text-tertiary">— each video starts when the one before it is done</span>
+              {t("One at a time")} <span className="text-tertiary">— {t("each video starts when the one before it is done")}</span>
             </Checkbox>
           </div>
         )}
@@ -184,28 +188,28 @@ export default function VideoWindow({ id }: { id: string }) {
         {probe && (
           <div className="vformat">
             <Segmented<Format>
-              label="Format"
+              label={t("Format")}
               value={format}
               onChange={setFormat}
               options={[
-                { value: "mp4", label: `${containerName} video` },
-                { value: "mp3", label: "MP3 audio" },
+                { value: "mp4", label: t("{format} video", { format: containerName }) },
+                { value: "mp3", label: t("MP3 audio") },
               ]}
             />
           </div>
         )}
 
         {probe && format === "mp4" && (
-          <div className="choices" role="radiogroup" aria-label="Quality">
-            <div className="qsec">{probe.kind === "playlist" ? "Quality for every video" : "Quality"}</div>
+          <div className="choices" role="radiogroup" aria-label={t("Quality")}>
+            <div className="qsec">{probe.kind === "playlist" ? t("Quality for every video") : t("Quality")}</div>
             {video.map((c) => (
               <ChoiceRow key={c.id} c={c} on={c.id === picked?.id} onPick={() => setChoice(c.id)} />
             ))}
           </div>
         )}
         {probe && format === "mp3" && mp3 && (
-          <div className="choices" role="radiogroup" aria-label="Audio">
-            <div className="qsec">Audio only</div>
+          <div className="choices" role="radiogroup" aria-label={t("Audio")}>
+            <div className="qsec">{t("Audio only")}</div>
             <ChoiceRow c={{ ...mp3, label: "MP3", subLabel: `320 kbps${mp3.estSize ? ` · ~${formatBytes(mp3.estSize)}` : ""}` }} on onPick={() => undefined} />
           </div>
         )}
@@ -214,17 +218,17 @@ export default function VideoWindow({ id }: { id: string }) {
           <div className="vopts">
             <div className="vopt">
               <span>
-                <Icon name="folder" size={15} /> Save to
+                <Icon name="folder" size={15} /> {t("Save to")}
               </span>
               <div className="withbtn">
-                <TextField value={dir} onChange={setDir} label="Save folder" placeholder={format === "mp3" ? "Music folder (default)" : "Video folder (default)"} />
+                <TextField value={dir} onChange={setDir} label={t("Save folder")} placeholder={format === "mp3" ? t("Music folder (default)") : t("Video folder (default)")} />
                 <button type="button" className="btn" onClick={async () => setDir((await pickFolder(dir)) ?? dir)}>
-                  Browse…
+                  {t("Browse…")}
                 </button>
               </div>
             </div>
             <button type="button" className="vmore" aria-expanded={more} onClick={() => setMore(!more)}>
-              <Icon name={more ? "chevron-up" : "chevron-down"} size={14} /> More options
+              <Icon name={more ? "chevron-up" : "chevron-down"} size={14} /> {t("More options")}
             </button>
           </div>
         )}
@@ -233,26 +237,26 @@ export default function VideoWindow({ id }: { id: string }) {
           <div className="vopts">
             <div className="vopt">
               <span>
-                <Icon name="subtitle" size={15} /> Subtitles {subLangs.length ? <em>({subLangs.slice(0, 6).join(", ")})</em> : null}
+                <Icon name="subtitle" size={15} /> {t("Subtitles")} {subLangs.length ? <em>({subLangs.slice(0, 6).join(", ")})</em> : null}
               </span>
               <div className="inline">
-                {subs && <TextField value={langs} onChange={setLangs} label="Subtitle languages" mono />}
-                <Switch checked={subs} label="Embed subtitles" onChange={setSubs} />
+                {subs && <TextField value={langs} onChange={setLangs} label={t("Subtitle languages")} mono />}
+                <Switch checked={subs} label={t("Embed subtitles")} onChange={setSubs} />
               </div>
             </div>
             <div className="vopt">
               <span>
-                <Icon name="thumbnail" size={15} /> Embed
+                <Icon name="thumbnail" size={15} /> {t("Embed")}
               </span>
               <div className="inline">
                 <Checkbox checked={thumb} onChange={setThumb}>
-                  Thumbnail
+                  {t("Thumbnail")}
                 </Checkbox>
                 <Checkbox checked={meta} onChange={setMeta}>
-                  Metadata
+                  {t("Metadata")}
                 </Checkbox>
                 <Checkbox checked={chapters} onChange={setChapters}>
-                  Chapters
+                  {t("Chapters")}
                 </Checkbox>
               </div>
             </div>
@@ -264,9 +268,9 @@ export default function VideoWindow({ id }: { id: string }) {
                 value={sponsor}
                 onChange={setSponsor}
                 options={[
-                  { value: "off", label: "Off" },
-                  { value: "mark", label: "Mark" },
-                  { value: "remove", label: "Remove" },
+                  { value: "off", label: t("Off") },
+                  { value: "mark", label: t("Mark") },
+                  { value: "remove", label: t("Remove") },
                 ]}
               />
             </div>
@@ -277,26 +281,34 @@ export default function VideoWindow({ id }: { id: string }) {
       </div>
       <footer className="dialog__footer">
         <button type="button" className="btn btn--ghost" onClick={cancel}>
-          Cancel
+          {t("Cancel")}
         </button>
         <span className="spacer" />
         <div className="split">
           <button type="button" className="btn" disabled={!picked || busy} onClick={() => confirm({ type: "later" })}>
-            Later
+            {t("Later")}
           </button>
           <button
             type="button"
             className="btn"
-            aria-label="Add to queue"
+            aria-label={t("Add to queue")}
             disabled={!picked || busy}
-            onClick={(e) => openMenuAt(e.currentTarget, [{ heading: "Add to queue" }, ...useApp.getState().queues.map((q) => ({ label: q.name, icon: "queue" as const, onSelect: () => void confirm({ type: "queue", queueId: q.id }) }))])}
+            onClick={(e) => openMenuAt(e.currentTarget, [{ heading: t("Add to queue") }, ...useApp.getState().queues.map((q) => ({ label: displayName(q.name), icon: "queue" as const, onSelect: () => void confirm({ type: "queue", queueId: q.id }) }))])}
           >
             <Icon name="chevron-down" size={13} strokeWidth={2.2} />
           </button>
         </div>
         <button type="button" className="btn btn--primary" disabled={!picked || busy || (probe?.kind === "playlist" && !entries.size)} onClick={() => confirm({ type: "now" })}>
           <Icon name="download" size={15} />
-          {probe?.kind === "playlist" ? `Download ${entries.size} ${format === "mp3" ? "as MP3" : "videos"}` : format === "mp3" ? "Download MP3" : picked ? `Download ${picked.label.split(" · ")[0]} ${containerName}` : "Download"}
+          {probe?.kind === "playlist"
+            ? format === "mp3"
+              ? t("Download {number} as MP3", { number: entries.size })
+              : t("Download {count} videos", { count: entries.size })
+            : format === "mp3"
+              ? t("Download MP3")
+              : picked
+                ? t("Download {quality} {format}", { quality: t(picked.label).split(" · ")[0], format: containerName })
+                : t("Download")}
         </button>
       </footer>
     </WindowFrame>
@@ -308,9 +320,9 @@ function ChoiceRow({ c, on, onPick }: { c: VideoChoice; on: boolean; onPick: () 
     <button type="button" role="radio" aria-checked={on} className={`qopt${on ? " on" : ""}`} onClick={onPick}>
       <span className="radio" />
       <span className="lbl">
-        {c.label}
+        {t(c.label)}
         {c.hdr && <span className="badge badge--accent">HDR</span>}
-        <em>{c.subLabel}</em>
+        <em>{t(c.subLabel)}</em>
       </span>
       <span className="sz tnum">{c.estSize && !c.subLabel.includes("~") ? `~${formatBytes(c.estSize)}` : ""}</span>
     </button>
@@ -323,7 +335,7 @@ function Playlist({ entries, checked, onChange }: { entries: PlaylistEntry[]; ch
     <div className="plist">
       <div className="plist__head">
         <Checkbox checked={all} indeterminate={!all && checked.size > 0} onChange={(v) => onChange(new Set(v ? entries.map((e) => e.url) : []))}>
-          {checked.size} of {entries.length} selected
+          {t("{count} of {total} selected", { count: checked.size, total: entries.length })}
         </Checkbox>
       </div>
       <div className="plist__rows">
@@ -338,7 +350,7 @@ function Playlist({ entries, checked, onChange }: { entries: PlaylistEntry[]; ch
               onChange(n);
             }}
           >
-            <Checkbox checked={checked.has(e.url)} label={`Select ${e.title ?? e.url}`} onChange={() => undefined} />
+            <Checkbox checked={checked.has(e.url)} label={t("Select {name}", { name: e.title ?? e.url })} onChange={() => undefined} />
             <span className="tnum text-tertiary">{i + 1}</span>
             <span className="thumb" style={e.thumbnail ? { backgroundImage: `url("${e.thumbnail}")` } : undefined} />
             <span className="ellipsis">{e.title ?? e.url}</span>
@@ -353,7 +365,7 @@ function Playlist({ entries, checked, onChange }: { entries: PlaylistEntry[]; ch
 function Streams({ streams, pageUrl, title }: { streams: SniffedStream[]; pageUrl: string; title: string }) {
   return (
     <div className="streams">
-      <div className="qsec">Streams detected on the page</div>
+      <div className="qsec">{t("Streams detected on the page")}</div>
       {streams.map((s) => (
         <div key={s.url} className="stream">
           <span className="badge">{s.kind.toUpperCase()}</span>
@@ -365,11 +377,11 @@ function Streams({ streams, pageUrl, title }: { streams: SniffedStream[]; pageUr
             type="button"
             className="btn btn--sm"
             onClick={async () => {
-              const item = await attempt(api.addStream(s, pageUrl, title), "Could not add the stream");
-              if (item) toast("Stream added", { kind: "success", body: item.fileName });
+              const item = await attempt(api.addStream(s, pageUrl, title), t("Could not add the stream"));
+              if (item) toast(t("Stream added"), { kind: "success", body: item.fileName });
             }}
           >
-            Download
+            {t("Download")}
           </button>
         </div>
       ))}

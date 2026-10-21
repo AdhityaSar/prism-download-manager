@@ -9,7 +9,9 @@
 //! | Linux / other Unix | `$XDG_DATA_HOME/prism` if `XDG_DATA_HOME` is set and absolute, else `~/.local/share/prism` |
 //!
 //! The env var `PRISM_DATA_DIR` overrides all of the above (used by tests and
-//! dev setups; the app core must honour it too).
+//! dev setups; the app core must honour it too). Next, a `portable.txt` next to the
+//! executable switches to `<exe dir>/data` (the Windows portable zip ships the host next
+//! to `prism.exe`), exactly like the app core.
 //!
 //! Files inside the data dir:
 //!
@@ -71,8 +73,25 @@ pub fn resolve_data_dir(
     }
 }
 
+/// Marker file next to the executables that turns on portable mode.
+pub const PORTABLE_MARKER: &str = "portable.txt";
+
+/// Portable mode: `<exe dir>/data` when `portable.txt` sits next to `exe`. Must match
+/// `prism_core::paths`, or the host looks for `ipc.json` where the portable app never
+/// writes it and can't find the running app.
+pub fn portable_data_dir(exe: &Path) -> Option<PathBuf> {
+    let dir = exe.parent()?;
+    dir.join(PORTABLE_MARKER).exists().then(|| dir.join("data"))
+}
+
 /// The Prism app data dir for the current user (see module docs).
 pub fn data_dir() -> Option<PathBuf> {
+    if let Some(dir) = non_empty(env::var_os(DATA_DIR_ENV)) {
+        return Some(PathBuf::from(dir));
+    }
+    if let Some(dir) = env::current_exe().ok().and_then(|e| portable_data_dir(&e)) {
+        return Some(dir);
+    }
     resolve_data_dir(
         env::consts::OS,
         env::var_os(DATA_DIR_ENV),
@@ -248,5 +267,16 @@ mod tests {
             d,
             Some(PathBuf::from("/Users/u/Library/Application Support/Prism"))
         );
+    }
+
+    /// The portable zip puts the host next to `prism.exe` and `portable.txt`: the host must
+    /// read `ipc.json` from the same `data` folder the portable app writes it to.
+    #[test]
+    fn portable_marker_moves_the_data_dir_next_to_the_exe() {
+        let dir = tempfile::tempdir().unwrap();
+        let host = dir.path().join(crate::HOST_BINARY_NAME);
+        assert_eq!(portable_data_dir(&host), None);
+        std::fs::write(dir.path().join(PORTABLE_MARKER), "portable").unwrap();
+        assert_eq!(portable_data_dir(&host), Some(dir.path().join("data")));
     }
 }

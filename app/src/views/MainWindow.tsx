@@ -5,6 +5,7 @@ import { win } from "../lib/win";
 import { Icon } from "../design/icons";
 import { actions } from "../lib/actions";
 import { api } from "../lib/api";
+import { t } from "../lib/i18n";
 import { useApp } from "../lib/store";
 import { toast, useUi } from "../lib/ui";
 import { BottomPane } from "./BottomPane";
@@ -22,8 +23,8 @@ import { UpdateBanner } from "./UpdateBanner";
 import { Toolbar } from "./Toolbar";
 import { listIds } from "./useListing";
 
-const isTyping = (t: EventTarget | null) => {
-  const el = t as HTMLElement | null;
+const isTyping = (target: EventTarget | null) => {
+  const el = target as HTMLElement | null;
   return !!el && (el.tagName === "INPUT" || el.tagName === "TEXTAREA" || el.isContentEditable);
 };
 
@@ -33,7 +34,10 @@ export function MainWindow() {
   const dragOver = useUi((s) => s.dragOver);
 
   useEffect(() => {
-    requestAnimationFrame(() => requestAnimationFrame(() => void win.show()));
+    // Shown after the first paint, unless Prism started in the background (autostart) or
+    // "Start minimized" is on: then it waits in the tray.
+    const show = () => requestAnimationFrame(() => requestAnimationFrame(() => void win.show()));
+    api.mainWindowStartsVisible().then((visible) => visible !== false && show(), show);
   }, []);
 
   // Square corners while maximized / fullscreen, rounded otherwise (see shell.css).
@@ -91,8 +95,8 @@ export function MainWindow() {
               <span className="drop-overlay__icon">
                 <Icon name="download" size={30} strokeWidth={1.5} />
               </span>
-              <b>Drop to download</b>
-              <span>Links, magnet links and .torrent files</span>
+              <b>{t("Drop to download")}</b>
+              <span>{t("Links, magnet links and .torrent files")}</span>
             </motion.div>
           </motion.div>
         )}
@@ -136,13 +140,13 @@ function useCoreNotifications() {
     let off: (() => void) | undefined;
     void import("../lib/api").then(({ onCoreEvent }) =>
       onCoreEvent((e) => {
-        if (e.type === "failed") toast("Download failed", { kind: "error", body: `${e.payload.fileName}${e.payload.error ? ` — ${e.payload.error}` : ""}` });
-        else if (e.type === "queueFinished") toast(`${e.payload.name} finished`, { kind: "success" });
+        if (e.type === "failed") toast(t("Download failed"), { kind: "error", body: `${e.payload.fileName}${e.payload.error ? ` — ${e.payload.error}` : ""}` });
+        else if (e.type === "queueFinished") toast(t("{name} finished", { name: e.payload.name }), { kind: "success" });
         else if (e.type === "notify") toast(e.payload.title, { body: e.payload.body });
         else if (e.type === "clipboardUrls" && e.payload.length)
-          toast(e.payload.length > 1 ? `${e.payload.length} links copied` : "Link copied", {
+          toast(e.payload.length > 1 ? t("{count} links copied", { count: e.payload.length }) : t("Link copied"), {
             body: e.payload[0],
-            action: { label: "Download", run: () => (e.payload.length > 1 ? void api.batchFromText(e.payload.join("\n")).then((b) => api.openWindow("batch", b.id)) : void actions.addUrl(e.payload[0])) },
+            action: { label: t("Download"), run: () => (e.payload.length > 1 ? void api.batchFromText(e.payload.join("\n")).then((b) => api.openWindow("batch", b.id)) : void actions.addUrl(e.payload[0])) },
           });
       }).then((u) => (off = u)),
     );

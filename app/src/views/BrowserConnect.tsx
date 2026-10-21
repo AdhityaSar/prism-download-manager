@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useState } from "react";
 import { Icon, type IconName } from "../design/icons";
 import { api, type BrowserIntegration, type IntegrationStatus } from "../lib/api";
+import { t, tr } from "../lib/i18n";
 import { useApp } from "../lib/store";
 import { toast } from "../lib/ui";
 import { copyText } from "../lib/win";
@@ -51,10 +52,10 @@ export function useExtensionStatus(intervalMs = 2000) {
         () => undefined,
       );
     tick();
-    const t = window.setInterval(tick, intervalMs);
+    const timer = window.setInterval(tick, intervalMs);
     return () => {
       alive = false;
-      window.clearInterval(t);
+      window.clearInterval(timer);
     };
   }, [intervalMs]);
   return { status, connected: !!status?.extensionConnected };
@@ -69,6 +70,9 @@ function pickDefault(browsers: BrowserIntegration[]): string {
  * Step-by-step guide that gets the browser extension installed: pick your browser, open Prism in
  * the Chrome Web Store and add it (Firefox: load the Prism folder as a temporary add-on) — with a
  * live check that turns green the moment the extension connects.
+ *
+ * Button and setting names of the browser itself ("Add to Chrome", "Developer mode", …) stay in
+ * English inside the translated sentences: the browser shows them in its own language.
  */
 export function BrowserConnect({ status, connected, hideOwnStatus }: { status: IntegrationStatus | null; connected: boolean; hideOwnStatus?: boolean }) {
   const browsers = useMemo(() => {
@@ -101,9 +105,11 @@ export function BrowserConnect({ status, connected, hideOwnStatus }: { status: I
     } catch {
       opened = false;
     }
-    toast(copied ? "Address copied" : `Type ${PAGE[current]}`, {
+    toast(copied ? t("Address copied") : t("Type {address}", { address: PAGE[current] }), {
       kind: copied ? "success" : undefined,
-      body: `${opened ? "" : `Open ${name}, then `}click the address bar, press ${paste} and Enter.`,
+      body: opened
+        ? t("click the address bar, press {keys} and Enter.", { keys: paste })
+        : t("Open {browser}, then click the address bar, press {keys} and Enter.", { browser: name, keys: paste }),
       ms: 6000,
     });
   };
@@ -111,34 +117,40 @@ export function BrowserConnect({ status, connected, hideOwnStatus }: { status: I
     try {
       await api.openExtensionStore(current);
     } catch {
-      toast("Couldn't open the browser", { body: "Copy the store link and open it in your browser.", ms: 6000 });
+      toast(t("Couldn't open the browser"), { body: t("Copy the store link and open it in your browser."), ms: 6000 });
     }
   };
   const copyStoreLink = async () => {
-    if (await copyText(EXTENSION_STORE_URL)) toast("Store link copied", { kind: "success", ms: 1800 });
+    if (await copyText(EXTENSION_STORE_URL)) toast(t("Store link copied"), { kind: "success", ms: 1800 });
   };
   const copyFolder = async () => {
-    if (folder && (await copyText(folder))) toast("Folder path copied", { kind: "success", ms: 1800 });
+    if (folder && (await copyText(folder))) toast(t("Folder path copied"), { kind: "success", ms: 1800 });
   };
   const pasteHint =
-    OS === "mac" ? (
-      <>
-        In the window that opens press <span className="kbd">⌘</span> <span className="kbd">⇧</span> <span className="kbd">G</span>, paste the path and press{" "}
-        <span className="kbd">Return</span>.
-      </>
-    ) : OS === "linux" ? (
-      <>
-        In the window that opens press <span className="kbd">Ctrl</span> <span className="kbd">L</span>, paste the path and press <span className="kbd">Enter</span>.
-      </>
-    ) : (
-      <>
-        Paste the path into the folder field of the window that opens and press <b>Select Folder</b>.
-      </>
-    );
+    OS === "mac"
+      ? tr("In the window that opens press {keys}, paste the path and press {enter}.", {
+          keys: (
+            <>
+              <span className="kbd">⌘</span> <span className="kbd">⇧</span> <span className="kbd">G</span>
+            </>
+          ),
+          enter: <span className="kbd">Return</span>,
+        })
+      : OS === "linux"
+        ? tr("In the window that opens press {keys}, paste the path and press {enter}.", {
+            keys: (
+              <>
+                <span className="kbd">Ctrl</span> <span className="kbd">L</span>
+              </>
+            ),
+            enter: <span className="kbd">Enter</span>,
+          })
+        : // "Select Folder" is the system dialog's own button, in the system's language.
+          tr("Paste the path into the folder field of the window that opens and press {button}.", { button: <b>Select Folder</b> });
 
   return (
     <div className="bconnect">
-      <div className="bconnect__pick" role="radiogroup" aria-label="Your browser">
+      <div className="bconnect__pick" role="radiogroup" aria-label={t("Your browser")}>
         {browsers.map((id) => (
           <button key={id} type="button" role="radio" aria-checked={id === current} className={`bchip${id === current ? " on" : ""}`} onClick={() => setBrowser(id)}>
             <Icon name="browser" size={14} /> {SHORT[id] ?? id}
@@ -151,33 +163,37 @@ export function BrowserConnect({ status, connected, hideOwnStatus }: { status: I
           <li className="bstep">
             <span className="bstep__n">1</span>
             <div className="bstep__txt">
-              <div className="bstep__t">Open the add-ons debugging page</div>
+              <div className="bstep__t">{t("Open the add-ons debugging page")}</div>
               <div className="bstep__d">
-                The button copies <code className="selectable">{PAGE[current]}</code> and opens {name} — click its address bar, press{" "}
-                {paste.split(" ").map((k) => (
-                  <span key={k}>
-                    <span className="kbd">{k}</span>{" "}
-                  </span>
-                ))}
-                and <span className="kbd">Enter</span>.
+                {tr("The button copies {address} and opens {browser} — click its address bar, press {keys} and {enter}.", {
+                  address: <code className="selectable">{PAGE[current]}</code>,
+                  browser: name,
+                  keys: paste.split(" ").map((k, i) => (
+                    <span key={k}>
+                      {i > 0 && " "}
+                      <span className="kbd">{k}</span>
+                    </span>
+                  )),
+                  enter: <span className="kbd">Enter</span>,
+                })}
               </div>
             </div>
             <button type="button" className="btn btn--primary btn--sm" onClick={openPage}>
-              <Icon name="copy" size={14} /> Copy &amp; open {name}
+              <Icon name="copy" size={14} /> {t("Copy & open {browser}", { browser: name })}
             </button>
           </li>
           <li className="bstep">
             <span className="bstep__n">2</span>
             <div className="bstep__txt">
-              <div className="bstep__t">Click “Load Temporary Add-on…”</div>
-              <div className="bstep__d">It's in the “This {name}” section of that page.</div>
+              <div className="bstep__t">{t("Click “{button}”", { button: "Load Temporary Add-on…" })}</div>
+              <div className="bstep__d">{t("It's in the “{section}” section of that page.", { section: `This ${name}` })}</div>
             </div>
             <FakeButton label="Load Temporary Add-on…" />
           </li>
           <li className="bstep bstep--wide">
             <span className="bstep__n">3</span>
             <div className="bstep__txt">
-              <div className="bstep__t">Pick manifest.json in the Prism folder</div>
+              <div className="bstep__t">{t("Pick manifest.json in the Prism folder")}</div>
               <div className="bstep__d">{pasteHint}</div>
             </div>
             <div className="howto__path bstep__full">
@@ -185,10 +201,10 @@ export function BrowserConnect({ status, connected, hideOwnStatus }: { status: I
                 {folder ?? "…"}
               </span>
               <button type="button" className="btn btn--sm" disabled={!folder} onClick={copyFolder}>
-                <Icon name="copy" size={14} /> Copy path
+                <Icon name="copy" size={14} /> {t("Copy path")}
               </button>
               <button type="button" className="btn btn--sm btn--ghost" disabled={!folder} onClick={() => folder && void api.openPath(folder)}>
-                <Icon name="folder-open" size={14} /> Show
+                <Icon name="folder-open" size={14} /> {t("Show")}
               </button>
             </div>
           </li>
@@ -199,58 +215,62 @@ export function BrowserConnect({ status, connected, hideOwnStatus }: { status: I
             <li className="bstep">
               <span className="bstep__n">1</span>
               <div className="bstep__txt">
-                <div className="bstep__t">Remove the Prism you added by hand</div>
+                <div className="bstep__t">{t("Remove the Prism you added by hand")}</div>
                 <div className="bstep__d">
-                  The store version updates by itself. On <code className="selectable">{PAGE[current]}</code> click <b>Remove</b> under Prism. The button copies the address and opens {name}.
+                  {tr("The store version updates by itself. On {address} click {button} under Prism. The button copies the address and opens {browser}.", {
+                    address: <code className="selectable">{PAGE[current]}</code>,
+                    button: <b>Remove</b>,
+                    browser: name,
+                  })}
                 </div>
               </div>
               <button type="button" className="btn btn--sm" onClick={openPage}>
-                <Icon name="copy" size={14} /> Copy &amp; open {name}
+                <Icon name="copy" size={14} /> {t("Copy & open {browser}", { browser: name })}
               </button>
             </li>
           )}
           <li className="bstep">
             <span className="bstep__n">{step + 1}</span>
             <div className="bstep__txt">
-              <div className="bstep__t">Open Prism in the Chrome Web Store</div>
+              <div className="bstep__t">{t("Open Prism in the Chrome Web Store")}</div>
               <div className="bstep__d">
                 {current === "edge"
-                  ? "Edge asks once to allow extensions from other stores: click Allow at the top of the page."
+                  ? t("Edge asks once to allow extensions from other stores: click {button} at the top of the page.", { button: "Allow" })
                   : current === "opera"
-                    ? "Opera first offers its free “Install Chrome Extensions” add-on: add it, then come back to the page."
-                    : `The store page opens in ${name}.`}{" "}
+                    ? t("Opera first offers its free “{addon}” add-on: add it, then come back to the page.", { addon: "Install Chrome Extensions" })
+                    : t("The store page opens in {browser}.", { browser: name })}{" "}
                 <button type="button" className="linkbtn" onClick={copyStoreLink}>
-                  Copy link
+                  {t("Copy link")}
                 </button>
               </div>
             </div>
             <button type="button" className="btn btn--primary" onClick={openStore}>
-              <Icon name="browser" size={15} /> Open in {name}
+              <Icon name="browser" size={15} /> {t("Open in {browser}", { browser: name })}
             </button>
           </li>
           <li className="bstep">
             <span className="bstep__n">{step + 2}</span>
             <div className="bstep__txt">
-              <div className="bstep__t">Click “{ADD_LABEL[current] ?? "Add to Chrome"}”</div>
-              <div className="bstep__d">The blue button at the top right of the store page. It's free.</div>
+              <div className="bstep__t">{t("Click “{button}”", { button: ADD_LABEL[current] ?? "Add to Chrome" })}</div>
+              <div className="bstep__d">{t("The blue button at the top right of the store page. It's free.")}</div>
             </div>
             <FakeButton label={ADD_LABEL[current] ?? "Add to Chrome"} />
           </li>
           <li className="bstep">
             <span className="bstep__n">{step + 3}</span>
             <div className="bstep__txt">
-              <div className="bstep__t">Confirm with “Add extension”</div>
-              <div className="bstep__d">{name} asks once whether to add Prism. From then on it updates Prism by itself.</div>
+              <div className="bstep__t">{t("Confirm with “{button}”", { button: "Add extension" })}</div>
+              <div className="bstep__d">{t("{browser} asks once whether to add Prism. From then on it updates Prism by itself.", { browser: name })}</div>
             </div>
             <FakeButton label="Add extension" />
           </li>
           <li className="bstep">
             <span className="bstep__n">{step + 4}</span>
             <div className="bstep__txt">
-              <div className="bstep__t">Pin Prism next to the address bar</div>
-              <div className="bstep__d">Click the puzzle icon, then the pin next to Prism. The check below turns green as soon as it's connected.</div>
+              <div className="bstep__t">{t("Pin Prism next to the address bar")}</div>
+              <div className="bstep__d">{t("Click the puzzle icon, then the pin next to Prism. The check below turns green as soon as it's connected.")}</div>
             </div>
-            <FakeButton label="Pin" icon="pin" />
+            <FakeButton label={t("Pin")} icon="pin" />
           </li>
         </ol>
       )}
@@ -269,16 +289,20 @@ export function BrowserConnect({ status, connected, hideOwnStatus }: { status: I
               <Icon name="check" size={16} strokeWidth={2.4} />
             </span>
             <div>
-              <b>Connected!</b> Downloads and videos from your browser now open in Prism.
-              <div className="bstatus__sub">Tip: pin the Prism icon next to the address bar (puzzle icon → pin).</div>
+              <b>{t("Connected!")}</b> {t("Downloads and videos from your browser now open in Prism.")}
+              <div className="bstatus__sub">{t("Tip: pin the Prism icon next to the address bar (puzzle icon → pin).")}</div>
             </div>
           </motion.div>
         ) : (
           <motion.div key="wait" className="bstatus" role="status" initial={{ opacity: 0 }} animate={{ opacity: 1 }}>
             <span className="bstatus__spin" aria-hidden="true" />
             <div>
-              {manual ? "Waiting for the store version…" : "Waiting for the extension…"} <span className="text-tertiary">this turns green as soon as it's installed.</span>
-              {firefox && <div className="bstatus__sub">{name} removes temporary add-ons when it restarts — Chrome, Edge or Brave keep the extension for good, from the Chrome Web Store.</div>}
+              {manual ? t("Waiting for the store version…") : t("Waiting for the extension…")} <span className="text-tertiary">{t("this turns green as soon as it's installed.")}</span>
+              {firefox && (
+                <div className="bstatus__sub">
+                  {t("{browser} removes temporary add-ons when it restarts — Chrome, Edge or Brave keep the extension for good, from the Chrome Web Store.", { browser: name })}
+                </div>
+              )}
             </div>
           </motion.div>
         )}
@@ -287,38 +311,38 @@ export function BrowserConnect({ status, connected, hideOwnStatus }: { status: I
       {!firefox && (
         <div className="bconnect__manual">
           <button type="button" className="disclose" aria-expanded={byHand} onClick={() => setByHand(!byHand)}>
-            <Icon name={byHand ? "chevron-down" : "chevron-right"} size={12} strokeWidth={2.2} /> Prefer to add it by hand?
+            <Icon name={byHand ? "chevron-down" : "chevron-right"} size={12} strokeWidth={2.2} /> {t("Prefer to add it by hand?")}
           </button>
           {byHand && (
             <>
               <p className="t-small text-tertiary">
-                Without the store: load the folder Prism keeps up to date. A copy added this way doesn't update by itself — after a Prism update, click ↻ next to Prism on the extensions page.
+                {t("Without the store: load the folder Prism keeps up to date. A copy added this way doesn't update by itself — after a Prism update, click ↻ next to Prism on the extensions page.")}
               </p>
               <ol className="bsteps">
                 <li className="bstep">
                   <span className="bstep__n">1</span>
                   <div className="bstep__txt">
-                    <div className="bstep__t">Open the extensions page</div>
+                    <div className="bstep__t">{t("Open the extensions page")}</div>
                     <div className="bstep__d">
-                      The button copies <code className="selectable">{PAGE[current]}</code> and opens {name}.
+                      {tr("The button copies {address} and opens {browser}.", { address: <code className="selectable">{PAGE[current]}</code>, browser: name })}
                     </div>
                   </div>
                   <button type="button" className="btn btn--sm" onClick={openPage}>
-                    <Icon name="copy" size={14} /> Copy &amp; open {name}
+                    <Icon name="copy" size={14} /> {t("Copy & open {browser}", { browser: name })}
                   </button>
                 </li>
                 <li className="bstep">
                   <span className="bstep__n">2</span>
                   <div className="bstep__txt">
-                    <div className="bstep__t">Turn on Developer mode</div>
-                    <div className="bstep__d">The switch is {current === "edge" ? "in the left sidebar" : "in the top-right corner"} of the page.</div>
+                    <div className="bstep__t">{t("Turn on {toggle}", { toggle: "Developer mode" })}</div>
+                    <div className="bstep__d">{current === "edge" ? t("The switch is in the left sidebar of the page.") : t("The switch is in the top-right corner of the page.")}</div>
                   </div>
                   <FakeToggle />
                 </li>
                 <li className="bstep bstep--wide">
                   <span className="bstep__n">3</span>
                   <div className="bstep__txt">
-                    <div className="bstep__t">Click “Load unpacked” and choose the Prism folder</div>
+                    <div className="bstep__t">{t("Click “{button}” and choose the Prism folder", { button: "Load unpacked" })}</div>
                     <div className="bstep__d">{pasteHint}</div>
                   </div>
                   <FakeButton label="Load unpacked" />
@@ -327,10 +351,10 @@ export function BrowserConnect({ status, connected, hideOwnStatus }: { status: I
                       {folder ?? "…"}
                     </span>
                     <button type="button" className="btn btn--sm" disabled={!folder} onClick={copyFolder}>
-                      <Icon name="copy" size={14} /> Copy path
+                      <Icon name="copy" size={14} /> {t("Copy path")}
                     </button>
                     <button type="button" className="btn btn--sm btn--ghost" disabled={!folder} onClick={() => folder && void api.openPath(folder)}>
-                      <Icon name="folder-open" size={14} /> Show
+                      <Icon name="folder-open" size={14} /> {t("Show")}
                     </button>
                   </div>
                 </li>
@@ -428,22 +452,30 @@ export function ConnectBanner({ onOpen }: { onOpen: () => void }) {
               {outdated ? (
                 status?.extensionInstallType === "development" ? (
                   <span className="cbanner__txt">
-                    <b>Prism's extension is now in the Chrome Web Store.</b> Yours ({status?.extensionVersion}) was added by hand and won't update by itself: switch to the store version, it takes a minute.
+                    <b>{t("Prism's extension is now in the Chrome Web Store.")}</b>{" "}
+                    {t("Yours ({version}) was added by hand and won't update by itself: switch to the store version, it takes a minute.", { version: status?.extensionVersion ?? "" })}
                   </span>
                 ) : (
                   <span className="cbanner__txt">
-                    <b>Your browser still runs an older Prism extension</b> ({status?.extensionVersion}, Prism is {status?.appVersion}). Reload it: on {OS === "mac" ? "chrome://extensions" : "chrome://extensions or edge://extensions"} click ↻ next to Prism, or restart the browser.
+                    {tr("{older} ({version}, Prism is {appVersion}).", {
+                      older: <b>{t("Your browser still runs an older Prism extension")}</b>,
+                      version: status?.extensionVersion,
+                      appVersion: status?.appVersion,
+                    })}{" "}
+                    {OS === "mac"
+                      ? t("Reload it: on {page} click ↻ next to Prism, or restart the browser.", { page: "chrome://extensions" })
+                      : t("Reload it: on {page} or {page2} click ↻ next to Prism, or restart the browser.", { page: "chrome://extensions", page2: "edge://extensions" })}
                   </span>
                 )
               ) : (
                 <span className="cbanner__txt">
-                  <b>Catch downloads straight from your browser.</b> Add the Prism extension — it takes about a minute.
+                  <b>{t("Catch downloads straight from your browser.")}</b> {t("Add the Prism extension — it takes about a minute.")}
                 </span>
               )}
               <button type="button" className="btn btn--primary btn--sm" onClick={onOpen}>
-                {outdated ? (status?.extensionInstallType === "development" ? "Switch" : "Show how") : "Connect browser"}
+                {outdated ? (status?.extensionInstallType === "development" ? t("Switch") : t("Show how")) : t("Connect browser")}
               </button>
-              <button type="button" className="tb-btn" aria-label="Hide this reminder" data-tip="Hide" onClick={dismiss}>
+              <button type="button" className="tb-btn" aria-label={t("Hide this reminder")} data-tip={t("Hide")} onClick={dismiss}>
                 <Icon name="close" size={14} />
               </button>
             </div>

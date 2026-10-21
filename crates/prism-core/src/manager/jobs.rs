@@ -1296,8 +1296,13 @@ impl TorrentJob {
                 if p.finished {
                     // Personal use: stop seeding once complete.
                     let _ = engine.pause(&hash).await;
-                    let name = p.name.clone().unwrap_or_else(|| item.file_name.clone());
-                    return Ok(Some((item.save_dir.join(name), p.total)));
+                    let path = match engine.meta(&hash) {
+                        Some(meta) => prism_torrent::content_path(&item.save_dir, &meta),
+                        None => item
+                            .save_dir
+                            .join(p.name.clone().unwrap_or_else(|| item.file_name.clone())),
+                    };
+                    return Ok(Some((path, p.total)));
                 }
                 if p.state == prism_torrent::TorrentState::Error {
                     return Err(anyhow!(p.error.unwrap_or_else(|| "torrent error".into())));

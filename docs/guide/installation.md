@@ -68,6 +68,9 @@ sudo apt install ./Prism_<version>_amd64.deb
 sudo dnf install ./Prism-<version>-1.x86_64.rpm      # openSUSE: sudo zypper install ./Prism-*.rpm
 ```
 
+The package needs any `ffmpeg` (`/usr/bin/ffmpeg`): Fedora's `ffmpeg-free` or the full
+`ffmpeg` from RPM Fusion both work, and Prism uses whichever is installed.
+
 **AppImage (any distribution)**
 
 ```bash

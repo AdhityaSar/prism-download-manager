@@ -3,6 +3,7 @@
 import { type ReactNode, useEffect, useId, useState } from "react";
 import { Icon, type IconName } from "../design/icons";
 import { formatBytes, parseRate } from "../lib/format";
+import { t } from "../lib/i18n";
 import { openMenuAt } from "./MenuHost";
 
 export function Switch({ checked, onChange, label, disabled }: { checked: boolean; onChange: (v: boolean) => void; label: string; disabled?: boolean }) {
@@ -249,11 +250,11 @@ export function NumberField({
 export function Stepper({ value, onChange, min = 1, max = 99, label }: { value: number; onChange: (v: number) => void; min?: number; max?: number; label: string }) {
   return (
     <span className="stepper" role="group" aria-label={label}>
-      <button type="button" aria-label={`Decrease ${label}`} disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))}>
+      <button type="button" aria-label={t("Decrease {label}", { label })} disabled={value <= min} onClick={() => onChange(Math.max(min, value - 1))}>
         <Icon name="minus" size={13} strokeWidth={2} />
       </button>
       <b aria-live="polite">{value}</b>
-      <button type="button" aria-label={`Increase ${label}`} disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))}>
+      <button type="button" aria-label={t("Increase {label}", { label })} disabled={value >= max} onClick={() => onChange(Math.min(max, value + 1))}>
         <Icon name="plus" size={13} strokeWidth={2} />
       </button>
     </span>
@@ -273,7 +274,7 @@ export function RateField({ value, onCommit, label, width = 130 }: { value: numb
   return (
     <label className="input" style={{ width }}>
       <Icon name="speed-limiter" size={14} />
-      <input aria-label={label} value={local} placeholder="Unlimited" onChange={(e) => setLocal(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} />
+      <input aria-label={label} value={local} placeholder={t("Unlimited")} onChange={(e) => setLocal(e.target.value)} onBlur={commit} onKeyDown={(e) => e.key === "Enter" && commit()} />
     </label>
   );
 }

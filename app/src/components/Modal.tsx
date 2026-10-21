@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { type ReactNode, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { Icon } from "../design/icons";
+import { t } from "../lib/i18n";
 
 interface Props {
   open: boolean;
@@ -26,7 +27,7 @@ export function Modal({ open, onClose, title, icon, width = 480, height, footer,
   useEffect(() => {
     if (!open) return;
     const prev = document.activeElement as HTMLElement | null;
-    const t = window.setTimeout(() => {
+    const timer = window.setTimeout(() => {
       const el = ref.current;
       // Dialogs focus their first field; large sheets (settings, scheduler, grabber) focus the
       // panel itself so no text cursor blinks in an unrelated field.
@@ -35,7 +36,7 @@ export function Modal({ open, onClose, title, icon, width = 480, height, footer,
       first?.focus();
     }, 30);
     return () => {
-      window.clearTimeout(t);
+      window.clearTimeout(timer);
       prev?.focus?.();
     };
   }, [open, initialFocus, variant]);
@@ -89,7 +90,7 @@ export function Modal({ open, onClose, title, icon, width = 480, height, footer,
               <header className="modal__header">
                 {icon}
                 <h2 className="modal__title">{title}</h2>
-                <button type="button" className="tb-btn modal__close" aria-label="Close" data-tip="Close" data-kbd="Esc" onClick={onClose}>
+                <button type="button" className="tb-btn modal__close" aria-label={t("Close")} data-tip={t("Close")} data-kbd="Esc" onClick={onClose}>
                   <Icon name="close" size={16} strokeWidth={1.6} />
                 </button>
               </header>

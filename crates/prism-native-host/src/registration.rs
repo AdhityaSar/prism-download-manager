@@ -560,10 +560,7 @@ mod platform {
                 Browser::Zen => (base.join("zen"), vec![nmh("Mozilla")]),
             })
         } else {
-            let config = std::env::var_os("XDG_CONFIG_HOME")
-                .filter(|v| loc.home.is_none() && v.to_string_lossy().starts_with('/'))
-                .map(PathBuf::from)
-                .unwrap_or_else(|| home.join(".config"));
+            let config = config_home(loc, &home);
             let nmh = |p: &str| config.join(p).join("NativeMessagingHosts");
             Ok(match b {
                 Browser::Chrome => (config.join("google-chrome"), vec![nmh("google-chrome")]),
@@ -598,6 +595,35 @@ mod platform {
                     vec![home.join(".mozilla/native-messaging-hosts")],
                 ),
             })
+        }
+    }
+
+    /// `$XDG_CONFIG_HOME` when set and absolute, else `~/.config` (always the latter in tests,
+    /// which set `loc.home`).
+    fn config_home(loc: &Locations, home: &Path) -> PathBuf {
+        std::env::var_os("XDG_CONFIG_HOME")
+            .filter(|v| loc.home.is_none() && v.to_string_lossy().starts_with('/'))
+            .map(PathBuf::from)
+            .unwrap_or_else(|| home.join(".config"))
+    }
+
+    /// Other profile roots that also mean "installed" (detection only, Linux). Firefox 147+ and
+    /// Zen 1.18.6b+ put new profiles under XDG config (`mozilla/firefox`, `zen`) when the old
+    /// dot-dir doesn't exist, yet both still read native messaging manifests from
+    /// `~/.mozilla/native-messaging-hosts` (Firefox forces the legacy path for
+    /// `XRE_USER_NATIVE_MANIFESTS` in nsXREDirProvider.cpp).
+    fn other_profiles(b: Browser, loc: &Locations) -> Vec<PathBuf> {
+        if cfg!(target_os = "macos") {
+            return Vec::new();
+        }
+        let Ok(home) = home(loc) else {
+            return Vec::new();
+        };
+        let config = config_home(loc, &home);
+        match b {
+            Browser::Firefox => vec![config.join("mozilla/firefox")],
+            Browser::Zen => vec![config.join("zen")],
+            _ => Vec::new(),
         }
     }
 
@@ -671,7 +697,7 @@ mod platform {
             st.note = Some("home directory not found".into());
             return st;
         };
-        st.installed = profile.exists();
+        st.installed = profile.exists() || other_profiles(b, loc).iter().any(|p| p.exists());
         st.location = nmh_dirs[0].to_string_lossy().into();
         for d in &nmh_dirs {
             let f = d.join(manifest_name());
@@ -916,6 +942,45 @@ mod tests {
         {
             let _ =
                 winreg::RegKey::predef(winreg::enums::HKEY_CURRENT_USER).delete_subkey_all(&unique);
+        }
+    }
+
+    /// Zen 1.18.6b+ and Firefox 147+ keep fresh profiles in `~/.config/zen` and
+    /// `~/.config/mozilla/firefox` (no `~/.zen` / `~/.mozilla/firefox`). They still count as
+    /// installed, so Repair (no explicit browsers) writes the manifest they read in
+    /// `~/.mozilla/native-messaging-hosts`.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn xdg_only_zen_and_firefox_are_detected_and_registered() {
+        let dir = tempfile::tempdir().unwrap();
+        let host = dir.path().join(crate::HOST_BINARY_NAME);
+        fs::write(&host, b"").unwrap();
+        let home = dir.path().join("home");
+        let loc = Locations {
+            manifest_dir: None,
+            home: Some(home.clone()),
+            registry_root: None,
+        };
+        let manifest = home
+            .join(".mozilla/native-messaging-hosts")
+            .join(format!("{HOST_NAME}.json"));
+        let mut opts = RegisterOptions::new(&host);
+        opts.locations = loc.clone();
+        for profile in [".config/zen", ".config/mozilla/firefox"] {
+            let _ = fs::remove_dir_all(&home);
+            fs::create_dir_all(home.join(profile)).unwrap();
+            register(&opts).unwrap();
+            assert!(manifest.is_file(), "{profile}: manifest not written");
+            let b = if profile.ends_with("zen") {
+                Browser::Zen
+            } else {
+                Browser::Firefox
+            };
+            let st = &status(&[b], &host, &loc)[0];
+            assert!(
+                st.installed && st.registered && st.points_to_this_host,
+                "{st:?}"
+            );
         }
     }
 }

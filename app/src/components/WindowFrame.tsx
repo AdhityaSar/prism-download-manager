@@ -1,6 +1,7 @@
 import { type ReactNode, useEffect } from "react";
 import { Icon } from "../design/icons";
 import { inTauri } from "../lib/api";
+import { t } from "../lib/i18n";
 import { win } from "../lib/win";
 
 /** Preview sizes mirror `spec()` in src-tauri/src/windows.rs (used only in the browser preview). */
@@ -45,8 +46,8 @@ export function WindowFrame({ kind, title, icon, actions, onClose, minimizable, 
       }
     };
     requestAnimationFrame(() => requestAnimationFrame(show));
-    const t = window.setTimeout(show, 120);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(show, 120);
+    return () => window.clearTimeout(timer);
   }, []);
 
   const close = onClose ?? (() => void win.close());
@@ -69,11 +70,11 @@ export function WindowFrame({ kind, title, icon, actions, onClose, minimizable, 
           {actions}
           <div className="caption">
             {minimizable && (
-              <button type="button" className="caption__btn" aria-label="Minimize" onClick={() => void win.minimize()}>
+              <button type="button" className="caption__btn" aria-label={t("Minimize")} onClick={() => void win.minimize()}>
                 <Icon name="minimize" size={16} strokeWidth={1.25} />
               </button>
             )}
-            <button type="button" className="caption__btn caption__btn--close" aria-label="Close" onClick={close}>
+            <button type="button" className="caption__btn caption__btn--close" aria-label={t("Close")} onClick={close}>
               <Icon name="close" size={16} strokeWidth={1.4} />
             </button>
           </div>

@@ -3,6 +3,7 @@
 #![cfg_attr(not(debug_assertions), windows_subsystem = "windows")]
 
 mod commands;
+mod i18n;
 mod integration;
 mod tray;
 mod updates;
@@ -16,12 +17,15 @@ use tauri::{AppHandle, Emitter, Manager, RunEvent, WindowEvent};
 use tauri_plugin_notification::NotificationExt;
 
 pub(crate) static QUITTING: AtomicBool = AtomicBool::new(false);
+/// Started with `--background` / `--minimized` (autostart at login passes `--background`).
+pub(crate) static STARTED_IN_BACKGROUND: AtomicBool = AtomicBool::new(false);
 
 fn main() {
     let args: Vec<String> = std::env::args().collect();
     let background = args
         .iter()
         .any(|a| a == "--background" || a == "--minimized");
+    STARTED_IN_BACKGROUND.store(background, std::sync::atomic::Ordering::Relaxed);
     let _log_guard = init_logging();
     // Release builds have no console: make sure a panic always reaches the log file.
     let default_hook = std::panic::take_hook();
@@ -52,7 +56,13 @@ fn main() {
             Some(vec!["--background"]),
         ))
         .plugin(
+            // Position, size and maximized only: restoring "visible" would show the main window
+            // at login or with Start minimized whenever it was open when Prism last quit.
             tauri_plugin_window_state::Builder::default()
+                .with_state_flags(
+                    tauri_plugin_window_state::StateFlags::all()
+                        - tauri_plugin_window_state::StateFlags::VISIBLE,
+                )
                 .with_filter(|label| label == "main" || label.starts_with("details-"))
                 .build(),
         )
@@ -192,6 +202,8 @@ fn main() {
             commands::toggle_mini,
             commands::toggle_dropzone,
             commands::show_main,
+            commands::main_window_starts_visible,
+            commands::set_ui_language,
             commands::set_autostart,
             commands::quit_app,
             commands::free_space,
@@ -419,6 +431,7 @@ fn side_effects(
     let settings = core.settings();
     let notify = |title: &str, body: &str| {
         if settings.general.notifications {
+            let title = i18n::tr(title, &[]);
             let _ = app.notification().builder().title(title).body(body).show();
         }
     };
@@ -468,9 +481,10 @@ fn side_effects(
                 ),
             );
         }
-        CoreEvent::QueueFinished { name, .. } => {
-            notify("Queue finished", &format!("{name} has no more downloads."))
-        }
+        CoreEvent::QueueFinished { name, .. } => notify(
+            "Queue finished",
+            &i18n::tr("{name} has no more downloads.", &[("name", name)]),
+        ),
         CoreEvent::Notify { title, body } => notify(title, body),
         CoreEvent::ShowMain => windows::show_main(app),
         CoreEvent::ExitRequested => {

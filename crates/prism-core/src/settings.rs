@@ -45,6 +45,8 @@ pub struct General {
     pub use_trash: bool,
     /// Look for new Prism versions on start and every few hours.
     pub check_updates: bool,
+    /// UI language code ("en", "cs", "de", "es", "fr", "it"); empty = the system's language.
+    pub language: String,
 }
 
 impl Default for General {
@@ -60,6 +62,7 @@ impl Default for General {
             confirm_delete: true,
             use_trash: true,
             check_updates: true,
+            language: String::new(),
         }
     }
 }

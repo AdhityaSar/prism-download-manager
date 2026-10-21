@@ -1,66 +1,50 @@
-# Prism 1.1.0 — One beam. Many rays.
+# Prism 1.1.1 — One beam. Many rays.
 
 A fast, open-source download manager for Windows, Linux and macOS, with browser integration
 and video downloads.
 
-## What's new in 1.1.0
+## What's new in 1.1.1
 
-* **The browser extension is in the Chrome Web Store.** Add it to Chrome, Edge, Brave, Opera
-  or Vivaldi in one click, and the store keeps it up to date:
-  [Prism Download Manager](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl).
-  Prism's setup (on first start, and in Settings › Browser integration) opens the store page in
-  the browser you pick.
-* **Added the extension by hand before?** That copy doesn't update by itself. After this update
-  Prism shows what's new and walks you through switching: remove the old copy on
-  `chrome://extensions`, then add Prism from the store. Adding it by hand still works: Settings ›
-  Browser integration › *Add it by hand instead*.
-* **Zen and Helium:** Prism connects to Zen (built on Firefox, it uses the Firefox extension)
-  and to Helium (it adds Prism from the Chrome Web Store), and both show up in Settings ›
-  Browser integration.
-* Settings › Browser integration shows **Repair** whenever a browser in the list needs it, also
-  while the extension is connected in another browser.
-* **Playlists:**
-  * Every video is saved under its own title. Some were saved as *Video [id]*, and a single
-    video picked from a playlist got the playlist's name.
-  * **Number playlist videos** (Settings › Video & streams) starts each file name with the video's
-    position: `01 - Title.mkv`.
-  * **One at a time** in the video window downloads a playlist's videos one after another (in the
-    new *One at a time* queue).
-  * Thanks to [@asalia22](https://github.com/asalia22) for the suggestions!
-* **The container in Settings › Video & streams (MKV, WebM) is used.** Videos were saved as MP4
-  whatever you chose.
-* **Pick your "download complete" sound:** ten new ones in Settings › Sounds (Prism, Pop,
-  Kalimba, Snap, Cascade, Glide, Harp, Droplet, Music box, Sparkle). A sound plays when you pick
-  it.
-* **HLS and DASH downloads show their real connections:** the connections list shows the parts
-  being downloaded right now instead of every part of the stream, and the file map fills as the
-  download goes. Thanks to [@uuc110](https://github.com/uuc110)!
-* A **What's new** window after an update, also in Settings › About Prism.
+* **Prism speaks your language:** Czech, German, Spanish, French and Italian, besides English.
+  Prism follows your system's language; pick another one in Settings › General › Language.
+  Thanks for the idea on Reddit! Spotted a clumsy translation? Tell us in an issue.
+* **Portable version:** the browser extension finds Prism again. The portable Prism keeps its
+  data next to `prism.exe`, but the helper the extension talks to looked for it in
+  `%APPDATA%\Prism`, so *Start Prism* and *Sync from Prism* timed out
+  ([#12](https://github.com/FortoGraphy/prism-download-manager/issues/12)).
+* **Torrents with several files are saved in their own folder** (named after the torrent)
+  instead of spilling into your download folder, and *Open folder* opens it.
+* **Start minimized** and starting with your computer keep Prism in the tray; the window
+  appeared anyway.
+* **Linux:** Zen 1.18.6+ and Firefox 147+ keep new profiles in `~/.config`. Prism now finds them,
+  so Repair connects them (the extension said *No such native application*).
+* **Fedora / openSUSE:** the rpm needs any `/usr/bin/ffmpeg` instead of `ffmpeg-free`, so the
+  full ffmpeg from RPM Fusion works
+  ([#10](https://github.com/FortoGraphy/prism-download-manager/issues/10)).
+* The Chrome Web Store extension (1.1.0) keeps working as it is; nothing to update there.
 
-### Also new since 1.0.8 (Prism 1.1.0)
+### Prism 1.1.0
 
-* Choose the quality of an HLS or DASH stream a page plays; picking a video quality opens the
-  Download File window; "Open a progress window for new downloads" works; smaller fixes. From a
-  pull request by [@uuc110](https://github.com/uuc110).
-
-### Prism 1.0.8: security fixes
-
-* Linux: the browser cookies Prism hands to yt-dlp for a video are no longer readable by other
-  accounts on the computer.
-* The browser extension no longer adds SameSite=Strict cookies to downloads another site
-  started, and the in-page *Download video* button reacts only to your own clicks.
-* Both were reported privately by [@pepopepopepo](https://github.com/pepopepopepo) — thank you!
+* The browser extension is in the
+  [Chrome Web Store](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl):
+  one click to add it to Chrome, Edge, Brave, Opera, Vivaldi or Helium, and it updates itself.
+* Zen and Helium in Settings › Browser integration; Repair whenever a browser needs it.
+* Playlists: every video under its own title, optional numbering (`01 - Title.mkv`) and
+  *One at a time*. The container from Settings (MKV, WebM) is used. Thanks to
+  [@asalia22](https://github.com/asalia22)!
+* Ten new "download complete" sounds, real connections for HLS and DASH downloads (thanks to
+  [@uuc110](https://github.com/uuc110)) and a *What's new* window after updates.
 
 ## Downloads
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.1.0_x64-setup.exe` (recommended) · `Prism_1.1.0_x64_en-US.msi` (all users) · `Prism-1.1.0-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.1.0_aarch64.dmg` |
-| macOS — Intel | `Prism_1.1.0_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.1.0_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.1.0-1.x86_64.rpm` |
-| Any Linux | `Prism_1.1.0_amd64.AppImage` |
+| Windows 10 / 11 | `Prism_1.1.1_x64-setup.exe` (recommended) · `Prism_1.1.1_x64_en-US.msi` (all users) · `Prism-1.1.1-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.1.1_aarch64.dmg` |
+| macOS — Intel | `Prism_1.1.1_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.1.1_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.1.1-1.x86_64.rpm` |
+| Any Linux | `Prism_1.1.1_amd64.AppImage` |
 | Browser extension | [Chrome Web Store](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl) (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` (Firefox) |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·

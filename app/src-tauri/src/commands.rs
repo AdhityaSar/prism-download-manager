@@ -583,6 +583,24 @@ pub async fn toggle_dropzone(app: AppHandle) -> CmdResult<bool> {
 }
 
 #[tauri::command]
+pub async fn main_window_starts_visible(core: State<'_, Core>) -> CmdResult<bool> {
+    // The main window is created hidden and the UI shows it after its first paint, unless
+    // Prism started in the background (autostart) or "Start minimized" is on: then it stays
+    // in the tray until the user opens it.
+    let background = crate::STARTED_IN_BACKGROUND.load(std::sync::atomic::Ordering::Relaxed);
+    Ok(!background && !core.settings().general.start_minimized)
+}
+
+/// The language the UI shows (already resolved from the setting), for the tray and notifications.
+#[tauri::command]
+pub async fn set_ui_language(app: AppHandle, language: String) -> CmdResult<()> {
+    if crate::i18n::set_language(&language) {
+        crate::tray::relabel(&app);
+    }
+    Ok(())
+}
+
+#[tauri::command]
 pub async fn show_main(app: AppHandle) -> CmdResult<()> {
     windows::show_main(&app);
     Ok(())

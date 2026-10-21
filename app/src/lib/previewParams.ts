@@ -5,6 +5,7 @@
 //   /?dialog=properties:demo1#/              open a dialog (properties | delete | batch | category | speedLimit | refreshUrl)
 //   /?menu=demo2#/                           open the context menu of a row
 //   /?post=sleep#/                           show the post-queue countdown
+//   /?lang=cs#/                              show the UI in another language (cs | de | es | fr | it | en)
 
 import { inTauri } from "./api";
 import { useApp } from "./store";
@@ -15,6 +16,9 @@ export function applyPreviewParams() {
   const q = new URLSearchParams(location.search);
   const app = useApp.getState();
   const ui = useUi.getState();
+
+  const lang = q.get("lang");
+  if (lang && app.settings) app.applySettings({ ...app.settings, general: { ...app.settings.general, language: lang } });
 
   const sel = q.get("select");
   const tab = q.get("tab");

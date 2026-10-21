@@ -7,8 +7,9 @@ import { WindowFrame } from "../components/WindowFrame";
 import { Icon } from "../design/icons";
 import { api, onCoreEvent } from "../lib/api";
 import { formatBytes, hostOf } from "../lib/format";
+import { t } from "../lib/i18n";
 import { folderFor } from "../lib/paths";
-import { categoryIcon } from "../lib/present";
+import { categoryIcon, displayName } from "../lib/present";
 import { useApp } from "../lib/store";
 import type { CaptureInfo, StartMode } from "../lib/types";
 import { attempt } from "../lib/ui";
@@ -51,8 +52,8 @@ export default function CaptureWindow({ id }: { id: string }) {
 
   useEffect(() => {
     if (!dir) return;
-    const t = window.setTimeout(() => void api.freeSpace(dir).then(setFree, () => setFree(null)), 250);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => void api.freeSpace(dir).then(setFree, () => setFree(null)), 250);
+    return () => window.clearTimeout(timer);
   }, [dir]);
 
   const close = () => void win.close();
@@ -76,7 +77,7 @@ export default function CaptureWindow({ id }: { id: string }) {
         rememberDir: remember,
         conflict: cap.exists ? conflict : undefined,
       }),
-      "Could not add the download",
+      t("Could not add the download"),
     );
     setBusy(false);
     if (item) close();
@@ -84,12 +85,12 @@ export default function CaptureWindow({ id }: { id: string }) {
 
   if (missing)
     return (
-      <WindowFrame kind="capture" title="Download file">
+      <WindowFrame kind="capture" title={t("Download file")}>
         <div className="wempty">
           <Icon name="info" size={22} />
-          <p>This download was already handled or cancelled.</p>
+          <p>{t("This download was already handled or cancelled.")}</p>
           <button type="button" className="btn" onClick={close}>
-            Close
+            {t("Close")}
           </button>
         </div>
       </WindowFrame>
@@ -98,10 +99,10 @@ export default function CaptureWindow({ id }: { id: string }) {
   const lowSpace = cap?.size != null && free != null && free < cap.size;
 
   return (
-    <WindowFrame kind="capture" title="Download file" icon={<LogoMark size={18} glass="indigo" />} onClose={cancel} className="capture">
+    <WindowFrame kind="capture" title={t("Download file")} icon={<LogoMark size={18} glass="indigo" />} onClose={cancel} className="capture">
       <div className="wbody">
         <div className="field">
-          <span className="field__label">Address</span>
+          <span className="field__label">{t("Address")}</span>
           <div className="withbtn">
             <div className="input input--readonly">
               <Icon name="link" size={15} />
@@ -109,7 +110,7 @@ export default function CaptureWindow({ id }: { id: string }) {
                 {cap?.url ?? "…"}
               </span>
             </div>
-            <button type="button" className="btn btn--icon" aria-label="Copy address" data-tip="Copy address" onClick={() => cap && void copyText(cap.url)}>
+            <button type="button" className="btn btn--icon" aria-label={t("Copy address")} data-tip={t("Copy address")} onClick={() => cap && void copyText(cap.url)}>
               <Icon name="copy" size={15} />
             </button>
           </div>
@@ -121,7 +122,7 @@ export default function CaptureWindow({ id }: { id: string }) {
             <input
               className="fname"
               value={name}
-              aria-label="File name"
+              aria-label={t("File name")}
               spellCheck={false}
               onChange={(e) => {
                 touched.current.name = true;
@@ -131,7 +132,7 @@ export default function CaptureWindow({ id }: { id: string }) {
             <div className="tags">
               {cap?.probing ? (
                 <span className="badge badge--accent">
-                  <Icon name="retry" size={11} strokeWidth={2.2} className="anim-spin" /> Checking…
+                  <Icon name="retry" size={11} strokeWidth={2.2} className="anim-spin" /> {t("Checking…")}
                 </span>
               ) : cap?.probeError ? (
                 <span className="badge badge--danger" data-tip={cap.probeError}>
@@ -139,11 +140,11 @@ export default function CaptureWindow({ id }: { id: string }) {
                 </span>
               ) : cap?.resumable ? (
                 <span className="badge badge--success">
-                  <Icon name="check" size={11} strokeWidth={2.4} /> Resumable
+                  <Icon name="check" size={11} strokeWidth={2.4} /> {t("Resumable")}
                 </span>
               ) : cap ? (
-                <span className="badge badge--warning" data-tip="The server does not support ranges: one connection, restarts from zero if interrupted">
-                  <Icon name="warning" size={11} strokeWidth={2.2} /> Not resumable
+                <span className="badge badge--warning" data-tip={t("The server does not support ranges: one connection, restarts from zero if interrupted")}>
+                  <Icon name="warning" size={11} strokeWidth={2.2} /> {t("Not resumable")}
                 </span>
               ) : null}
               {cap?.mime && <span className="badge">{cap.mime.split(";")[0]}</span>}
@@ -151,18 +152,18 @@ export default function CaptureWindow({ id }: { id: string }) {
             </div>
           </div>
           <div className="big tnum">
-            {cap?.probing && cap.size == null ? "…" : cap?.size == null ? "N/A" : formatBytes(cap.size)}
-            <small className={lowSpace ? "text-danger" : undefined}>{free != null ? `${formatBytes(free)} free` : ""}</small>
+            {cap?.probing && cap.size == null ? "…" : cap?.size == null ? t("N/A") : formatBytes(cap.size)}
+            <small className={lowSpace ? "text-danger" : undefined}>{free != null ? t("{size} free", { size: formatBytes(free) }) : ""}</small>
           </div>
         </div>
 
         {cap?.needsAuth && (
           <div className="authbox">
             <Icon name="lock-closed" size={16} className="text-warning" />
-            <TextField value={user} onChange={setUser} label="User name" placeholder="User name" icon="user" />
-            <TextField value={pass} onChange={setPass} label="Password" placeholder="Password" type="password" icon="key" onEnter={() => void api.reprobeCapture(id, user, pass)} />
-            <button type="button" className="btn" onClick={() => void attempt(api.reprobeCapture(id, user, pass), "Could not retry")}>
-              Retry
+            <TextField value={user} onChange={setUser} label={t("User name")} placeholder={t("User name")} icon="user" />
+            <TextField value={pass} onChange={setPass} label={t("Password")} placeholder={t("Password")} type="password" icon="key" onEnter={() => void api.reprobeCapture(id, user, pass)} />
+            <button type="button" className="btn" onClick={() => void attempt(api.reprobeCapture(id, user, pass), t("Could not retry"))}>
+              {t("Retry")}
             </button>
           </div>
         )}
@@ -170,15 +171,15 @@ export default function CaptureWindow({ id }: { id: string }) {
         {cap?.exists && (
           <div className="conflict">
             <Icon name="warning" size={16} className="text-warning" />
-            <span>A file with this name already exists.</span>
+            <span>{t("A file with this name already exists.")}</span>
             <Segmented
               size="sm"
-              label="When the file exists"
+              label={t("When the file exists")}
               value={conflict}
               onChange={setConflict}
               options={[
-                { value: "rename", label: "Keep both" },
-                { value: "overwrite", label: "Overwrite" },
+                { value: "rename", label: t("Keep both") },
+                { value: "overwrite", label: t("Overwrite") },
               ]}
             />
           </div>
@@ -186,7 +187,7 @@ export default function CaptureWindow({ id }: { id: string }) {
 
         <div className="row-save">
           <div className="field">
-            <span className="field__label">Save to</span>
+            <span className="field__label">{t("Save to")}</span>
             <div className="withbtn">
               <TextField
                 value={dir}
@@ -195,7 +196,7 @@ export default function CaptureWindow({ id }: { id: string }) {
                   setDir(v);
                 }}
                 icon="folder"
-                label="Save folder"
+                label={t("Save folder")}
               />
               <button
                 type="button"
@@ -208,50 +209,50 @@ export default function CaptureWindow({ id }: { id: string }) {
                   }
                 }}
               >
-                Browse…
+                {t("Browse…")}
               </button>
             </div>
           </div>
           <div className="field">
-            <span className="field__label">Category</span>
+            <span className="field__label">{t("Category")}</span>
             <Select
-              label="Category"
+              label={t("Category")}
               value={category}
               onChange={(v) => {
                 touched.current.category = true;
                 setCategory(v);
                 if (!touched.current.dir) setDir(folderFor(v, dir));
               }}
-              options={categories.map((c) => ({ value: c.id, label: c.name, icon: categoryIcon(c) }))}
+              options={categories.map((c) => ({ value: c.id, label: displayName(c.name), icon: categoryIcon(c) }))}
             />
           </div>
         </div>
 
         <div className="checks">
           <Checkbox checked={remember} onChange={setRemember}>
-            Remember this folder for {categories.find((c) => c.id === category)?.name ?? "this category"}
+            {t("Remember this folder for {category}", { category: displayName(categories.find((c) => c.id === category)?.name ?? "") || t("this category") })}
           </Checkbox>
           <button type="button" className="disclose" aria-expanded={more} onClick={() => setMore(!more)}>
-            <Icon name={more ? "chevron-down" : "chevron-right"} size={12} strokeWidth={2.2} /> Description
+            <Icon name={more ? "chevron-down" : "chevron-right"} size={12} strokeWidth={2.2} /> {t("Description")}
           </button>
         </div>
-        {more && <TextArea value={desc} onChange={setDesc} label="Description" placeholder="Optional note shown in the list" />}
+        {more && <TextArea value={desc} onChange={setDesc} label={t("Description")} placeholder={t("Optional note shown in the list")} />}
       </div>
 
       <footer className="dialog__footer">
         <div className="split">
           <button type="button" className="btn" disabled={!cap || busy} onClick={() => confirm({ type: "later" })}>
-            <Icon name="status-scheduled" size={15} /> Download later
+            <Icon name="status-scheduled" size={15} /> {t("Download later")}
           </button>
           <button
             type="button"
             className="btn"
-            aria-label="More start options"
+            aria-label={t("More start options")}
             disabled={!cap || busy}
             onClick={(e) =>
               openMenuAt(e.currentTarget, [
-                { label: "Download later", icon: "status-scheduled", onSelect: () => void confirm({ type: "later" }) },
-                { label: "Add to queue", icon: "queue", submenu: queues.map((q) => ({ label: q.name, icon: q.running ? "start-queue" : "queue", onSelect: () => void confirm({ type: "queue", queueId: q.id }) })) },
+                { label: t("Download later"), icon: "status-scheduled", onSelect: () => void confirm({ type: "later" }) },
+                { label: t("Add to queue"), icon: "queue", submenu: queues.map((q) => ({ label: displayName(q.name), icon: q.running ? "start-queue" : "queue", onSelect: () => void confirm({ type: "queue", queueId: q.id }) })) },
               ])
             }
           >
@@ -260,10 +261,10 @@ export default function CaptureWindow({ id }: { id: string }) {
         </div>
         <span className="spacer" />
         <button type="button" className="btn btn--ghost" onClick={cancel}>
-          Cancel
+          {t("Cancel")}
         </button>
-        <button type="button" className="btn btn--primary" disabled={!cap || busy || lowSpace} onClick={() => confirm({ type: "now" })} data-tip={lowSpace ? "Not enough free space" : undefined}>
-          <Icon name="download" size={15} /> Start download
+        <button type="button" className="btn btn--primary" disabled={!cap || busy || lowSpace} onClick={() => confirm({ type: "now" })} data-tip={lowSpace ? t("Not enough free space") : undefined}>
+          <Icon name="download" size={15} /> {t("Start download")}
         </button>
       </footer>
     </WindowFrame>

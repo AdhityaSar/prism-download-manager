@@ -3,6 +3,7 @@ import { useEffect } from "react";
 import { create } from "zustand";
 import { Icon } from "../design/icons";
 import { api, inTauri, onAppEvent, type UpdateInfo } from "../lib/api";
+import { t } from "../lib/i18n";
 import { useApp } from "../lib/store";
 import { toast } from "../lib/ui";
 import { scheduleUpdateChecks, windowEnv } from "../lib/update-schedule";
@@ -29,9 +30,9 @@ export async function checkForUpdates(manual = false): Promise<void> {
   try {
     const info = await api.checkUpdate();
     useUpdate.setState({ info, ...(manual ? { later: null } : {}) });
-    if (manual && !info) toast("Prism is up to date", { kind: "success", ms: 2500 });
+    if (manual && !info) toast(t("Prism is up to date"), { kind: "success", ms: 2500 });
   } catch (e) {
-    if (manual) toast("Couldn't check for updates", { kind: "error", body: String(e) });
+    if (manual) toast(t("Couldn't check for updates"), { kind: "error", body: String(e) });
   }
 }
 
@@ -52,7 +53,7 @@ async function install() {
   try {
     await api.installUpdate(); // on success the app restarts and never gets here
   } catch (e) {
-    toast("The update couldn't be installed", { kind: "error", body: String(e) });
+    toast(t("The update couldn't be installed"), { kind: "error", body: String(e) });
     useUpdate.setState({ phase: "idle" });
   } finally {
     off();
@@ -84,16 +85,21 @@ export function UpdateBanner() {
               <span className="cbanner__txt">
                 {busy ? (
                   <>
-                    <b>{phase === "installing" ? "Installing Prism " + info.version + "…" : `Downloading Prism ${info.version}… ${Math.round(progress * 100)}%`}</b> Prism restarts by itself and your downloads continue.
+                    <b>
+                      {phase === "installing"
+                        ? t("Installing Prism {version}…", { version: info.version })
+                        : t("Downloading Prism {version}… {percent}%", { version: info.version, percent: Math.round(progress * 100) })}
+                    </b>{" "}
+                    {t("Prism restarts by itself and your downloads continue.")}
                     <span className="ubanner__bar">
                       <span style={{ width: `${Math.max(4, progress * 100)}%` }} />
                     </span>
                   </>
                 ) : (
                   <>
-                    <b>Prism {info.version} is ready.</b> You have {info.current}.{" "}
+                    <b>{t("Prism {version} is ready.", { version: info.version })}</b> {t("You have {version}.", { version: info.current })}{" "}
                     <button type="button" className="link-btn" onClick={() => void openUrl(`${RELEASES}/tag/v${info.version}`)}>
-                      What&rsquo;s new
+                      {t("What’s new")}
                     </button>
                   </>
                 )}
@@ -101,15 +107,15 @@ export function UpdateBanner() {
               {!busy &&
                 (info.canInstall ? (
                   <button type="button" className="btn btn--primary btn--sm" onClick={() => void install()}>
-                    Restart &amp; update
+                    {t("Restart & update")}
                   </button>
                 ) : (
                   <button type="button" className="btn btn--primary btn--sm" onClick={() => void openUrl(SITE)}>
-                    Get the update
+                    {t("Get the update")}
                   </button>
                 ))}
               {!busy && (
-                <button type="button" className="tb-btn" aria-label="Remind me later" data-tip="Later" onClick={() => useUpdate.setState({ later: info.version })}>
+                <button type="button" className="tb-btn" aria-label={t("Remind me later")} data-tip={t("Later")} onClick={() => useUpdate.setState({ later: info.version })}>
                   <Icon name="close" size={14} />
                 </button>
               )}

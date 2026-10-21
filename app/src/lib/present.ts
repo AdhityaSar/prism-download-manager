@@ -2,6 +2,7 @@
 
 import type { IconName } from "../design/icons/names";
 import { fileExtension, formatBytes, hostOf, percent } from "./format";
+import { t, tk } from "./i18n";
 import type { Category, DownloadItem, Progress, Status } from "./types";
 
 export type Tone = "accent" | "success" | "warning" | "danger" | "info" | "neutral";
@@ -17,26 +18,27 @@ export interface StatusView {
 }
 
 const STATUS: Record<Status, Omit<StatusView, "detail">> = {
-  idle: { label: "Stopped", tone: "neutral", icon: "status-paused", bar: "queued" },
-  queued: { label: "Queued", tone: "neutral", icon: "status-queued", bar: "queued" },
-  connecting: { label: "Connecting", tone: "accent", icon: "status-waiting", bar: "active" },
-  downloading: { label: "Downloading", tone: "accent", icon: "status-downloading", bar: "active" },
-  retrying: { label: "Retrying", tone: "warning", icon: "status-waiting", bar: "paused" },
-  paused: { label: "Paused", tone: "warning", icon: "status-paused", bar: "paused" },
-  processing: { label: "Processing", tone: "info", icon: "status-merging", bar: "active" },
-  completed: { label: "Completed", tone: "success", icon: "status-completed", bar: "completed" },
-  failed: { label: "Failed", tone: "danger", icon: "status-error", bar: "error" },
+  idle: { label: tk("Stopped"), tone: "neutral", icon: "status-paused", bar: "queued" },
+  queued: { label: tk("Queued"), tone: "neutral", icon: "status-queued", bar: "queued" },
+  connecting: { label: tk("Connecting"), tone: "accent", icon: "status-waiting", bar: "active" },
+  downloading: { label: tk("Downloading"), tone: "accent", icon: "status-downloading", bar: "active" },
+  retrying: { label: tk("Retrying"), tone: "warning", icon: "status-waiting", bar: "paused" },
+  paused: { label: tk("Paused"), tone: "warning", icon: "status-paused", bar: "paused" },
+  processing: { label: tk("Processing"), tone: "info", icon: "status-merging", bar: "active" },
+  completed: { label: tk("Completed"), tone: "success", icon: "status-completed", bar: "completed" },
+  failed: { label: tk("Failed"), tone: "danger", icon: "status-error", bar: "error" },
 };
 
 export function statusView(item: DownloadItem, progress?: Progress | null): StatusView {
   const status = progress?.status ?? item.status;
   const base = STATUS[status] ?? STATUS.idle;
-  let detail = base.label;
+  const label = t(base.label);
+  let detail = label;
   if (status === "failed" && item.error) detail = item.error;
   else if (status === "processing" && progress?.detail) detail = progress.detail;
   else if (status === "retrying" && progress?.detail) detail = progress.detail;
-  else if (status === "connecting") detail = "Connecting…";
-  return { ...base, detail };
+  else if (status === "connecting") detail = t("Connecting…");
+  return { ...base, label, detail };
 }
 
 /** Title-row status filter, applied on top of the sidebar view. */
@@ -117,6 +119,23 @@ const CATEGORY_ICONS: Record<string, IconName> = {
   other: "other",
 };
 
+// Built-in categories and queues come from the core with English names: show them translated
+// while they keep that name (a renamed one shows as typed). Folders on disk keep the real name.
+const BUILTIN_NAMES = new Set([
+  tk("Video"),
+  tk("Music"),
+  tk("Documents"),
+  tk("Programs"),
+  tk("Compressed"),
+  tk("Images"),
+  tk("Other"),
+  tk("Main queue"),
+  tk("One at a time"),
+]);
+
+/** A category's or queue's name as shown in the UI. */
+export const displayName = (name: string): string => (BUILTIN_NAMES.has(name) ? t(name) : name);
+
 export function categoryIcon(c: Pick<Category, "id" | "builtin">): IconName {
   return CATEGORY_ICONS[c.id] ?? "custom-folder";
 }
@@ -125,7 +144,7 @@ export function categoryIcon(c: Pick<Category, "id" | "builtin">): IconName {
 export function metaLine(item: DownloadItem, categories: Category[]): string {
   const host = item.media?.site || hostOf(item.finalUrl || item.url) || (item.url.startsWith("magnet:") ? "BitTorrent" : "");
   const quality = item.media?.quality;
-  const cat = categories.find((c) => c.id === item.category)?.name ?? "";
+  const cat = displayName(categories.find((c) => c.id === item.category)?.name ?? "");
   return [host, quality || cat].filter(Boolean).join(" · ");
 }
 
@@ -134,22 +153,22 @@ export function metaLine(item: DownloadItem, categories: Category[]): string {
 const URL_RE = /^(https?|ftps?):\/\/[^\s]+$/i;
 
 export function looksLikeUrl(text: string): boolean {
-  const t = text.trim();
-  return URL_RE.test(t) || isTorrentLink(t);
+  const s = text.trim();
+  return URL_RE.test(s) || isTorrentLink(s);
 }
 
 export function isTorrentLink(url: string): boolean {
-  const t = url.trim().toLowerCase();
-  return t.startsWith("magnet:?") || /\.torrent(?:[?#].*)?$/.test(t);
+  const u = url.trim().toLowerCase();
+  return u.startsWith("magnet:?") || /\.torrent(?:[?#].*)?$/.test(u);
 }
 
 /** Extract URLs from dropped/pasted text (uri-list or plain text). */
 export function extractUrls(text: string): string[] {
   const out: string[] = [];
   for (const raw of text.split(/[\s\r\n]+/)) {
-    const t = raw.trim();
-    if (!t || t.startsWith("#")) continue;
-    if (looksLikeUrl(t) && !out.includes(t)) out.push(t);
+    const s = raw.trim();
+    if (!s || s.startsWith("#")) continue;
+    if (looksLikeUrl(s) && !out.includes(s)) out.push(s);
   }
   return out;
 }

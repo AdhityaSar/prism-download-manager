@@ -1,6 +1,7 @@
 // Download table column model. Visibility is persisted in settings.appearance.visibleColumns,
 // widths (a per-viewer convenience) in localStorage.
 
+import { tk } from "./i18n";
 import type { SortKey } from "./store";
 
 export type ColumnKey =
@@ -18,6 +19,7 @@ export type ColumnKey =
 
 export interface ColumnDef {
   key: ColumnKey;
+  /** Marked for translation: show it with `t(label)`. */
   label: string;
   width: number;
   min: number;
@@ -26,17 +28,17 @@ export interface ColumnDef {
 }
 
 export const COLUMNS: ColumnDef[] = [
-  { key: "name", label: "Name", width: 0, min: 160, sort: "name" },
-  { key: "size", label: "Size", width: 84, min: 64, align: "end", sort: "size" },
-  { key: "status", label: "Status", width: 150, min: 96, sort: "status" },
-  { key: "progress", label: "Progress", width: 210, min: 120, sort: "progress" },
-  { key: "speed", label: "Speed", width: 92, min: 70, align: "end", sort: "speed" },
-  { key: "eta", label: "Time left", width: 84, min: 64, align: "end", sort: "eta" },
-  { key: "lastTry", label: "Last try", width: 132, min: 80, align: "end", sort: "lastTry" },
-  { key: "added", label: "Added", width: 132, min: 80, align: "end", sort: "added" },
-  { key: "saveDir", label: "Folder", width: 200, min: 100, sort: "dir" },
-  { key: "category", label: "Category", width: 108, min: 80, sort: "category" },
-  { key: "description", label: "Description", width: 200, min: 100 },
+  { key: "name", label: tk("Name"), width: 0, min: 160, sort: "name" },
+  { key: "size", label: tk("Size"), width: 84, min: 64, align: "end", sort: "size" },
+  { key: "status", label: tk("Status"), width: 150, min: 96, sort: "status" },
+  { key: "progress", label: tk("Progress"), width: 210, min: 120, sort: "progress" },
+  { key: "speed", label: tk("Speed"), width: 92, min: 70, align: "end", sort: "speed" },
+  { key: "eta", label: tk("Time left"), width: 84, min: 64, align: "end", sort: "eta" },
+  { key: "lastTry", label: tk("Last try"), width: 132, min: 80, align: "end", sort: "lastTry" },
+  { key: "added", label: tk("Added"), width: 132, min: 80, align: "end", sort: "added" },
+  { key: "saveDir", label: tk("Folder"), width: 200, min: 100, sort: "dir" },
+  { key: "category", label: tk("Category"), width: 108, min: 80, sort: "category" },
+  { key: "description", label: tk("Description"), width: 200, min: 100 },
 ];
 
 export const COLUMN_KEYS = COLUMNS.map((c) => c.key);

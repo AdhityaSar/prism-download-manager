@@ -4,6 +4,7 @@ import { WindowFrame } from "../components/WindowFrame";
 import { Icon } from "../design/icons";
 import { api, type TorrentMeta, type TorrentSource } from "../lib/api";
 import { formatBytes } from "../lib/format";
+import { t } from "../lib/i18n";
 import { fileVisual } from "../lib/present";
 import { useApp } from "../lib/store";
 import { buildTree, nodeState, type TreeNode } from "../lib/tree";
@@ -49,7 +50,7 @@ export default function TorrentWindow({ source }: { source: string }) {
     if (!src || !meta) return;
     setBusy(true);
     const all = sel.size === meta.files.length;
-    const item = await attempt(api.addTorrent({ source: src, name: meta.name, size, onlyFiles: all ? null : [...sel].sort((a, b) => a - b), saveDir: dir || undefined, mode }), "Could not add the torrent");
+    const item = await attempt(api.addTorrent({ source: src, name: meta.name, size, onlyFiles: all ? null : [...sel].sort((a, b) => a - b), saveDir: dir || undefined, mode }), t("Could not add the torrent"));
     setBusy(false);
     if (item) void win.close();
   };
@@ -65,7 +66,7 @@ export default function TorrentWindow({ source }: { source: string }) {
             <button
               type="button"
               className="trow__twist"
-              aria-label={isOpen ? "Collapse" : "Expand"}
+              aria-label={isOpen ? t("Collapse") : t("Expand")}
               aria-expanded={isOpen}
               onClick={() => {
                 const n = new Set(open);
@@ -79,7 +80,7 @@ export default function TorrentWindow({ source }: { source: string }) {
           ) : (
             <span className="trow__twist" />
           )}
-          <Checkbox checked={st === "all"} indeterminate={st === "some"} label={`Include ${node.name}`} onChange={() => toggle(node)} />
+          <Checkbox checked={st === "all"} indeterminate={st === "some"} label={t("Include {name}", { name: node.name })} onChange={() => toggle(node)} />
           <Icon name={folder ? "folder" : fileVisual({ fileName: node.name, kind: "http", category: "" }).icon} size={15} className="text-tertiary" />
           <span className="ellipsis">{node.name}</span>
           <span className="tnum text-tertiary">{formatBytes(node.size)}</span>
@@ -90,19 +91,19 @@ export default function TorrentWindow({ source }: { source: string }) {
   };
 
   return (
-    <WindowFrame kind="torrent" title="Add torrent" icon={<Icon name="magnet" size={17} className="text-accent" />} className="torrent">
+    <WindowFrame kind="torrent" title={t("Add torrent")} icon={<Icon name="magnet" size={17} className="text-accent" />} className="torrent">
       <div className="wbody">
         <div className="filecard">
           <span className="file-tile" style={{ ["--tint" as string]: "var(--type-archive)", width: 44, height: 44 }}>
             <Icon name="torrent" size={24} />
           </span>
           <div className="grow">
-            <b className="fname-static">{meta?.name ?? (error ? "Couldn’t read the torrent" : "Reading metadata…")}</b>
+            <b className="fname-static">{meta?.name ?? (error ? t("Couldn’t read the torrent") : t("Reading metadata…"))}</b>
             <div className="tags">
               {meta ? (
                 <>
-                  <span className="badge">{meta.files.length} files</span>
-                  <span className="badge t-mono" data-tip="Info hash">
+                  <span className="badge">{t("{count} files", { count: meta.files.length })}</span>
+                  <span className="badge t-mono" data-tip={t("Info hash")}>
                     {meta.infoHash.slice(0, 12)}…
                   </span>
                 </>
@@ -110,42 +111,42 @@ export default function TorrentWindow({ source }: { source: string }) {
                 <span className="badge badge--danger">{error}</span>
               ) : (
                 <span className="badge badge--accent">
-                  <Icon name="retry" size={11} strokeWidth={2.2} className="anim-spin" /> Fetching from peers…
+                  <Icon name="retry" size={11} strokeWidth={2.2} className="anim-spin" /> {t("Fetching from peers…")}
                 </span>
               )}
             </div>
           </div>
           <div className="big tnum">
             {formatBytes(size || meta?.totalSize)}
-            <small>{meta && sel.size < meta.files.length ? `of ${formatBytes(meta.totalSize)}` : ""}</small>
+            <small>{meta && sel.size < meta.files.length ? t("of {size}", { size: formatBytes(meta.totalSize) }) : ""}</small>
           </div>
         </div>
-        <div className="tree" role="tree" aria-label="Files">
+        <div className="tree" role="tree" aria-label={t("Files")}>
           {tree?.children.map((c) => row(c, 0))}
         </div>
         <div className="field">
-          <span className="field__label">Save to</span>
+          <span className="field__label">{t("Save to")}</span>
           <div className="withbtn">
-            <TextField value={dir} onChange={setDir} icon="folder" label="Save folder" />
+            <TextField value={dir} onChange={setDir} icon="folder" label={t("Save folder")} />
             <button type="button" className="btn" onClick={async () => setDir((await pickFolder(dir)) ?? dir)}>
-              Browse…
+              {t("Browse…")}
             </button>
           </div>
         </div>
       </div>
       <footer className="dialog__footer">
         <button type="button" className="btn btn--ghost btn--sm" disabled={!meta} onClick={() => meta && setSel(new Set(meta.files.map((f) => f.index)))}>
-          Select all
+          {t("Select all")}
         </button>
         <button type="button" className="btn btn--ghost btn--sm" disabled={!meta} onClick={() => setSel(new Set())}>
-          None
+          {t("None")}
         </button>
         <span className="spacer" />
         <button type="button" className="btn" disabled={!meta || !sel.size || busy} onClick={() => add({ type: "later" })}>
-          Later
+          {t("Later")}
         </button>
         <button type="button" className="btn btn--primary" disabled={!meta || !sel.size || busy} onClick={() => add({ type: "now" })}>
-          <Icon name="download" size={15} /> Download
+          <Icon name="download" size={15} /> {t("Download")}
         </button>
       </footer>
     </WindowFrame>

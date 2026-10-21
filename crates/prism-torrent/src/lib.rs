@@ -15,9 +15,10 @@ use std::str::FromStr;
 
 type ManagedTorrentHandle = Arc<ManagedTorrent>;
 use serde::{Deserialize, Serialize};
+use std::collections::HashMap;
 use std::num::NonZeroU32;
 use std::path::{Path, PathBuf};
-use std::sync::Arc;
+use std::sync::{Arc, Mutex};
 
 /// Where a torrent comes from.
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -86,6 +87,9 @@ pub struct TorrentProgress {
 /// A running BitTorrent session.
 pub struct TorrentEngine {
     session: Arc<Session>,
+    /// Metadata `inspect` resolved for URL sources (magnets, .torrent links), so `add` knows
+    /// the torrent's layout without resolving it a second time.
+    inspected: Mutex<HashMap<String, TorrentMeta>>,
 }
 
 impl TorrentEngine {
@@ -101,10 +105,32 @@ impl TorrentEngine {
             client_name_and_version: Some(format!("Prism/{}", env!("CARGO_PKG_VERSION"))),
             ..Default::default()
         };
+        Self::with_options(default_output, opts).await
+    }
+
+    /// A session that never touches the network (no DHT, trackers, listening or local
+    /// discovery) and keeps no state: for tests.
+    #[doc(hidden)]
+    pub async fn start_offline(default_output: PathBuf) -> Result<Self> {
+        let opts = SessionOptions {
+            dht: None,
+            disable_trackers: true,
+            disable_local_service_discovery: true,
+            listen: None,
+            persistence: None,
+            ..Default::default()
+        };
+        Self::with_options(default_output, opts).await
+    }
+
+    async fn with_options(default_output: PathBuf, opts: SessionOptions) -> Result<Self> {
         let session = Session::new_with_opts(default_output, opts)
             .await
             .context("start torrent session")?;
-        Ok(Self { session })
+        Ok(Self {
+            session,
+            inspected: Mutex::new(HashMap::new()),
+        })
     }
 
     /// Read a torrent's metadata (resolving a magnet via DHT/trackers) without downloading.
@@ -117,18 +143,40 @@ impl TorrentEngine {
             .session
             .add_torrent(source.to_add(), Some(opts))
             .await?;
-        match resp {
+        let meta = match resp {
             AddTorrentResponse::ListOnly(list) => {
-                Ok(meta_from_info(list.info_hash.as_string(), &list.info))
+                meta_from_info(list.info_hash.as_string(), &list.info)
             }
             AddTorrentResponse::AlreadyManaged(_, handle)
             | AddTorrentResponse::Added(_, handle) => {
-                meta_from_handle(&handle).context("torrent metadata not resolved yet")
+                meta_from_handle(&handle).context("torrent metadata not resolved yet")?
             }
+        };
+        if let TorrentSource::Url(url) = source {
+            let mut seen = self.inspected.lock().unwrap_or_else(|e| e.into_inner());
+            if seen.len() >= 64 {
+                seen.clear();
+            }
+            seen.insert(url.clone(), meta.clone());
         }
+        Ok(meta)
     }
 
-    /// Add (or re-attach to) a torrent and return its info-hash.
+    /// The torrent's file layout: from `inspect`'s cache for URL sources, else resolved now
+    /// (instant for `.torrent` bytes).
+    async fn layout(&self, source: &TorrentSource) -> Result<TorrentMeta> {
+        if let TorrentSource::Url(url) = source {
+            let seen = self.inspected.lock().unwrap_or_else(|e| e.into_inner());
+            if let Some(meta) = seen.get(url) {
+                return Ok(meta.clone());
+            }
+        }
+        self.inspect(source).await
+    }
+
+    /// Add (or re-attach to) a torrent and return its info-hash. A torrent with several
+    /// files goes into its own folder inside `output_folder` (see [`content_path`]), like in
+    /// other clients; a single file goes straight into `output_folder`.
     pub async fn add(
         &self,
         source: &TorrentSource,
@@ -136,10 +184,16 @@ impl TorrentEngine {
         only_files: Option<Vec<usize>>,
         paused: bool,
     ) -> Result<String> {
+        let meta = self.layout(source).await?;
+        let folder = if meta.files.len() >= 2 {
+            content_path(output_folder, &meta)
+        } else {
+            output_folder.to_path_buf()
+        };
         let opts = AddTorrentOptions {
             paused,
             only_files,
-            output_folder: Some(output_folder.to_string_lossy().into_owned()),
+            output_folder: Some(folder.to_string_lossy().into_owned()),
             overwrite: true,
             ..Default::default()
         };
@@ -226,6 +280,42 @@ impl TorrentEngine {
     /// Default limits used by tests and as a template for the app.
     pub fn default_limits() -> LimitsConfig {
         LimitsConfig::default()
+    }
+}
+
+/// Where a torrent's content ends up inside `output_folder`: its own folder (named after the
+/// torrent) when it has several files, else the single file.
+pub fn content_path(output_folder: &Path, meta: &TorrentMeta) -> PathBuf {
+    match meta.files.as_slice() {
+        [single] => output_folder.join(&single.path),
+        _ => output_folder.join(folder_name(&meta.name)),
+    }
+}
+
+/// The torrent's name as a single folder name that works on every system: no path
+/// separators or characters Windows refuses, no trailing dots or spaces, no device names.
+fn folder_name(name: &str) -> String {
+    let mut s: String = name
+        .chars()
+        .map(|c| match c {
+            '<' | '>' | ':' | '"' | '/' | '\\' | '|' | '?' | '*' => '_',
+            c if c.is_control() => '_',
+            c => c,
+        })
+        .collect();
+    while s.ends_with(['.', ' ']) {
+        s.pop();
+    }
+    let s = s.trim_start().to_string();
+    let stem = s.split('.').next().unwrap_or("").to_ascii_uppercase();
+    let reserved = matches!(stem.as_str(), "CON" | "PRN" | "AUX" | "NUL")
+        || ((stem.starts_with("COM") || stem.starts_with("LPT"))
+            && stem.len() == 4
+            && stem.as_bytes()[3].is_ascii_digit());
+    match s.as_str() {
+        "" | "." | ".." => "torrent".to_string(),
+        _ if reserved => format!("{s}_"),
+        _ => s,
     }
 }
 

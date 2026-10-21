@@ -2,40 +2,69 @@ import { useEffect } from "react";
 import { BrandTile } from "../../components/LogoMark";
 import { Icon, type IconName } from "../../design/icons";
 import { patchSettings } from "../../lib/actions";
+import { t, tk } from "../../lib/i18n";
 import { useApp } from "../../lib/store";
 import { useUi } from "../../lib/ui";
 import { versionNewer } from "../../lib/version";
 import { BrowserConnect, useExtensionStatus } from "../BrowserConnect";
 
-/** What this version brings, newest first (shown once after an update, and from About Prism). */
-const CHANGES: { icon: IconName; title: string; body: string; action?: "sounds" }[] = [
+type Change = { icon: IconName; title: string; body: string; credit?: string; action?: "sounds" | "language" };
+
+/**
+ * What this version brings (shown once after an update, and from About Prism), then what the
+ * version before brought, for people updating from older ones. Titles and bodies are translated
+ * where they're shown; `credit` is the contributor's handle.
+ */
+const CHANGES: Change[] = [
+  {
+    icon: "globe",
+    title: tk("Prism speaks your language"),
+    body: tk("Czech, German, Spanish, French and Italian, besides English. Prism follows your system's language; pick another one in Settings › General."),
+    action: "language",
+  },
+  {
+    icon: "torrent",
+    title: tk("Torrents get their own folder"),
+    body: tk("A torrent with several files is saved in a folder named after it instead of spilling into your downloads."),
+  },
+  {
+    icon: "check",
+    title: tk("Fixes"),
+    body: tk("The portable version works with the browser extension again, Start minimized keeps Prism in the tray, Zen and Firefox with new profiles connect on Linux, and the Fedora package works with ffmpeg from RPM Fusion."),
+  },
+];
+
+/** The previous version's changes, shown below the new ones. */
+const PREVIOUS = { version: "1.1.0", changes: [
   {
     icon: "playlist",
-    title: "Playlists done right",
-    body: "Every video keeps its own title. Number them (01 - Title) in Settings › Video & streams, or tick “One at a time” in the video window. Thanks to @asalia22!",
+    title: tk("Playlists done right"),
+    body: tk("Every video keeps its own title. Number them (01 - Title) in Settings › Video & streams, or tick “One at a time” in the video window."),
+    credit: "@asalia22",
   },
   {
     icon: "video",
-    title: "Your MKV or WebM choice is used",
-    body: "Videos were saved as MP4 whatever you set in Settings › Video & streams.",
+    title: tk("Your MKV or WebM choice is used"),
+    body: tk("Videos were saved as MP4 whatever you set in Settings › Video & streams."),
   },
   {
     icon: "browser",
-    title: "Zen and Helium",
-    body: "Prism connects to them too: Zen like Firefox, Helium from the Chrome Web Store.",
+    title: tk("Zen and Helium"),
+    body: tk("Prism connects to them too: Zen like Firefox, Helium from the Chrome Web Store."),
   },
   {
     icon: "sound",
-    title: "Pick your “download complete” sound",
-    body: "Ten new sounds, from a soft kalimba to a music box, in Settings › Sounds.",
+    title: tk("Pick your “download complete” sound"),
+    body: tk("Ten new sounds, from a soft kalimba to a music box, in Settings › Sounds."),
     action: "sounds",
   },
   {
     icon: "activity",
-    title: "Streams show their real connections",
-    body: "HLS and DASH downloads list the connections actually working and fill the file map as they go. Thanks to @uuc110!",
+    title: tk("Streams show their real connections"),
+    body: tk("HLS and DASH downloads list the connections actually working and fill the file map as they go."),
+    credit: "@uuc110",
   },
-];
+] satisfies Change[] };
 
 /**
  * "What's new" after an update: the browser extension from the Chrome Web Store first (one
@@ -43,7 +72,6 @@ const CHANGES: { icon: IconName; title: string; body: string; action?: "sounds" 
  */
 export function WhatsNewSheet() {
   const version = useApp((s) => s.version);
-  const openSheet = useUi((s) => s.openSheet);
   const { status, connected } = useExtensionStatus();
   const fromStore = connected && status?.extensionInstallType === "normal";
   return (
@@ -51,8 +79,8 @@ export function WhatsNewSheet() {
       <header className="whatsnew__head">
         <BrandTile size={52} />
         <div>
-          <h2>Prism {version} is here</h2>
-          <p className="text-secondary">The browser extension is now in the Chrome Web Store.</p>
+          <h2>{t("Prism {version} is here", { version })}</h2>
+          <p className="text-secondary">{t("Now in your language, with fixes for torrents, the portable version and Linux.")}</p>
         </div>
       </header>
 
@@ -60,8 +88,10 @@ export function WhatsNewSheet() {
         <div className="whatsnew__storehead">
           <Icon name="puzzle" size={18} className="text-accent" />
           <div>
-            <b>Add Prism to your browser in one click</b>
-            <div className="t-small text-secondary">From the Chrome Web Store, for Chrome, Edge, Brave, Opera, Vivaldi and Helium. It updates by itself, so there's nothing to reload after a Prism update.</div>
+            <b>{t("Add Prism to your browser in one click")}</b>
+            <div className="t-small text-secondary">
+              {t("From the Chrome Web Store, for Chrome, Edge, Brave, Opera, Vivaldi and Helium. It updates by itself, so there's nothing to reload after a Prism update.")}
+            </div>
           </div>
         </div>
         {fromStore ? (
@@ -70,7 +100,7 @@ export function WhatsNewSheet() {
               <Icon name="check" size={16} strokeWidth={2.4} />
             </span>
             <div>
-              <b>You're all set.</b> Your browser runs Prism from the Chrome Web Store.
+              <b>{t("You're all set.")}</b> {t("Your browser runs Prism from the Chrome Web Store.")}
             </div>
           </div>
         ) : (
@@ -78,27 +108,42 @@ export function WhatsNewSheet() {
         )}
       </section>
 
-      <ul className="whatsnew__list">
-        {CHANGES.map((c) => (
-          <li key={c.title}>
-            <span className="whatsnew__icon">
-              <Icon name={c.icon} size={16} />
-            </span>
-            <div>
-              <b>{c.title}</b>
-              <div className="t-small text-secondary">
-                {c.body}{" "}
-                {c.action === "sounds" && (
-                  <button type="button" className="linkbtn" onClick={() => openSheet({ kind: "settings", section: "sounds" })}>
-                    Try them
-                  </button>
-                )}
-              </div>
-            </div>
-          </li>
-        ))}
-      </ul>
+      <ChangeList changes={CHANGES} />
+      <h3 className="whatsnew__older t-small text-tertiary">{t("New in Prism {version}", { version: PREVIOUS.version })}</h3>
+      <ChangeList changes={PREVIOUS.changes} />
     </div>
+  );
+}
+
+function ChangeList({ changes }: { changes: Change[] }) {
+  const openSheet = useUi((s) => s.openSheet);
+  return (
+    <ul className="whatsnew__list">
+      {changes.map((c) => (
+        <li key={c.title}>
+          <span className="whatsnew__icon">
+            <Icon name={c.icon} size={16} />
+          </span>
+          <div>
+            <b>{t(c.title)}</b>
+            <div className="t-small text-secondary">
+              {t(c.body)}
+              {c.credit && ` ${t("Thanks to {name}!", { name: c.credit })}`}{" "}
+              {c.action === "sounds" && (
+                <button type="button" className="linkbtn" onClick={() => openSheet({ kind: "settings", section: "sounds" })}>
+                  {t("Try them")}
+                </button>
+              )}
+              {c.action === "language" && (
+                <button type="button" className="linkbtn" onClick={() => openSheet({ kind: "settings", section: "general" })}>
+                  {t("Choose a language")}
+                </button>
+              )}
+            </div>
+          </div>
+        </li>
+      ))}
+    </ul>
   );
 }
 

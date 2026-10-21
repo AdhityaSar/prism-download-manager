@@ -6,7 +6,8 @@ import { Icon } from "../../design/icons";
 import { actions } from "../../lib/actions";
 import { api, type ItemPatch } from "../../lib/api";
 import { formatBytes } from "../../lib/format";
-import { categoryIcon } from "../../lib/present";
+import { t, tr } from "../../lib/i18n";
+import { categoryIcon, displayName } from "../../lib/present";
 import { useApp } from "../../lib/store";
 import type { Category } from "../../lib/types";
 import { attempt, toast, useUi } from "../../lib/ui";
@@ -57,7 +58,7 @@ function CategoryDialog({ open, category, onClose }: { open: boolean; category?:
       builtin: category?.builtin ?? false,
       position: category?.position ?? cats.length,
     };
-    const res = await attempt(api.upsertCategory(c), "Could not save the category");
+    const res = await attempt(api.upsertCategory(c), t("Could not save the category"));
     if (res) {
       useApp.setState({ categories: res });
       onClose();
@@ -67,7 +68,7 @@ function CategoryDialog({ open, category, onClose }: { open: boolean; category?:
     <Modal
       open={open}
       onClose={onClose}
-      title={category ? "Edit category" : "New category"}
+      title={category ? t("Edit category") : t("New category")}
       icon={<Icon name="custom-folder" size={18} className="text-accent" />}
       footer={
         <>
@@ -76,37 +77,37 @@ function CategoryDialog({ open, category, onClose }: { open: boolean; category?:
               type="button"
               className="btn btn--danger"
               onClick={async () => {
-                const res = await attempt(api.deleteCategory(category.id), "Could not delete the category");
+                const res = await attempt(api.deleteCategory(category.id), t("Could not delete the category"));
                 if (res) {
                   useApp.setState({ categories: res });
                   onClose();
                 }
               }}
             >
-              Delete
+              {t("Delete")}
             </button>
           )}
           <span className="spacer" />
           <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button type="button" className="btn btn--primary" disabled={!name.trim()} onClick={save}>
-            {category ? "Save" : "Create category"}
+            {category ? t("Save") : t("Create category")}
           </button>
         </>
       }
     >
-      <Field label="Name">
-        <TextField value={name} onChange={setName} label="Category name" placeholder="e.g. Fonts" autoFocus onEnter={save} />
+      <Field label={t("Name")}>
+        <TextField value={name} onChange={setName} label={t("Category name")} placeholder={t("e.g. Fonts")} autoFocus onEnter={save} />
       </Field>
-      <Field label="File extensions" hint="Separated by spaces. New downloads with these extensions go to this category.">
-        <TextField value={exts} onChange={setExts} label="Extensions" placeholder="ttf otf woff2" mono />
+      <Field label={t("File extensions")} hint={t("Separated by spaces. New downloads with these extensions go to this category.")}>
+        <TextField value={exts} onChange={setExts} label={t("Extensions")} placeholder="ttf otf woff2" mono />
       </Field>
-      <Field label="Save folder" hint="Leave empty to use the default download folder.">
+      <Field label={t("Save folder")} hint={t("Leave empty to use the default download folder.")}>
         <div className="withbtn">
-          <TextField value={dir} onChange={setDir} icon="folder" label="Save folder" placeholder="Default folder" />
+          <TextField value={dir} onChange={setDir} icon="folder" label={t("Save folder")} placeholder={t("Default folder")} />
           <button type="button" className="btn" onClick={() => void browse(dir, setDir)}>
-            Browse…
+            {t("Browse…")}
           </button>
         </div>
       </Field>
@@ -152,7 +153,7 @@ function PropertiesDialog({ id, onClose }: { id: string | null; onClose: () => v
       patch.password = f.password;
     }
     if (Object.keys(patch).length) {
-      const r = await attempt(api.updateItem(item.id, patch), "Could not save the changes");
+      const r = await attempt(api.updateItem(item.id, patch), t("Could not save the changes"));
       if (!r) return;
     }
     onClose();
@@ -162,58 +163,58 @@ function PropertiesDialog({ id, onClose }: { id: string | null; onClose: () => v
       open={!!id}
       onClose={onClose}
       width={560}
-      title="Properties"
+      title={t("Properties")}
       icon={<FileTile item={item} size={24} thumbWidth={36} />}
       footer={
         <>
           <button type="button" className="btn btn--ghost" onClick={() => actions.reveal(item.id)}>
-            <Icon name="folder-open" size={15} /> Show in folder
+            <Icon name="folder-open" size={15} /> {t("Show in folder")}
           </button>
           <span className="spacer" />
           <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button type="button" className="btn btn--primary" onClick={save}>
-            Save
+            {t("Save")}
           </button>
         </>
       }
     >
-      <Field label="File name">
-        <TextField value={f.fileName} onChange={(v) => set("fileName", v)} label="File name" />
+      <Field label={t("File name")}>
+        <TextField value={f.fileName} onChange={(v) => set("fileName", v)} label={t("File name")} />
       </Field>
-      <Field label="Address">
-        <TextField value={f.url} onChange={(v) => set("url", v)} label="Address" mono icon="link" />
+      <Field label={t("Address")}>
+        <TextField value={f.url} onChange={(v) => set("url", v)} label={t("Address")} mono icon="link" />
       </Field>
-      <Field label="Save to">
+      <Field label={t("Save to")}>
         <div className="withbtn">
-          <TextField value={f.saveDir} onChange={(v) => set("saveDir", v)} icon="folder" label="Save folder" />
+          <TextField value={f.saveDir} onChange={(v) => set("saveDir", v)} icon="folder" label={t("Save folder")} />
           <button type="button" className="btn" onClick={() => void browse(f.saveDir, (v) => set("saveDir", v))}>
-            Browse…
+            {t("Browse…")}
           </button>
         </div>
       </Field>
       <div className="row2">
-        <Field label="Category">
-          <Select value={f.category} label="Category" onChange={(v) => set("category", v)} options={categories.map((c) => ({ value: c.id, label: c.name, icon: categoryIcon(c) }))} />
+        <Field label={t("Category")}>
+          <Select value={f.category} label={t("Category")} onChange={(v) => set("category", v)} options={categories.map((c) => ({ value: c.id, label: displayName(c.name), icon: categoryIcon(c) }))} />
         </Field>
-        <Field label="Connections">
-          <Stepper value={f.connections} min={1} max={maxConn} label="connections" onChange={(v) => set("connections", v)} />
+        <Field label={t("Connections")}>
+          <Stepper value={f.connections} min={1} max={maxConn} label={t("connections")} onChange={(v) => set("connections", v)} />
         </Field>
       </div>
-      <Field label="Checksum" hint="md5:…, sha1:… or sha256:… — verified when the download finishes.">
-        <TextField value={f.checksum} onChange={(v) => set("checksum", v)} label="Checksum" mono placeholder="sha256:…" />
+      <Field label={t("Checksum")} hint={t("md5:…, sha1:… or sha256:… — verified when the download finishes.")}>
+        <TextField value={f.checksum} onChange={(v) => set("checksum", v)} label={t("Checksum")} mono placeholder="sha256:…" />
       </Field>
       <div className="row2">
-        <Field label="User name">
-          <TextField value={f.username} onChange={(v) => set("username", v)} label="User name" icon="user" placeholder="Unchanged" />
+        <Field label={t("User name")}>
+          <TextField value={f.username} onChange={(v) => set("username", v)} label={t("User name")} icon="user" placeholder={t("Unchanged")} />
         </Field>
-        <Field label="Password">
-          <TextField value={f.password} onChange={(v) => set("password", v)} label="Password" type="password" icon="key" placeholder="Unchanged" />
+        <Field label={t("Password")}>
+          <TextField value={f.password} onChange={(v) => set("password", v)} label={t("Password")} type="password" icon="key" placeholder={t("Unchanged")} />
         </Field>
       </div>
-      <Field label="Description">
-        <TextArea value={f.description} onChange={(v) => set("description", v)} label="Description" placeholder="Optional note" />
+      <Field label={t("Description")}>
+        <TextArea value={f.description} onChange={(v) => set("description", v)} label={t("Description")} placeholder={t("Optional note")} />
       </Field>
     </Modal>
   );
@@ -228,7 +229,7 @@ function DeleteDialog({ state, onClose }: { state: { ids: string[]; trash: boole
   useEffect(() => setFiles(!!state?.withFiles), [state]);
   const n = state?.ids.length ?? 0;
   const permanent = !!state?.trash || !useTrash;
-  const what = n === 1 ? `“${first?.fileName ?? "this download"}”` : `${n} downloads`;
+  const name = first?.fileName ?? t("this download");
   const run = async () => {
     if (!state) return;
     onClose();
@@ -239,31 +240,37 @@ function DeleteDialog({ state, onClose }: { state: { ids: string[]; trash: boole
       open={!!state}
       onClose={onClose}
       width={460}
-      title={permanent ? "Delete permanently?" : "Move to trash?"}
+      title={permanent ? t("Delete permanently?") : t("Move to trash?")}
       icon={<Icon name="delete" size={18} className="text-danger" />}
       initialFocus="[data-autofocus]"
       footer={
         <>
           <span className="spacer" />
           <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button type="button" className="btn btn--danger-solid" data-autofocus onClick={run}>
             <Icon name="delete" size={15} />
-            {files ? "Delete with files" : permanent ? "Delete" : "Move to trash"}
+            {files ? t("Delete with files") : permanent ? t("Delete") : t("Move to trash")}
           </button>
         </>
       }
     >
       <p className="dialog-text">
-        {permanent ? `${what} will be removed from the list.` : `${what} will move to the trash. You can restore it from there.`}
+        {n === 1
+          ? permanent
+            ? t("“{name}” will be removed from the list.", { name })
+            : t("“{name}” will move to the trash. You can restore it from there.", { name })
+          : permanent
+            ? t("{count} downloads will be removed from the list.", { count: n })
+            : t("{count} downloads will move to the trash. You can restore it from there.", { count: n })}
       </p>
       <Checkbox checked={files} onChange={setFiles}>
-        Also delete the downloaded files from disk
+        {t("Also delete the downloaded files from disk")}
       </Checkbox>
       {!state?.trash && (
         <p className="field__hint">
-          Turn confirmation off in Settings → General → <i>Confirm before deleting</i>.
+          {tr("Turn confirmation off in Settings → General → {option}.", { option: <i>{t("Confirm before deleting")}</i> })}
         </p>
       )}
     </Modal>
@@ -285,11 +292,11 @@ function BatchDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
   }, [open]);
   const go = async () => {
     setBusy(true);
-    const b = await attempt(mode === "pattern" ? api.batchFromPattern(pattern) : api.batchFromText(text), "Could not build the list");
+    const b = await attempt(mode === "pattern" ? api.batchFromPattern(pattern) : api.batchFromText(text), t("Could not build the list"));
     setBusy(false);
     if (b) {
       onClose();
-      await attempt(api.openWindow("batch", b.id), "Could not open the link list");
+      await attempt(api.openWindow("batch", b.id), t("Could not open the link list"));
     }
   };
   const preview = mode === "pattern" ? expandPreview(pattern) : null;
@@ -298,45 +305,45 @@ function BatchDialog({ open, onClose }: { open: boolean; onClose: () => void }) 
       open={open}
       onClose={onClose}
       width={580}
-      title="Batch download"
+      title={t("Batch download")}
       icon={<Icon name="batch" size={18} className="text-accent" />}
       footer={
         <>
           <span className="spacer" />
           <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button type="button" className="btn btn--primary" disabled={busy || (mode === "pattern" ? !pattern.trim() : !text.trim())} onClick={go}>
-            Continue
+            {t("Continue")}
           </button>
         </>
       }
     >
       <Segmented
-        label="Batch source"
+        label={t("Batch source")}
         value={mode}
         onChange={setMode}
         options={[
-          { value: "pattern", label: "Address pattern" },
-          { value: "text", label: "Paste a list" },
+          { value: "pattern", label: t("Address pattern") },
+          { value: "text", label: t("Paste a list") },
         ]}
       />
       {mode === "pattern" ? (
         <>
-          <Field label="Pattern" hint={<>Use <code>[001-120]</code> for numbers (zero-padded), <code>[a-z]</code> for letters.</>}>
-            <TextField value={pattern} onChange={setPattern} label="Address pattern" mono icon="link" onEnter={go} />
+          <Field label={t("Pattern")} hint={tr("Use {numbers} for numbers (zero-padded), {letters} for letters.", { numbers: <code>[001-120]</code>, letters: <code>[a-z]</code> })}>
+            <TextField value={pattern} onChange={setPattern} label={t("Address pattern")} mono icon="link" onEnter={go} />
           </Field>
           {preview && (
             <div className="batch-preview t-mono">
               <span>{preview.first}</span>
-              <span className="text-tertiary">… {preview.count} files …</span>
+              <span className="text-tertiary">{t("… {count} files …", { count: preview.count })}</span>
               <span>{preview.last}</span>
             </div>
           )}
         </>
       ) : (
-        <Field label="Addresses" hint="Any text — every http(s), ftp and magnet address found is added.">
-          <TextArea value={text} onChange={setText} label="Addresses" rows={7} placeholder="Paste links, one per line" />
+        <Field label={t("Addresses")} hint={t("Any text — every http(s), ftp and magnet address found is added.")}>
+          <TextArea value={text} onChange={setText} label={t("Addresses")} rows={7} placeholder={t("Paste links, one per line")} />
         </Field>
       )}
     </Modal>
@@ -367,8 +374,8 @@ function SpeedLimitDialog({ ids, onClose }: { ids: string[] | null; onClose: () 
   useEffect(() => setBps(current), [current, ids]);
   const save = async () => {
     if (!ids) return;
-    await Promise.all(ids.map((id) => attempt(api.updateItem(id, { speedLimit: bps }), "Could not set the limit")));
-    toast(bps ? `Limited to ${formatBytes(bps)}/s` : "Speed limit removed", { ms: 2000 });
+    await Promise.all(ids.map((id) => attempt(api.updateItem(id, { speedLimit: bps }), t("Could not set the limit"))));
+    toast(bps ? t("Limited to {speed}", { speed: `${formatBytes(bps)}/s` }) : t("Speed limit removed"), { ms: 2000 });
     onClose();
   };
   return (
@@ -376,26 +383,26 @@ function SpeedLimitDialog({ ids, onClose }: { ids: string[] | null; onClose: () 
       open={!!ids}
       onClose={onClose}
       width={420}
-      title="Speed limit"
+      title={t("Speed limit")}
       icon={<Icon name="speed-limiter" size={18} className="text-accent" />}
       footer={
         <>
           <button type="button" className="btn btn--ghost" onClick={() => setBps(0)}>
-            No limit
+            {t("No limit")}
           </button>
           <span className="spacer" />
           <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button type="button" className="btn btn--primary" onClick={save}>
-            Apply
+            {t("Apply")}
           </button>
         </>
       }
     >
-      <p className="dialog-text">{ids && ids.length > 1 ? `Applies to ${ids.length} downloads.` : "Applies to this download only, on top of the global limiter."}</p>
-      <Field label="Maximum speed" hint="e.g. 500k, 2M, 1.5 MB/s. Empty = unlimited.">
-        <RateField value={bps} onCommit={setBps} label="Maximum speed" width={200} />
+      <p className="dialog-text">{ids && ids.length > 1 ? t("Applies to {count} downloads.", { count: ids.length }) : t("Applies to this download only, on top of the global limiter.")}</p>
+      <Field label={t("Maximum speed")} hint={t("e.g. 500k, 2M, 1.5 MB/s. Empty = unlimited.")}>
+        <RateField value={bps} onCommit={setBps} label={t("Maximum speed")} width={200} />
       </Field>
       <div className="chips">
         {[256 * 1024, 1024 ** 2, 5 * 1024 ** 2, 10 * 1024 ** 2].map((v) => (
@@ -416,9 +423,9 @@ function RefreshUrlDialog({ id, onClose }: { id: string | null; onClose: () => v
   useEffect(() => setUrl(""), [id]);
   const save = async () => {
     if (!item || !url.trim()) return;
-    const r = await attempt(api.updateItem(item.id, { url: url.trim() }), "The new address was rejected");
+    const r = await attempt(api.updateItem(item.id, { url: url.trim() }), t("The new address was rejected"));
     if (r) {
-      toast("Address refreshed", { kind: "success", body: "The download resumes from where it stopped." });
+      toast(t("Address refreshed"), { kind: "success", body: t("The download resumes from where it stopped.") });
       actions.resume([item.id]);
       onClose();
     }
@@ -428,31 +435,31 @@ function RefreshUrlDialog({ id, onClose }: { id: string | null; onClose: () => v
       open={!!item}
       onClose={onClose}
       width={560}
-      title="Refresh download address"
+      title={t("Refresh download address")}
       icon={<Icon name="refresh-url" size={18} className="text-accent" />}
       footer={
         <>
           <span className="spacer" />
           <button type="button" className="btn btn--ghost" onClick={onClose}>
-            Cancel
+            {t("Cancel")}
           </button>
           <button type="button" className="btn btn--primary" disabled={!url.trim()} onClick={save}>
-            Use new address
+            {t("Use new address")}
           </button>
         </>
       }
     >
       <p className="dialog-text">
-        Expired links (403 / 410) can be replaced without losing progress. Open the original page again, copy the fresh download link and paste it here — Prism checks that it is the same file.
+        {t("Expired links (403 / 410) can be replaced without losing progress. Open the original page again, copy the fresh download link and paste it here — Prism checks that it is the same file.")}
       </p>
-      <Field label="Current address">
+      <Field label={t("Current address")}>
         <div className="input input--readonly">
           <Icon name="link" size={15} />
           <span className="input__value t-mono">{item?.url}</span>
         </div>
       </Field>
-      <Field label="New address">
-        <TextField value={url} onChange={setUrl} label="New address" mono icon="link" placeholder="https://…" autoFocus onEnter={save} />
+      <Field label={t("New address")}>
+        <TextField value={url} onChange={setUrl} label={t("New address")} mono icon="link" placeholder="https://…" autoFocus onEnter={save} />
       </Field>
     </Modal>
   );

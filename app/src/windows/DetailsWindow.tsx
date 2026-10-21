@@ -7,6 +7,7 @@ import { WindowFrame } from "../components/WindowFrame";
 import { Icon } from "../design/icons";
 import { api } from "../lib/api";
 import { formatBytes, formatDuration, formatSpeed } from "../lib/format";
+import { t, tr } from "../lib/i18n";
 import { canPause, formatPct, progressOf, statusView } from "../lib/present";
 import { useApp } from "../lib/store";
 import { attempt } from "../lib/ui";
@@ -23,10 +24,10 @@ export default function DetailsWindow({ id, simple }: { id: string; simple?: boo
 
   if (!item)
     return (
-      <WindowFrame kind="details" title="Download details">
+      <WindowFrame kind="details" title={t("Download details")}>
         <div className="wempty">
           <Icon name="info" size={22} />
-          <p>This download no longer exists.</p>
+          <p>{t("This download no longer exists.")}</p>
         </div>
       </WindowFrame>
     );
@@ -45,7 +46,7 @@ export default function DetailsWindow({ id, simple }: { id: string; simple?: boo
 
   const setLimit = (bps: number) => {
     setLimitDraft(bps);
-    void attempt(api.updateItem(id, { speedLimit: bps }), "Could not set the limit");
+    void attempt(api.updateItem(id, { speedLimit: bps }), t("Could not set the limit"));
   };
 
   return (
@@ -59,7 +60,7 @@ export default function DetailsWindow({ id, simple }: { id: string; simple?: boo
         <IconButton
           icon="pin"
           size={15}
-          label={pinned ? "Unpin from top" : "Keep on top"}
+          label={pinned ? t("Unpin from top") : t("Keep on top")}
           pressed={pinned}
           onClick={() => {
             setPinned(!pinned);
@@ -77,7 +78,7 @@ export default function DetailsWindow({ id, simple }: { id: string; simple?: boo
           <div className="hero__url">
             <Icon name="link" size={13} />
             <span className="ellipsis selectable">{item.finalUrl || item.url}</span>
-            <button type="button" className="kv__copy" aria-label="Copy address" data-tip="Copy address" onClick={() => void copyText(item.url)}>
+            <button type="button" className="kv__copy" aria-label={t("Copy address")} data-tip={t("Copy address")} onClick={() => void copyText(item.url)}>
               <Icon name="copy" size={13} />
             </button>
           </div>
@@ -88,7 +89,7 @@ export default function DetailsWindow({ id, simple }: { id: string; simple?: boo
         </span>
         {item.resumable !== false && (
           <span className="badge badge--success">
-            <Icon name="shield" size={12} strokeWidth={2} /> Resumable
+            <Icon name="shield" size={12} strokeWidth={2} /> {t("Resumable")}
           </span>
         )}
       </div>
@@ -100,19 +101,19 @@ export default function DetailsWindow({ id, simple }: { id: string; simple?: boo
             <small>%</small>
           </div>
           <div className="of tnum">
-            <b>{formatBytes(p.done)}</b> of {formatBytes(p.total)}
+            {tr("{done} of {total}", { done: <b>{formatBytes(p.done)}</b>, total: formatBytes(p.total) })}
           </div>
           <div className="kpis">
             <div>
-              <div className="kpi__k">Speed</div>
+              <div className="kpi__k">{t("Speed")}</div>
               <div className="kpi__v tnum">{formatSpeed(speed)}</div>
             </div>
             <div>
-              <div className="kpi__k">Time left</div>
+              <div className="kpi__k">{t("Time left")}</div>
               <div className="kpi__v tnum">{status === "downloading" ? formatDuration(progress?.etaSecs) : "—"}</div>
             </div>
             <div>
-              <div className="kpi__k">Connections</div>
+              <div className="kpi__k">{t("Connections")}</div>
               <div className="kpi__v tnum">
                 {active}
                 <small> / {item.connections}</small>
@@ -120,11 +121,11 @@ export default function DetailsWindow({ id, simple }: { id: string; simple?: boo
             </div>
           </div>
         </div>
-        <ProgressBar value={p.fraction} state={sv.bar} size="thick" label="Progress" />
+        <ProgressBar value={p.fraction} state={sv.bar} size="thick" label={t("Progress")} />
         <div className="map">
-          <span>File map</span>
+          <span>{t("File map")}</span>
           <FileMap segments={segments} size={item.size ?? 0} unit={unit} />
-          <span className="tnum">{segments.length} segments</span>
+          <span className="tnum">{t("{count} segments", { count: segments.length })}</span>
         </div>
         {status === "failed" && item.error && (
           <div className="banner banner--danger">
@@ -136,26 +137,26 @@ export default function DetailsWindow({ id, simple }: { id: string; simple?: boo
 
       <div className={`panel${simple ? " panel--single" : ""}`}>
         <div className="panel__conn">
-          <div className="ph">Connections</div>
-          {status === "completed" ? <p className="lanes__empty">Download complete.</p> : <ConnectionLanes segments={segments} max={12} unit={unit} />}
+          <div className="ph">{t("Connections")}</div>
+          {status === "completed" ? <p className="lanes__empty">{t("Download complete.")}</p> : <ConnectionLanes segments={segments} max={12} unit={unit} />}
         </div>
         {!simple && (
           <div className="panel__speed">
             <div className="ph">
-              Speed <span>last 60 s</span>
+              {t("Speed")} <span>{t("last 60 s")}</span>
             </div>
             <SpeedChart samples={samples} height={150} />
             <div className="sstats">
               <div className="sstat">
-                <div className="k">Now</div>
+                <div className="k">{t("Now")}</div>
                 <div className="v tnum">{formatSpeed(speed)}</div>
               </div>
               <div className="sstat">
-                <div className="k">Average</div>
+                <div className="k">{t("Average")}</div>
                 <div className="v tnum">{formatSpeed(avg)}</div>
               </div>
               <div className="sstat">
-                <div className="k">Peak</div>
+                <div className="k">{t("Peak")}</div>
                 <div className="v tnum">{formatSpeed(Math.max(0, ...history))}</div>
               </div>
             </div>
@@ -164,12 +165,12 @@ export default function DetailsWindow({ id, simple }: { id: string; simple?: boo
       </div>
 
       <footer className="dialog__footer">
-        <label className="opt" data-tip={limit === 0 && settings?.downloads.speedLimiterEnabled ? `Also shares the global ${formatSpeed(settings.downloads.speedLimit)} limit (Settings → Speed & queues)` : undefined}>
-          <Switch checked={limit > 0} label="Limit speed" onChange={(on) => setLimit(on ? limit || 2 * 1024 * 1024 : 0)} />
-          Limit
-          {limit === 0 && settings?.downloads.speedLimiterEnabled && <span className="text-tertiary"> (global {formatSpeed(settings.downloads.speedLimit)} applies)</span>}
+        <label className="opt" data-tip={limit === 0 && settings?.downloads.speedLimiterEnabled ? t("Also shares the global {speed} limit (Settings → Speed & queues)", { speed: formatSpeed(settings.downloads.speedLimit) }) : undefined}>
+          <Switch checked={limit > 0} label={t("Limit speed")} onChange={(on) => setLimit(on ? limit || 2 * 1024 * 1024 : 0)} />
+          {t("Limit")}
+          {limit === 0 && settings?.downloads.speedLimiterEnabled && <span className="text-tertiary"> {t("(global {speed} applies)", { speed: formatSpeed(settings.downloads.speedLimit) })}</span>}
         </label>
-        {limit > 0 && <RateField value={limit} onCommit={setLimit} label="Speed limit" width={120} />}
+        {limit > 0 && <RateField value={limit} onCommit={setLimit} label={t("Speed limit")} width={120} />}
         <span className="spacer" />
         {status !== "completed" &&
           (confirmCancel ? (
@@ -177,31 +178,31 @@ export default function DetailsWindow({ id, simple }: { id: string; simple?: boo
               type="button"
               className="btn btn--danger-solid"
               onClick={async () => {
-                await attempt(api.deleteItems([id], true, false), "Could not cancel");
+                await attempt(api.deleteItems([id], true, false), t("Could not cancel"));
                 void win.close();
               }}
             >
-              Delete partial file
+              {t("Delete partial file")}
             </button>
           ) : (
             <button type="button" className="btn btn--ghost btn--danger" onClick={() => setConfirmCancel(true)}>
-              Cancel
+              {t("Cancel")}
             </button>
           ))}
-        <button type="button" className="btn" onClick={() => void attempt(api.revealItem(id), "Could not open the folder")}>
-          <Icon name="folder-open" size={15} /> Folder
+        <button type="button" className="btn" onClick={() => void attempt(api.revealItem(id), t("Could not open the folder"))}>
+          <Icon name="folder-open" size={15} /> {t("Folder")}
         </button>
         {status === "completed" ? (
-          <button type="button" className="btn btn--primary" onClick={() => void attempt(api.openItem(id), "Could not open the file")}>
-            <Icon name="open-file" size={15} /> Open
+          <button type="button" className="btn btn--primary" onClick={() => void attempt(api.openItem(id), t("Could not open the file"))}>
+            <Icon name="open-file" size={15} /> {t("Open")}
           </button>
         ) : canPause(status) ? (
-          <button type="button" className="btn btn--primary" onClick={() => void attempt(api.pauseItems([id]), "Could not pause")}>
-            <Icon name="pause" size={15} /> Pause
+          <button type="button" className="btn btn--primary" onClick={() => void attempt(api.pauseItems([id]), t("Could not pause"))}>
+            <Icon name="pause" size={15} /> {t("Pause")}
           </button>
         ) : (
-          <button type="button" className="btn btn--primary" onClick={() => void attempt(api.startItems([id]), "Could not resume")}>
-            <Icon name="resume" size={15} /> Resume
+          <button type="button" className="btn btn--primary" onClick={() => void attempt(api.startItems([id]), t("Could not resume"))}>
+            <Icon name="resume" size={15} /> {t("Resume")}
           </button>
         )}
       </footer>

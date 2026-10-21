@@ -5,6 +5,7 @@ import { WindowFrame } from "../components/WindowFrame";
 import { Icon } from "../design/icons";
 import { api, inTauri } from "../lib/api";
 import { formatDuration, formatSpeed } from "../lib/format";
+import { t } from "../lib/i18n";
 import { formatPct, progressOf, statusView } from "../lib/present";
 import { isActive, useApp } from "../lib/store";
 import { attempt } from "../lib/ui";
@@ -23,7 +24,7 @@ export default function MiniWindow() {
         <span className="mini__title">
           <Icon name="arrow-down" size={12} strokeWidth={2.4} className="text-accent" />
           <b className="tnum">{formatSpeed(speed) === "—" ? "0 B/s" : formatSpeed(speed)}</b>
-          <span className="text-tertiary">· {ids.length} in progress</span>
+          <span className="text-tertiary">· {t("{count} in progress", { count: ids.length })}</span>
         </span>
       }
       onClose={() => void attempt(api.toggleMini())}
@@ -31,7 +32,7 @@ export default function MiniWindow() {
       <div className="mini__list">
         {ids.length ? ids.slice(0, 6).map((id) => <MiniRow key={id} id={id} onOpen={show} />) : (
           <button type="button" className="mini__idle" onClick={show}>
-            <Icon name="status-completed" size={16} className="text-success" /> Nothing downloading — open Prism
+            <Icon name="status-completed" size={16} className="text-success" /> {t("Nothing downloading — open Prism")}
           </button>
         )}
       </div>
@@ -52,9 +53,9 @@ function MiniRow({ id, onOpen }: { id: string; onOpen: () => void }) {
         <span className="ellipsis">{item.fileName}</span>
         <b className="tnum">{formatPct(p.pct)}</b>
       </span>
-      <ProgressBar value={p.fraction} state={sv.bar} size="thin" label={`${item.fileName} progress`} />
+      <ProgressBar value={p.fraction} state={sv.bar} size="thin" label={t("{name} progress", { name: item.fileName })} />
       <span className="mini__r2 tnum">
-        {progress?.speed ? `${formatSpeed(progress.speed)} · ${formatDuration(progress.etaSecs)} left` : sv.label}
+        {progress?.speed ? `${formatSpeed(progress.speed)} · ${t("{time} left", { time: formatDuration(progress.etaSecs) })}` : sv.label}
       </span>
     </button>
   );

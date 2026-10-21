@@ -1,5 +1,6 @@
 //! System tray icon with a quick menu and live state (idle / downloading / paused).
 
+use crate::i18n::tr;
 use prism_core::manager::Core;
 use tauri::image::Image;
 use tauri::menu::{CheckMenuItem, Menu, MenuItem, PredefinedMenuItem};
@@ -21,13 +22,16 @@ static ICON_ACTIVE: &[u8] = include_bytes!("../icons/tray/tray-downloading-templ
 
 pub struct TrayState {
     pub limiter: CheckMenuItem<Wry>,
+    /// Menu items with the English text they show (relabelled when the UI language changes).
+    items: Vec<(MenuItem<Wry>, &'static str)>,
 }
 
 pub fn create(app: &AppHandle) -> tauri::Result<TrayIcon> {
-    let show = MenuItem::with_id(app, "show", "Open Prism", true, None::<&str>)?;
-    let add = MenuItem::with_id(app, "add", "Add URL…", true, None::<&str>)?;
-    let pause = MenuItem::with_id(app, "pause_all", "Pause all", true, None::<&str>)?;
-    let resume = MenuItem::with_id(app, "resume_all", "Resume all", true, None::<&str>)?;
+    let item = |id: &str, text: &str| MenuItem::with_id(app, id, tr(text, &[]), true, None::<&str>);
+    let show = item("show", "Open Prism")?;
+    let add = item("add", "Add URL…")?;
+    let pause = item("pause_all", "Pause all")?;
+    let resume = item("resume_all", "Resume all")?;
     let limiter_on = app
         .state::<Core>()
         .settings()
@@ -36,14 +40,14 @@ pub fn create(app: &AppHandle) -> tauri::Result<TrayIcon> {
     let limiter = CheckMenuItem::with_id(
         app,
         "limiter",
-        "Speed limiter",
+        tr("Speed limiter", &[]),
         true,
         limiter_on,
         None::<&str>,
     )?;
-    let mini = MenuItem::with_id(app, "mini", "Mini window", true, None::<&str>)?;
-    let drop = MenuItem::with_id(app, "dropzone", "Drop zone", true, None::<&str>)?;
-    let quit = MenuItem::with_id(app, "quit", "Quit Prism", true, None::<&str>)?;
+    let mini = item("mini", "Mini window")?;
+    let drop = item("dropzone", "Drop zone")?;
+    let quit = item("quit", "Quit Prism")?;
     let sep = || PredefinedMenuItem::separator(app);
     let menu = Menu::with_items(
         app,
@@ -63,6 +67,15 @@ pub fn create(app: &AppHandle) -> tauri::Result<TrayIcon> {
     )?;
     app.manage(TrayState {
         limiter: limiter.clone(),
+        items: vec![
+            (show.clone(), "Open Prism"),
+            (add.clone(), "Add URL…"),
+            (pause.clone(), "Pause all"),
+            (resume.clone(), "Resume all"),
+            (mini.clone(), "Mini window"),
+            (drop.clone(), "Drop zone"),
+            (quit.clone(), "Quit Prism"),
+        ],
     });
 
     TrayIconBuilder::with_id(TRAY_ID)
@@ -121,15 +134,31 @@ pub fn refresh(app: &AppHandle) {
     }
 }
 
+/// Show the menu in the current UI language.
+pub fn relabel(app: &AppHandle) {
+    if let Some(state) = app.try_state::<TrayState>() {
+        for (item, text) in &state.items {
+            let _ = item.set_text(tr(text, &[]));
+        }
+        let _ = state.limiter.set_text(tr("Speed limiter", &[]));
+    }
+}
+
 /// Update icon + tooltip from aggregate progress (called on each progress event).
 pub fn update(app: &AppHandle, active: usize, speed: u64, icon_changed: bool) {
     let Some(tray) = app.tray_by_id(TRAY_ID) else {
         return;
     };
     let tooltip = if active == 0 {
-        "Prism — idle".to_string()
+        tr("Prism — idle", &[])
     } else {
-        format!("Prism — {active} downloading · {}", human_speed(speed))
+        tr(
+            "Prism — {count} downloading · {speed}",
+            &[
+                ("count", &active.to_string()),
+                ("speed", &human_speed(speed)),
+            ],
+        )
     };
     let _ = tray.set_tooltip(Some(tooltip));
     if !icon_changed {

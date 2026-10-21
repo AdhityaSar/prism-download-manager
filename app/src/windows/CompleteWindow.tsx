@@ -6,6 +6,7 @@ import { Icon } from "../design/icons";
 import { patchSettings } from "../lib/actions";
 import { api } from "../lib/api";
 import { formatBytes, formatDuration, formatSpeed } from "../lib/format";
+import { t } from "../lib/i18n";
 import { fullPath } from "../lib/paths";
 import { useApp } from "../lib/store";
 import { attempt, toast } from "../lib/ui";
@@ -29,7 +30,7 @@ export default function CompleteWindow({ id }: { id: string }) {
   const path = item ? fullPath(item.saveDir, item.fileName) : "";
 
   return (
-    <WindowFrame kind="complete" title="Download complete" onClose={() => void close()} className="complete">
+    <WindowFrame kind="complete" title={t("Download complete")} onClose={() => void close()} className="complete">
       <div className="complete__top">
         <div className="burst">
           <span>
@@ -38,11 +39,11 @@ export default function CompleteWindow({ id }: { id: string }) {
         </div>
         <div className="complete__txt">
           <h2 className="ellipsis" title={item?.fileName}>
-            {item?.fileName ?? "Download complete"}
+            {item?.fileName ?? t("Download complete")}
           </h2>
           <div className="meta tnum">
             {formatBytes(size)}
-            {took && took > 0 ? ` · finished in ${formatDuration(took)} · average ${formatSpeed(size / took)}` : ""}
+            {took && took > 0 ? ` · ${t("finished in {duration} · average {speed}", { duration: formatDuration(took), speed: formatSpeed(size / took) })}` : ""}
           </div>
         </div>
       </div>
@@ -56,26 +57,26 @@ export default function CompleteWindow({ id }: { id: string }) {
       )}
       <footer className="dialog__footer">
         <Checkbox checked={dontShow} onChange={setDontShow}>
-          Don’t show again
+          {t("Don’t show again")}
         </Checkbox>
         <span className="spacer" />
         <button
           type="button"
           className="btn btn--icon"
-          aria-label="Copy path"
-          data-tip="Copy path"
+          aria-label={t("Copy path")}
+          data-tip={t("Copy path")}
           disabled={!item}
           onClick={async () => {
-            if (await copyText(path)) toast("Path copied", { kind: "success", ms: 1500 });
+            if (await copyText(path)) toast(t("Path copied"), { kind: "success", ms: 1500 });
           }}
         >
           <Icon name="copy" size={15} />
         </button>
-        <button type="button" className="btn" disabled={!item} onClick={() => void run(api.revealItem(id), "Could not open the folder")}>
-          <Icon name="folder-open" size={15} /> Open folder
+        <button type="button" className="btn" disabled={!item} onClick={() => void run(api.revealItem(id), t("Could not open the folder"))}>
+          <Icon name="folder-open" size={15} /> {t("Open folder")}
         </button>
-        <button type="button" className="btn btn--primary" autoFocus disabled={!item} onClick={() => void run(api.openItem(id), "Could not open the file")}>
-          <Icon name="open-file" size={15} /> Open
+        <button type="button" className="btn btn--primary" autoFocus disabled={!item} onClick={() => void run(api.openItem(id), t("Could not open the file"))}>
+          <Icon name="open-file" size={15} /> {t("Open")}
         </button>
       </footer>
     </WindowFrame>

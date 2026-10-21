@@ -8,6 +8,7 @@ import { Icon } from "../design/icons";
 import { actions } from "../lib/actions";
 import { type ColumnDef, gridTemplate, minRowWidth, resolveColumns } from "../lib/columns";
 import { formatBytes, formatDate, formatDuration, formatSpeed } from "../lib/format";
+import { t } from "../lib/i18n";
 import { bytesLine, canPause, formatPct, metaLine, progressOf, statusView } from "../lib/present";
 import { clickSelect, type MoveKey, moveSelect } from "../lib/selection";
 import { useApp } from "../lib/store";
@@ -95,7 +96,7 @@ export function DownloadTable() {
         ref={scrollRef}
         className="table__body"
         role="grid"
-        aria-label="Downloads"
+        aria-label={t("Downloads")}
         aria-rowcount={ids.length}
         aria-multiselectable="true"
         tabIndex={0}
@@ -150,7 +151,7 @@ function Header({ cols }: { cols: ColumnDef[] }) {
   };
   return (
     <div className="thead cols" role="row">
-      <div role="columnheader" aria-label="Selection" />
+      <div role="columnheader" aria-label={t("Selection")} />
       {cols.map((c) => {
         const active = c.sort && sort.key === c.sort;
         return (
@@ -161,13 +162,13 @@ function Header({ cols }: { cols: ColumnDef[] }) {
             className={`th${c.align ? " num" : ""}${active ? " sorted" : ""}${c.sort ? " sortable" : ""}`}
             onClick={() => c.sort && useApp.getState().setSort(c.sort)}
           >
-            <span className="th__label">{c.label}</span>
+            <span className="th__label">{t(c.label)}</span>
             {active && <Icon name={sort.dir === 1 ? "chevron-up" : "chevron-down"} size={12} strokeWidth={2.2} />}
             {c.key !== "name" && <span className="th__resize" onPointerDown={(e) => startResize(e, c)} onClick={(e) => e.stopPropagation()} aria-hidden="true" />}
           </div>
         );
       })}
-      <div role="columnheader" aria-label="Actions" />
+      <div role="columnheader" aria-label={t("Actions")} />
     </div>
   );
 }
@@ -228,7 +229,7 @@ const Row = memo(function Row({ id, index, top, cols, selected, fresh, compact, 
         const left = !statusShown && !live ? (
           <span className={`st st--${sv.tone}`}>
             <Icon name={sv.icon} size={12} strokeWidth={2} />
-            <span>{status === "paused" && p.pct != null ? `Paused · ${formatPct(p.pct)}` : sv.detail}</span>
+            <span>{status === "paused" && p.pct != null ? t("Paused · {percent}", { percent: formatPct(p.pct) }) : sv.detail}</span>
           </span>
         ) : (
           <b className={live ? undefined : "muted"}>{formatPct(p.pct)}</b>
@@ -239,7 +240,7 @@ const Row = memo(function Row({ id, index, top, cols, selected, fresh, compact, 
               {left}
               {!compact && <span>{bytesLine(item, progress)}</span>}
             </div>
-            <ProgressBar value={status === "processing" ? null : p.fraction} state={sv.bar} label={`${item.fileName} progress`} />
+            <ProgressBar value={status === "processing" ? null : p.fraction} state={sv.bar} label={t("{name} progress", { name: item.fileName })} />
           </div>
         );
       }
@@ -305,7 +306,7 @@ const Row = memo(function Row({ id, index, top, cols, selected, fresh, compact, 
       <div className="chk" onMouseDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
         <Checkbox
           checked={selected}
-          label={`Select ${item.fileName}`}
+          label={t("Select {name}", { name: item.fileName })}
           onChange={() => {
             const st = useApp.getState();
             st.select(selected ? st.selection.filter((s) => s !== id) : [...st.selection, id], id);
@@ -317,7 +318,7 @@ const Row = memo(function Row({ id, index, top, cols, selected, fresh, compact, 
         <button
           type="button"
           className="more__btn"
-          aria-label="More actions"
+          aria-label={t("More actions")}
           onMouseDown={(e) => e.stopPropagation()}
           onClick={(e) => {
             const st = useApp.getState();
@@ -330,14 +331,14 @@ const Row = memo(function Row({ id, index, top, cols, selected, fresh, compact, 
       </div>
       <div className="row-actions" onMouseDown={(e) => e.stopPropagation()} onDoubleClick={(e) => e.stopPropagation()}>
         {item.status === "completed" ? (
-          <IconButton icon="open-file" label="Open" size={16} onClick={() => actions.open(id)} />
+          <IconButton icon="open-file" label={t("Open")} size={16} onClick={() => actions.open(id)} />
         ) : canPause(status) ? (
-          <IconButton icon="pause" label="Pause" size={16} onClick={() => actions.pause([id])} />
+          <IconButton icon="pause" label={t("Pause")} size={16} onClick={() => actions.pause([id])} />
         ) : (
-          <IconButton icon="resume" label="Resume" size={16} onClick={() => actions.resume([id])} />
+          <IconButton icon="resume" label={t("Resume")} size={16} onClick={() => actions.resume([id])} />
         )}
-        <IconButton icon="folder-open" label="Show in folder" size={16} onClick={() => actions.reveal(id)} />
-        <IconButton icon="link" label="Copy link" size={16} onClick={() => void actions.copyLinks([id])} />
+        <IconButton icon="folder-open" label={t("Show in folder")} size={16} onClick={() => actions.reveal(id)} />
+        <IconButton icon="link" label={t("Copy link")} size={16} onClick={() => void actions.copyLinks([id])} />
       </div>
     </div>
   );

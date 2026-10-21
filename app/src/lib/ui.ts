@@ -3,6 +3,7 @@
 
 import { create } from "zustand";
 import type { ColumnKey } from "./columns";
+import { t } from "./i18n";
 import type { Category } from "./types";
 
 export type Sheet =
@@ -130,22 +131,22 @@ export const useUi = create<UiState>((set, get) => ({
     save(persisted(get()));
   },
   setDragOver: (dragOver) => set({ dragOver }),
-  dismissToast: (id) => set({ toasts: get().toasts.filter((t) => t.id !== id) }),
+  dismissToast: (id) => set({ toasts: get().toasts.filter((x) => x.id !== id) }),
 }));
 
 let toastSeq = 0;
 
 export function toast(title: string, opts: { kind?: ToastKind; body?: string; action?: Toast["action"]; ms?: number } = {}) {
   const id = ++toastSeq;
-  const t: Toast = { id, kind: opts.kind ?? "info", title, body: opts.body, action: opts.action };
-  useUi.setState((s) => ({ toasts: [...s.toasts.slice(-3), t] }));
-  const ms = opts.ms ?? (t.kind === "error" ? 8000 : 4500);
+  const entry: Toast = { id, kind: opts.kind ?? "info", title, body: opts.body, action: opts.action };
+  useUi.setState((s) => ({ toasts: [...s.toasts.slice(-3), entry] }));
+  const ms = opts.ms ?? (entry.kind === "error" ? 8000 : 4500);
   setTimeout(() => useUi.getState().dismissToast(id), ms);
   return id;
 }
 
 /** Run a backend call; failures become an error toast instead of an unhandled rejection. */
-export async function attempt<T>(p: Promise<T>, failTitle = "Something went wrong"): Promise<T | undefined> {
+export async function attempt<T>(p: Promise<T>, failTitle = t("Something went wrong")): Promise<T | undefined> {
   try {
     return await p;
   } catch (e) {

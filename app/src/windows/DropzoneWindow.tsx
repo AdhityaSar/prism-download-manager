@@ -3,6 +3,7 @@ import { LogoMark } from "../components/LogoMark";
 import { WindowFrame } from "../components/WindowFrame";
 import { Icon } from "../design/icons";
 import { api } from "../lib/api";
+import { t } from "../lib/i18n";
 import { attempt } from "../lib/ui";
 import { handleDrop } from "../lib/drop";
 
@@ -12,8 +13,8 @@ export default function DropzoneWindow() {
   const [flash, setFlash] = useState(false);
   useEffect(() => {
     if (!flash) return;
-    const t = window.setTimeout(() => setFlash(false), 900);
-    return () => window.clearTimeout(t);
+    const timer = window.setTimeout(() => setFlash(false), 900);
+    return () => window.clearTimeout(timer);
   }, [flash]);
   return (
     <WindowFrame kind="dropzone" bare className="dropzone-frame">
@@ -22,8 +23,8 @@ export default function DropzoneWindow() {
         data-tauri-drag-region
         role="button"
         tabIndex={0}
-        aria-label="Drop links here to download. Double-click to open Prism."
-        data-tip="Drop links here · double-click opens Prism"
+        aria-label={t("Drop links here to download. Double-click to open Prism.")}
+        data-tip={t("Drop links here · double-click opens Prism")}
         onDoubleClick={() => void attempt(api.showMain())}
         onDragOver={(e) => {
           e.preventDefault();
@@ -39,7 +40,7 @@ export default function DropzoneWindow() {
         }}
       >
         {flash ? <Icon name="check" size={34} strokeWidth={2} className="text-success" /> : <LogoMark size={56} />}
-        <button type="button" className="dropzone__close" aria-label="Hide drop zone" onClick={() => void attempt(api.toggleDropzone())}>
+        <button type="button" className="dropzone__close" aria-label={t("Hide drop zone")} onClick={() => void attempt(api.toggleDropzone())}>
           <Icon name="close" size={11} strokeWidth={2} />
         </button>
       </div>

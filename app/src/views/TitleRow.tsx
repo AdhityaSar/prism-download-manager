@@ -7,6 +7,7 @@ import { patchSettings } from "../lib/actions";
 import { api } from "../lib/api";
 import { COLUMNS, toggleColumn, type ColumnKey } from "../lib/columns";
 import { formatBytes } from "../lib/format";
+import { t } from "../lib/i18n";
 import { isActive, useApp } from "../lib/store";
 import { matchesFilter } from "../lib/present";
 import { attempt, type StatusFilter, useUi } from "../lib/ui";
@@ -45,7 +46,7 @@ export function TitleRow() {
   const columns = () => {
     const visible = useApp.getState().settings?.appearance.visibleColumns ?? [];
     return COLUMNS.filter((c) => c.key !== "name").map((c) => ({
-      label: c.label,
+      label: t(c.label),
       checked: visible.includes(c.key),
       onSelect: () => void patchSettings({ appearance: { visibleColumns: toggleColumn(visible, c.key as ColumnKey) } }),
     }));
@@ -56,58 +57,58 @@ export function TitleRow() {
       <div className="titlerow__text">
         <h1>{title}</h1>
         <div className="sub tnum">
-          {stats.total} {stats.total === 1 ? "item" : "items"}
-          {stats.active > 0 && ` · ${stats.active} downloading`}
-          {stats.bytes > 0 && ` · ${formatBytes(stats.bytes)} total`}
+          {t("{count} items", { count: stats.total })}
+          {stats.active > 0 && ` · ${t("{count} downloading", { count: stats.active })}`}
+          {stats.bytes > 0 && ` · ${t("{size} total", { size: formatBytes(stats.bytes) })}`}
         </div>
       </div>
       {queue && (
         <div className="titlerow__actions">
           {queue.running ? (
             <button type="button" className="btn btn--sm" onClick={() => void attempt(api.stopQueue(queue.id))}>
-              <Icon name="stop-queue" size={15} /> Stop queue
+              <Icon name="stop-queue" size={15} /> {t("Stop queue")}
             </button>
           ) : (
             <button type="button" className="btn btn--sm" onClick={() => void attempt(api.startQueue(queue.id))}>
-              <Icon name="start-queue" size={15} /> Start queue
+              <Icon name="start-queue" size={15} /> {t("Start queue")}
             </button>
           )}
           <button type="button" className="btn btn--sm btn--ghost" onClick={() => useUi.getState().openSheet({ kind: "scheduler", queueId: queue.id })}>
-            <Icon name="scheduler" size={15} /> Schedule
+            <Icon name="scheduler" size={15} /> {t("Schedule")}
           </button>
         </div>
       )}
       {view.kind === "trash" && stats.total > 0 && (
-        <button type="button" className="btn btn--sm btn--danger" onClick={() => void attempt(api.emptyTrash(), "Could not empty the trash")}>
-          <Icon name="delete" size={15} /> Empty trash
+        <button type="button" className="btn btn--sm btn--danger" onClick={() => void attempt(api.emptyTrash(), t("Could not empty the trash"))}>
+          <Icon name="delete" size={15} /> {t("Empty trash")}
         </button>
       )}
       {view.kind === "grabber" && (
         <button type="button" className="btn btn--sm" onClick={() => useUi.getState().openSheet({ kind: "grabber", projectId: view.id })}>
-          <Icon name="grabber" size={15} /> Open project
+          <Icon name="grabber" size={15} /> {t("Open project")}
         </button>
       )}
       <span className="spacer" />
       <Segmented<StatusFilter>
-        label="Filter by status"
+        label={t("Filter by status")}
         value={filter}
         onChange={(f) => useUi.getState().setFilter(f)}
         options={[
-          { value: "all", label: "All", count: stats.byFilter.all },
-          { value: "active", label: "Active", count: stats.byFilter.active },
-          { value: "queued", label: "Waiting", count: stats.byFilter.queued },
-          { value: "completed", label: "Completed", count: stats.byFilter.completed },
-          { value: "failed", label: "Failed", count: stats.byFilter.failed },
+          { value: "all", label: t("All"), count: stats.byFilter.all },
+          { value: "active", label: t("Active"), count: stats.byFilter.active },
+          { value: "queued", label: t("Waiting"), count: stats.byFilter.queued },
+          { value: "completed", label: t("Completed"), count: stats.byFilter.completed },
+          { value: "failed", label: t("Failed"), count: stats.byFilter.failed },
         ]}
       />
       <IconButton
         variant="button"
         icon={density === "compact" ? "list" : "grid"}
         size={16}
-        label={density === "compact" ? "Comfortable rows" : "Compact rows"}
+        label={density === "compact" ? t("Comfortable rows") : t("Compact rows")}
         onClick={() => void patchSettings({ appearance: { density: density === "compact" ? "comfortable" : "compact" } })}
       />
-      <IconButton variant="button" icon="columns" size={16} label="Columns" onClick={(e) => openMenuAt(e.currentTarget, [{ heading: "Visible columns" }, ...columns()])} />
+      <IconButton variant="button" icon="columns" size={16} label={t("Columns")} onClick={(e) => openMenuAt(e.currentTarget, [{ heading: t("Visible columns") }, ...columns()])} />
     </div>
   );
 }
