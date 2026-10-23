@@ -94,6 +94,9 @@ fn main() {
                             let _ = w.show();
                         }
                     });
+                } else {
+                    // Waiting in the tray: no need to keep the window's web view in memory.
+                    windows::release_main_later(&handle);
                 }
             }
             // Self-heal browser integration on every start (cheap, idempotent).
@@ -123,11 +126,17 @@ fn main() {
         .on_window_event(|window, event| {
             if window.label() == "main"
                 && let WindowEvent::CloseRequested { api, .. } = event
+                && !QUITTING.load(Ordering::SeqCst)
             {
-                let close_to_tray = window.state::<Core>().settings().general.close_to_tray;
-                if close_to_tray && !QUITTING.load(Ordering::SeqCst) {
-                    api.prevent_close();
+                api.prevent_close();
+                if window.state::<Core>().settings().general.close_to_tray {
                     let _ = window.hide();
+                    windows::release_main_later(window.app_handle());
+                } else {
+                    // "Close button hides to the tray" is off: the close button quits Prism (it
+                    // used to close just the window and leave Prism running with no way back).
+                    let app = window.app_handle().clone();
+                    tauri::async_runtime::spawn(async move { quit(&app).await });
                 }
             }
         })
@@ -203,6 +212,7 @@ fn main() {
             commands::toggle_dropzone,
             commands::show_main,
             commands::main_window_starts_visible,
+            commands::app_run_id,
             commands::set_ui_language,
             commands::remove_deleted_files,
             commands::set_autostart,
@@ -285,7 +295,7 @@ pub fn apply_shell_settings(app: &AppHandle, settings: &Settings) {
     tray::refresh(app);
 }
 
-fn apply_window_material(window: &tauri::WebviewWindow, settings: &Settings) {
+pub(crate) fn apply_window_material(window: &tauri::WebviewWindow, settings: &Settings) {
     #[cfg(target_os = "windows")]
     {
         // Windows 11 rounds undecorated windows (and their shadow) only when asked to.
@@ -342,8 +352,17 @@ fn open_targets(argv: &[String]) -> Vec<String> {
                 || a.contains("://")
                 || a.to_ascii_lowercase().ends_with(".torrent")
         })
-        .cloned()
+        .map(|a| local_path(a).unwrap_or_else(|| a.clone()))
         .collect()
+}
+
+/// Linux desktops may hand a file over as a `file://` URL (the launcher's `Exec=prism %U`).
+fn local_path(arg: &str) -> Option<String> {
+    if !arg.starts_with("file://") {
+        return None;
+    }
+    let path = tauri::Url::parse(arg).ok()?.to_file_path().ok()?;
+    Some(path.to_string_lossy().into_owned())
 }
 
 fn handle_args(app: &AppHandle, argv: &[String]) {
@@ -581,4 +600,49 @@ fn init_logging() -> Option<tracing_appender::non_blocking::WorkerGuard> {
         .with(cfg!(debug_assertions).then(|| fmt::layer().with_writer(std::io::stderr)))
         .init();
     Some(guard)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::open_targets;
+
+    fn args(list: &[&str]) -> Vec<String> {
+        std::iter::once("prism")
+            .chain(list.iter().copied())
+            .map(String::from)
+            .collect()
+    }
+
+    #[test]
+    fn links_and_torrent_files_from_the_command_line() {
+        assert_eq!(
+            open_targets(&args(&[
+                "--background",
+                "magnet:?xt=urn:btih:abc",
+                "https://example.com/a.zip",
+                "notes.txt"
+            ])),
+            ["magnet:?xt=urn:btih:abc", "https://example.com/a.zip"]
+        );
+        assert_eq!(
+            open_targets(&args(&["Linux ISO.torrent"])),
+            ["Linux ISO.torrent"]
+        );
+    }
+
+    #[test]
+    fn a_file_url_becomes_a_path() {
+        let (url, path) = if cfg!(windows) {
+            (
+                "file:///C:/Users/me/Linux%20ISO.torrent",
+                r"C:\Users\me\Linux ISO.torrent",
+            )
+        } else {
+            (
+                "file:///home/me/Linux%20ISO.torrent",
+                "/home/me/Linux ISO.torrent",
+            )
+        };
+        assert_eq!(open_targets(&args(&[url])), [path]);
+    }
 }

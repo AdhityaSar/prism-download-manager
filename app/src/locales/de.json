@@ -956,17 +956,19 @@
     "other": "{count} Downloads werden samt Dateien gelöscht. Die Dateien lassen sich nicht wiederherstellen."
   },
   "Off = copied links go straight into the list, to start whenever you want": "Aus = kopierte Links kommen direkt in die Liste und starten, wann Sie wollen",
-  "Arabic and Indonesian": "Arabisch und Indonesisch",
-  "Prism now speaks 8 languages. In Arabic the whole window is mirrored right to left.": "Prism spricht jetzt 8 Sprachen. Auf Arabisch ist das ganze Fenster von rechts nach links gespiegelt.",
-  "Copied links without popups": "Kopierte Links ohne Pop-ups",
-  "Turn off “Ask before adding copied links” in Settings › General: copied links then go straight into the list, to start whenever you want.": "Schalten Sie „Vor dem Hinzufügen kopierter Links fragen“ unter Einstellungen › Allgemein aus: Kopierte Links kommen dann direkt in die Liste und starten, wann Sie wollen.",
-  "A fuller torrent window": "Ein vollständigeres Torrent-Fenster",
-  "Pick a torrent's category and queue like for any download, and its file list fills the window.": "Wählen Sie Kategorie und Warteschlange eines Torrents wie bei jedem Download, und die Dateiliste füllt das Fenster.",
   "Remove downloads whose files were deleted": "Downloads entfernen, deren Dateien gelöscht wurden",
   "Finished downloads leave the list once their file is gone from the computer": "Abgeschlossene Downloads verschwinden aus der Liste, sobald ihre Datei nicht mehr auf dem Computer ist",
   "Downloads that need the browser": "Downloads, die den Browser brauchen",
   "Some sites, like softpedia.com, let only a web browser download (they check for robots). Prism now leaves those downloads to your browser instead of failing or saving an error page.": "Manche Websites wie softpedia.com lassen nur Webbrowser herunterladen (sie prüfen auf Bots). Prism überlässt solche Downloads jetzt Ihrem Browser, statt zu scheitern oder eine Fehlerseite zu speichern.",
   "A tidier list": "Eine aufgeräumtere Liste",
   "Turn on “Remove downloads whose files were deleted” in Settings › General, and downloads you delete from the computer leave the list too.": "Schalten Sie „Downloads entfernen, deren Dateien gelöscht wurden“ unter Einstellungen › Allgemein ein, dann verschwinden Downloads, die Sie vom Computer löschen, auch aus der Liste.",
-  "Downloads that need the browser work again, and the list can tidy itself.": "Downloads, die den Browser brauchen, funktionieren wieder, und die Liste kann sich selbst aufräumen."
+  "Compact view": "Kompaktansicht",
+  "Just the download list, without the sidebar, details pane and tips": "Nur die Downloadliste, ohne Seitenleiste, Detailbereich und Tipps",
+  "A compact view, a lighter Prism in the tray and fixes for Linux.": "Eine Kompaktansicht, ein leichteres Prism im Infobereich und Korrekturen für Linux.",
+  "Just the download list, like a classic download manager. Turn it on in Settings › Appearance.": "Nur die Downloadliste, wie bei einem klassischen Download-Manager. Einschalten unter Einstellungen › Darstellung.",
+  "Lighter in the tray": "Leichter im Infobereich",
+  "After a minute in the tray, Prism closes its window to free memory. Downloads keep running, and the window is back as soon as you open Prism.": "Nach einer Minute im Infobereich schließt Prism sein Fenster, um Speicher freizugeben. Downloads laufen weiter, und das Fenster ist wieder da, sobald Sie Prism öffnen.",
+  "Better on Linux": "Besser unter Linux",
+  "The window opens from the tray every time, and magnet links and .torrent files open in Prism.": "Das Fenster öffnet sich jedes Mal aus dem Infobereich, und Magnet-Links sowie .torrent-Dateien öffnen sich in Prism.",
+  "Try it": "Ausprobieren"
 }

@@ -588,9 +588,25 @@ pub async fn toggle_dropzone(app: AppHandle) -> CmdResult<bool> {
 pub async fn main_window_starts_visible(core: State<'_, Core>) -> CmdResult<bool> {
     // The main window is created hidden and the UI shows it after its first paint, unless
     // Prism started in the background (autostart) or "Start minimized" is on: then it stays
-    // in the tray until the user opens it.
-    let background = crate::STARTED_IN_BACKGROUND.load(std::sync::atomic::Ordering::Relaxed);
-    Ok(!background && !core.settings().general.start_minimized)
+    // in the tray until the user opens it. A main window created again (after it was closed in
+    // the tray, see windows::release_main_later) is one the user asked for.
+    use std::sync::atomic::Ordering;
+    let background = crate::STARTED_IN_BACKGROUND.load(Ordering::Relaxed);
+    Ok(crate::windows::MAIN_WANTED.load(Ordering::SeqCst)
+        || (!background && !core.settings().general.start_minimized))
+}
+
+/// Identifies this run of Prism, so a main window created again after a while in the tray can
+/// keep choices that last until Prism quits (an update postponed with "Later").
+#[tauri::command]
+pub fn app_run_id() -> u64 {
+    static RUN: std::sync::OnceLock<u64> = std::sync::OnceLock::new();
+    *RUN.get_or_init(|| {
+        std::time::SystemTime::now()
+            .duration_since(std::time::UNIX_EPOCH)
+            .map(|d| d.as_millis() as u64)
+            .unwrap_or(1)
+    })
 }
 
 /// The language the UI shows (already resolved from the setting), for the tray and notifications.

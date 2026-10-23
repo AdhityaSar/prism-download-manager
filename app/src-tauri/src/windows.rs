@@ -2,6 +2,9 @@
 //!
 //! Every window loads the same SPA; the hash route (`#/capture/<id>`) selects the view.
 
+use prism_core::manager::Core;
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::time::Duration;
 use tauri::{
     AppHandle, Manager, PhysicalPosition, WebviewUrl, WebviewWindow, WebviewWindowBuilder,
 };
@@ -185,10 +188,111 @@ pub fn toggle_dropzone(app: &AppHandle) -> tauri::Result<bool> {
     toggle(app, "dropzone")
 }
 
+/// How long the main window waits hidden in the tray before it is closed to free its web view's
+/// memory (#11: WebView2 keeps 100+ MB that downloads don't need). Opening Prism creates a new
+/// one; a quick close and reopen keeps the same window.
+#[cfg(not(target_os = "macos"))]
+const RELEASE_HIDDEN_MAIN_AFTER: Duration = Duration::from_secs(60);
+
+/// Set once the user opens the main window, so a newly created one shows itself after its first
+/// paint (see `commands::main_window_starts_visible`).
+pub static MAIN_WANTED: AtomicBool = AtomicBool::new(false);
+/// A new main window is on its way; another "Open Prism" meanwhile has nothing to do.
+static CREATING_MAIN: AtomicBool = AtomicBool::new(false);
+/// Counts trips to the tray and reopenings: only the latest trip's timer may close the window.
+#[cfg(not(target_os = "macos"))]
+static TRAY_TRIP: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(0);
+
 pub fn show_main(app: &AppHandle) {
-    if let Some(w) = app.get_webview_window("main") {
-        let _ = w.unminimize();
-        let _ = w.show();
-        let _ = w.set_focus();
+    MAIN_WANTED.store(true, Ordering::SeqCst);
+    #[cfg(not(target_os = "macos"))]
+    TRAY_TRIP.fetch_add(1, Ordering::SeqCst);
+    if CREATING_MAIN.load(Ordering::SeqCst) {
+        return;
     }
+    match app.get_webview_window("main") {
+        // Linux (#18): a transparent WebKitGTK window that was hidden can come back without
+        // painting anything — invisible, though the desktop shows it as open (KDE Plasma). A new
+        // window always paints, so a hidden main window is replaced instead of shown again.
+        Some(w) if cfg!(target_os = "linux") && !w.is_visible().unwrap_or(true) => {
+            let _ = w.destroy();
+            create_main(app);
+        }
+        Some(w) => {
+            let _ = w.unminimize();
+            let _ = w.show();
+            let _ = w.set_focus();
+        }
+        None => create_main(app),
+    }
+}
+
+/// Creates the main window again from its configuration (it was closed while in the tray).
+fn create_main(app: &AppHandle) {
+    if CREATING_MAIN.swap(true, Ordering::SeqCst) {
+        return;
+    }
+    let app = app.clone();
+    // Off the caller's thread: building a window inside an event handler can deadlock WebView2.
+    std::thread::spawn(move || {
+        // A window that is being destroyed keeps its label for a moment.
+        for _ in 0..60 {
+            if app.get_webview_window("main").is_none() {
+                break;
+            }
+            std::thread::sleep(Duration::from_millis(50));
+        }
+        let built = (|| -> tauri::Result<WebviewWindow> {
+            let config = app
+                .config()
+                .app
+                .windows
+                .iter()
+                .find(|c| c.label == "main")
+                .cloned()
+                .ok_or(tauri::Error::WindowNotFound)?;
+            WebviewWindowBuilder::from_config(&app, &config)?.build()
+        })();
+        CREATING_MAIN.store(false, Ordering::SeqCst);
+        match built {
+            Ok(window) => {
+                tracing::info!("opened the main window again");
+                crate::apply_window_material(&window, &app.state::<Core>().settings());
+                // WKWebView doesn't paint into a hidden window (see main.rs).
+                #[cfg(target_os = "macos")]
+                let _ = window.show();
+                // The page shows the window after its first paint; this is only a fallback.
+                std::thread::sleep(Duration::from_millis(1500));
+                if !window.is_visible().unwrap_or(true) {
+                    let _ = window.show();
+                    let _ = window.set_focus();
+                }
+            }
+            Err(e) => tracing::error!("could not open the main window: {e}"),
+        }
+    });
+}
+
+/// The main window went to the tray, or Prism started there: after a while the hidden window is
+/// closed to free its memory (#11), and `show_main` creates it again. macOS keeps it.
+pub fn release_main_later(app: &AppHandle) {
+    #[cfg(not(target_os = "macos"))]
+    {
+        let trip = TRAY_TRIP.fetch_add(1, Ordering::SeqCst) + 1;
+        let app = app.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(RELEASE_HIDDEN_MAIN_AFTER);
+            if TRAY_TRIP.load(Ordering::SeqCst) != trip || CREATING_MAIN.load(Ordering::SeqCst) {
+                return;
+            }
+            if let Some(w) = app.get_webview_window("main")
+                && !w.is_visible().unwrap_or(true)
+            {
+                tracing::info!("closed the hidden main window to free its memory");
+                let _ = w.destroy();
+            }
+        });
+    }
+    #[cfg(target_os = "macos")]
+    let _ = app;
 }

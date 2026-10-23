@@ -8,7 +8,7 @@ import { useUi } from "../../lib/ui";
 import { versionNewer } from "../../lib/version";
 import { BrowserConnect, useExtensionStatus } from "../BrowserConnect";
 
-type Change = { icon: IconName; title: string; body: string; credit?: string; action?: "sounds" | "language" };
+type Change = { icon: IconName; title: string; body: string; credit?: string; action?: "sounds" | "language" | "appearance" };
 
 /**
  * What this version brings (shown once after an update, and from About Prism), then what the
@@ -16,6 +16,27 @@ type Change = { icon: IconName; title: string; body: string; credit?: string; ac
  * where they're shown; `credit` is the contributor's handle.
  */
 const CHANGES: Change[] = [
+  {
+    icon: "sidebar",
+    title: tk("Compact view"),
+    body: tk("Just the download list, like a classic download manager. Turn it on in Settings › Appearance."),
+    action: "appearance",
+  },
+  {
+    icon: "sleep",
+    title: tk("Lighter in the tray"),
+    body: tk("After a minute in the tray, Prism closes its window to free memory. Downloads keep running, and the window is back as soon as you open Prism."),
+  },
+  {
+    icon: "magnet",
+    title: tk("Better on Linux"),
+    body: tk("The window opens from the tray every time, and magnet links and .torrent files open in Prism."),
+    credit: "pepopepopepo",
+  },
+];
+
+/** The previous version's changes, shown below the new ones. */
+const PREVIOUS = { version: "1.1.3", changes: [
   {
     icon: "browser",
     title: tk("Downloads that need the browser"),
@@ -25,26 +46,6 @@ const CHANGES: Change[] = [
     icon: "list",
     title: tk("A tidier list"),
     body: tk("Turn on “Remove downloads whose files were deleted” in Settings › General, and downloads you delete from the computer leave the list too."),
-  },
-];
-
-/** The previous version's changes, shown below the new ones. */
-const PREVIOUS = { version: "1.1.2", changes: [
-  {
-    icon: "globe",
-    title: tk("Arabic and Indonesian"),
-    body: tk("Prism now speaks 8 languages. In Arabic the whole window is mirrored right to left."),
-    action: "language",
-  },
-  {
-    icon: "clipboard",
-    title: tk("Copied links without popups"),
-    body: tk("Turn off “Ask before adding copied links” in Settings › General: copied links then go straight into the list, to start whenever you want."),
-  },
-  {
-    icon: "torrent",
-    title: tk("A fuller torrent window"),
-    body: tk("Pick a torrent's category and queue like for any download, and its file list fills the window."),
   },
 ] satisfies Change[] };
 
@@ -62,7 +63,7 @@ export function WhatsNewSheet() {
         <BrandTile size={52} />
         <div>
           <h2>{t("Prism {version} is here", { version })}</h2>
-          <p className="text-secondary">{t("Downloads that need the browser work again, and the list can tidy itself.")}</p>
+          <p className="text-secondary">{t("A compact view, a lighter Prism in the tray and fixes for Linux.")}</p>
         </div>
       </header>
 
@@ -114,6 +115,11 @@ function ChangeList({ changes }: { changes: Change[] }) {
               {c.action === "sounds" && (
                 <button type="button" className="linkbtn" onClick={() => openSheet({ kind: "settings", section: "sounds" })}>
                   {t("Try them")}
+                </button>
+              )}
+              {c.action === "appearance" && (
+                <button type="button" className="linkbtn" onClick={() => openSheet({ kind: "settings", section: "appearance" })}>
+                  {t("Try it")}
                 </button>
               )}
               {c.action === "language" && (

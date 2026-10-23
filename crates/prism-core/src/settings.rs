@@ -108,6 +108,8 @@ pub struct Appearance {
     /// Use the OS window material (Mica / vibrancy) behind the window.
     pub window_material: bool,
     pub visible_columns: Vec<String>,
+    /// Just the download list: no sidebar, details pane or tips (like a classic download manager).
+    pub compact_view: bool,
 }
 
 impl Default for Appearance {
@@ -125,6 +127,7 @@ impl Default for Appearance {
             .into_iter()
             .map(String::from)
             .collect(),
+            compact_view: false,
         }
     }
 }

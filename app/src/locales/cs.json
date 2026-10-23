@@ -1002,17 +1002,19 @@
     "other": "Smaže se {count} stahování i se soubory. Soubory nepůjde obnovit."
   },
   "Off = copied links go straight into the list, to start whenever you want": "Vypnuto = zkopírované odkazy půjdou rovnou do seznamu a spustíte je, kdy budete chtít",
-  "Arabic and Indonesian": "Arabština a indonéština",
-  "Prism now speaks 8 languages. In Arabic the whole window is mirrored right to left.": "Prism teď mluví 8 jazyky. V arabštině se celé okno zrcadlí zprava doleva.",
-  "Copied links without popups": "Zkopírované odkazy bez vyskakovacích oken",
-  "Turn off “Ask before adding copied links” in Settings › General: copied links then go straight into the list, to start whenever you want.": "Vypněte „Před přidáním zkopírovaných odkazů se zeptat“ v Nastavení › Obecné: zkopírované odkazy pak půjdou rovnou do seznamu a spustíte je, kdy budete chtít.",
-  "A fuller torrent window": "Bohatší okno pro torrenty",
-  "Pick a torrent's category and queue like for any download, and its file list fills the window.": "U torrentu vyberete kategorii i frontu jako u každého stahování a seznam souborů vyplní celé okno.",
   "Remove downloads whose files were deleted": "Odebírat stahování, jejichž soubory byly smazány",
   "Finished downloads leave the list once their file is gone from the computer": "Dokončená stahování zmizí ze seznamu, jakmile jejich soubor v počítači už není",
   "Downloads that need the browser": "Stahování, která potřebují prohlížeč",
   "Some sites, like softpedia.com, let only a web browser download (they check for robots). Prism now leaves those downloads to your browser instead of failing or saving an error page.": "Některé weby, třeba softpedia.com, pouštějí stahování jen webovému prohlížeči (kontrolují roboty). Prism teď taková stahování nechá prohlížeči, místo aby selhal nebo uložil chybovou stránku.",
   "A tidier list": "Uklizenější seznam",
   "Turn on “Remove downloads whose files were deleted” in Settings › General, and downloads you delete from the computer leave the list too.": "Zapněte „Odebírat stahování, jejichž soubory byly smazány“ v Nastavení › Obecné a stahování, která smažete z počítače, zmizí i ze seznamu.",
-  "Downloads that need the browser work again, and the list can tidy itself.": "Stahování, která potřebují prohlížeč, zase fungují a seznam se umí sám uklidit."
+  "Compact view": "Kompaktní zobrazení",
+  "Just the download list, without the sidebar, details pane and tips": "Jen seznam stahování, bez bočního panelu, panelu podrobností a tipů",
+  "A compact view, a lighter Prism in the tray and fixes for Linux.": "Kompaktní zobrazení, lehčí Prism v oznamovací oblasti a opravy pro Linux.",
+  "Just the download list, like a classic download manager. Turn it on in Settings › Appearance.": "Jen seznam stahování, jako v klasickém správci stahování. Zapnete ho v Nastavení › Vzhled.",
+  "Lighter in the tray": "Lehčí v oznamovací oblasti",
+  "After a minute in the tray, Prism closes its window to free memory. Downloads keep running, and the window is back as soon as you open Prism.": "Po minutě v oznamovací oblasti Prism zavře své okno, aby uvolnil paměť. Stahování běží dál a okno je zpátky, jakmile Prism otevřete.",
+  "Better on Linux": "Lepší na Linuxu",
+  "The window opens from the tray every time, and magnet links and .torrent files open in Prism.": "Okno se z oznamovací oblasti otevře pokaždé a magnet odkazy i soubory .torrent se otevírají v Prismu.",
+  "Try it": "Vyzkoušet"
 }

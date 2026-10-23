@@ -32,6 +32,9 @@ export function MainWindow() {
   const bottomOpen = useUi((s) => s.bottomOpen);
   const bottomHeight = useUi((s) => s.bottomHeight);
   const dragOver = useUi((s) => s.dragOver);
+  // Settings › Appearance › "Compact view": just the list (no sidebar, details pane or tips).
+  const compact = useApp((s) => s.settings?.appearance.compactView ?? false);
+  const detailsOpen = bottomOpen && !compact;
 
   useEffect(() => {
     // Shown after the first paint, unless Prism started in the background (autostart) or
@@ -87,17 +90,17 @@ export function MainWindow() {
   };
 
   return (
-    <div className="win canvas" onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
-      <Sidebar />
-      <main className="sheet" style={{ ["--bottom-h" as string]: bottomOpen ? `${bottomHeight}px` : "0px" }}>
+    <div className={compact ? "win canvas win--compact" : "win canvas"} onDragOver={onDragOver} onDragLeave={onDragLeave} onDrop={onDrop}>
+      {!compact && <Sidebar />}
+      <main className="sheet" style={{ ["--bottom-h" as string]: detailsOpen ? `${bottomHeight}px` : "0px" }}>
         <Toolbar />
         <TitleRow />
         <div className="banner-stack">
           <UpdateBanner />
-          <ConnectBanner onOpen={() => useUi.getState().openSheet({ kind: "settings", section: "browser" })} />
+          {!compact && <ConnectBanner onOpen={() => useUi.getState().openSheet({ kind: "settings", section: "browser" })} />}
         </div>
         <DownloadTable />
-        <BottomPane />
+        {!compact && <BottomPane />}
         <StatusBar />
       </main>
       <PostActionBanner />

@@ -191,6 +191,8 @@ export interface Settings {
     reduceTransparency: boolean;
     windowMaterial: boolean;
     visibleColumns: string[];
+    /** Just the download list: no sidebar, details pane or tips. */
+    compactView: boolean;
   };
   downloads: {
     defaultDir: string;

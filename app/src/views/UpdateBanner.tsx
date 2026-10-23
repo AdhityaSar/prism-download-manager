@@ -21,6 +21,28 @@ interface UpdateState {
 
 const useUpdate = create<UpdateState>(() => ({ info: null, later: null, phase: "idle", progress: 0 }));
 
+// "Later" lasts until Prism quits, also when the main window is created again after a while in
+// the tray (it is closed there to free memory), so it is kept with this run's id.
+const LATER_KEY = "prism.updateLater";
+
+function postpone(version: string) {
+  useUpdate.setState({ later: version });
+  void api
+    .appRunId()
+    .then((run) => localStorage.setItem(LATER_KEY, JSON.stringify({ run, version })))
+    .catch(() => {});
+}
+
+if (inTauri) {
+  void api
+    .appRunId()
+    .then((run) => {
+      const saved = JSON.parse(localStorage.getItem(LATER_KEY) ?? "null") as { run?: number; version?: string } | null;
+      if (saved?.run === run && saved.version && !useUpdate.getState().later) useUpdate.setState({ later: saved.version });
+    })
+    .catch(() => {});
+}
+
 /** When the latest check started (counted from the app's start until the first one). */
 let lastCheckAt = Date.now();
 
@@ -30,6 +52,13 @@ export async function checkForUpdates(manual = false): Promise<void> {
   try {
     const info = await api.checkUpdate();
     useUpdate.setState({ info, ...(manual ? { later: null } : {}) });
+    if (manual) {
+      try {
+        localStorage.removeItem(LATER_KEY);
+      } catch {
+        /* storage unavailable */
+      }
+    }
     if (manual && !info) toast(t("Prism is up to date"), { kind: "success", ms: 2500 });
   } catch (e) {
     if (manual) toast(t("Couldn't check for updates"), { kind: "error", body: String(e) });
@@ -115,7 +144,7 @@ export function UpdateBanner() {
                   </button>
                 ))}
               {!busy && (
-                <button type="button" className="tb-btn" aria-label={t("Remind me later")} data-tip={t("Later")} onClick={() => useUpdate.setState({ later: info.version })}>
+                <button type="button" className="tb-btn" aria-label={t("Remind me later")} data-tip={t("Later")} onClick={() => postpone(info.version)}>
                   <Icon name="close" size={14} />
                 </button>
               )}

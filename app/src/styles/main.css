@@ -64,6 +64,8 @@
   display: grid;
   grid-template-rows: 52px 60px auto minmax(0, 1fr) auto;
 }
+/* Compact view: no sidebar, the list takes the whole window. */
+.win--compact .sheet { inset-inline-start: 8px; }
 
 .toolbar {
   display: flex;

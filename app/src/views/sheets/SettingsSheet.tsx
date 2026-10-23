@@ -461,6 +461,7 @@ function Appearance({ s }: { s: Settings }) {
           </Row>
         </Group>
         <Group title={t("Layout")}>
+          <Toggle title={t("Compact view")} hint={t("Just the download list, without the sidebar, details pane and tips")} value={s.appearance.compactView} onChange={(v) => save({ appearance: { compactView: v } })} />
           <Row title={t("Row density")} hint={t("Compact fits ~45% more rows")}>
             <Segmented
               size="sm"
@@ -474,7 +475,7 @@ function Appearance({ s }: { s: Settings }) {
             />
           </Row>
           <Row title={t("Details pane")} hint={t("Connections, speed and info under the list")}>
-            <Switch checked={useUi.getState().bottomOpen} label={t("Details pane")} onChange={(v) => useUi.getState().setBottom({ bottomOpen: v })} />
+            <Switch checked={useUi.getState().bottomOpen && !s.appearance.compactView} disabled={s.appearance.compactView} label={t("Details pane")} onChange={(v) => useUi.getState().setBottom({ bottomOpen: v })} />
           </Row>
         </Group>
       </div>

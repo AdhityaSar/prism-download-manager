@@ -1,23 +1,33 @@
-# Prism 1.1.3 — One beam. Many rays.
+# Prism 1.1.4 — One beam. Many rays.
 
 A fast, open-source download manager for Windows, Linux and macOS, with browser integration
 and video downloads.
 
-## What's new in 1.1.3
+## What's new in 1.1.4
 
-* **Downloads from sites with a robot check work again**
-  ([#14](https://github.com/FortoGraphy/prism-download-manager/issues/14)). Some sites, like
-  softpedia.com, sit behind Cloudflare's check (*Just a moment…*) that only a web browser passes.
-  Prism used to fail with *HTTP 403* or save the check page as your file (11 KB "completed"
-  downloads). Now it tries the link first and leaves such downloads to the browser, with a
-  notification saying so.
-* **Remove downloads whose files were deleted** (Settings › General, off by default): finished
-  downloads leave the list once their file is gone from the computer, checked when Prism starts
-  and whenever its window comes to the front. Downloads on a drive that isn't connected stay.
-  Thanks to ReyvID for the idea!
-* **An error page is never saved as your file:** when a server answers a program, archive, disk
-  image or media download with a small web page instead, the download fails with a clear message.
+* **The window opens again on Linux**
+  ([#18](https://github.com/FortoGraphy/prism-download-manager/issues/18)). On some desktops
+  (KDE Plasma) the main window came back from the tray invisible: the taskbar showed it open,
+  but nothing was drawn until Prism was restarted. Prism now opens a fresh window instead.
+* **Lighter in the tray**
+  ([#11](https://github.com/FortoGraphy/prism-download-manager/issues/11)): after a minute in the
+  tray, Prism closes its window so its web view (WebView2 on Windows) frees the memory. Downloads
+  keep running, and the window is back as soon as you open Prism. Thanks to ryee123123 for the idea!
+* **Compact view** (Settings › Appearance): just the download list, without the sidebar,
+  details pane and tips, like a classic download manager.
+* **Magnet links and .torrent files open in Prism on Linux** (the deb and rpm declare them, and
+  the installer no longer changes root's default apps). Thanks to pepopepopepo!
+* With *Close button hides to the tray* turned off, the close button quits Prism. Before, it
+  closed only the window and left Prism running with no way to open it again.
+* Safer release builds: read-only tokens and no caches in the workflows. Thanks to pepopepopepo!
 * The Chrome Web Store extension (1.1.0) keeps working as it is; nothing to update there.
+
+### Prism 1.1.3
+
+* Downloads from sites with a robot check (like softpedia.com) are left to the browser
+  ([#14](https://github.com/FortoGraphy/prism-download-manager/issues/14)), and an error page is
+  never saved as your file.
+* *Remove downloads whose files were deleted* (Settings › General, off by default).
 
 ### Prism 1.1.2
 
@@ -39,12 +49,12 @@ and video downloads.
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.1.3_x64-setup.exe` (recommended) · `Prism_1.1.3_x64_en-US.msi` (all users) · `Prism-1.1.3-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.1.3_aarch64.dmg` |
-| macOS — Intel | `Prism_1.1.3_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.1.3_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.1.3-1.x86_64.rpm` |
-| Any Linux | `Prism_1.1.3_amd64.AppImage` |
+| Windows 10 / 11 | `Prism_1.1.4_x64-setup.exe` (recommended) · `Prism_1.1.4_x64_en-US.msi` (all users) · `Prism-1.1.4-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.1.4_aarch64.dmg` |
+| macOS — Intel | `Prism_1.1.4_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.1.4_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.1.4-1.x86_64.rpm` |
+| Any Linux | `Prism_1.1.4_amd64.AppImage` |
 | Browser extension | [Chrome Web Store](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl) (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` (Firefox) |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·
