@@ -220,6 +220,43 @@ kbd {
   padding: 0.12rem 0.45rem; border-radius: 99px; background: var(--control-bg-hover); color: var(--text-secondary);
 }
 
+/* "Buy me a beam" (Ko-fi): a glass button that lights up gold on hover — warm light from
+   below, one sheen sweeping across, and a gold glint orbiting the rim. */
+@property --beam-a { syntax: "<angle>"; inherits: false; initial-value: 0deg; }
+.beam-btn {
+  --gold: #f2c14e; --gold-hi: #fff0c2; --gold-rgb: 242 193 78;
+  position: relative; isolation: isolate; overflow: hidden;
+}
+[data-theme="light"] .beam-btn { --gold: #c98a0e; --gold-hi: #f7cd5c; --gold-rgb: 214 150 20; }
+.beam-btn::before, .beam-btn::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  opacity: 0; transition: opacity 0.35s var(--ease-standard);
+}
+.beam-btn::before {
+  z-index: -1;
+  background:
+    linear-gradient(105deg, transparent 40%, rgb(255 238 190 / 0.32) 50%, transparent 60%) 110% 0 / 250% 100% no-repeat,
+    radial-gradient(120% 130% at 50% 125%, rgb(var(--gold-rgb) / 0.34), transparent 64%);
+}
+.beam-btn::after {
+  padding: 1.5px;
+  background: conic-gradient(from var(--beam-a), rgb(var(--gold-rgb) / 0.3), var(--gold-hi) 12%, var(--gold) 20%, rgb(var(--gold-rgb) / 0.3) 36%, rgb(var(--gold-rgb) / 0.3) 50%, var(--gold-hi) 62%, var(--gold) 70%, rgb(var(--gold-rgb) / 0.3) 86%);
+  -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0);
+  -webkit-mask-composite: xor; mask-composite: exclude;
+}
+.beam-btn .i { transition: color 0.25s, filter 0.25s; }
+.beam-btn:is(:hover, :focus-visible) {
+  box-shadow: inset 0 0 0 1px rgb(var(--gold-rgb) / 0.4), var(--card-hl), 0 0 0 1px rgb(var(--gold-rgb) / 0.18), 0 0 22px 0 rgb(var(--gold-rgb) / 0.42), 0 0 56px -6px rgb(var(--gold-rgb) / 0.32), 0 14px 44px -12px rgb(var(--gold-rgb) / 0.6);
+  transform: translateY(-1px);
+}
+.beam-btn:is(:hover, :focus-visible)::before { opacity: 1; background-position: -10% 0, 0 0; transition: opacity 0.35s var(--ease-standard), background-position 1.1s var(--ease-out); }
+.beam-btn:is(:hover, :focus-visible)::after { opacity: 1; animation: beam-orbit 3.6s linear infinite; }
+.beam-btn:is(:hover, :focus-visible) .i { color: var(--gold); --beam-ray: var(--gold-hi); filter: drop-shadow(0 0 5px rgb(var(--gold-rgb) / 0.8)); }
+[data-theme="light"] .beam-btn:is(:hover, :focus-visible) .i { --beam-ray: var(--gold); filter: drop-shadow(0 0 4px rgb(var(--gold-rgb) / 0.55)); }
+.beam-btn:active { transform: translateY(0.5px) scale(0.985); }
+@keyframes beam-orbit { to { --beam-a: 360deg; } }
+@media (max-width: 640px) { .beam-btn .beam-label { display: none; } }
+
 /* --------------------------------------------------------------------------
    Navigation (floating liquid-glass pill)
    -------------------------------------------------------------------------- */
@@ -408,6 +445,10 @@ section { position: relative; }
 .hero .tagline { margin-top: 1.5rem; font-size: clamp(1.25rem, 2.1vw, 1.7rem); line-height: 1.35; letter-spacing: -0.022em; font-weight: 550; color: var(--text-primary); }
 .hero .sub { margin-top: 0.9rem; max-width: 34rem; font-size: clamp(1rem, 1.25vw, 1.1rem); color: var(--text-secondary); }
 .cta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem; margin-top: 2.2rem; }
+/* Four hero buttons are wider than the copy column: let them run on one line when there's room. */
+@media (min-width: 1000px) { .hero .cta-row { width: max-content; max-width: calc(100vw - 2 * var(--gutter)); } }
+/* Narrower: a tidy 2 × 2 (download + all downloads, star + beam) instead of one button left alone. */
+@media (min-width: 761px) and (max-width: 999px) { .hero .cta-row { display: grid; grid-template-columns: repeat(2, max-content); } }
 .cta-meta { margin-top: 0.85rem; font-size: 0.85rem; color: var(--text-tertiary); min-height: 1.4em; }
 .cta-meta a { color: var(--text-secondary); text-decoration: underline; text-decoration-color: var(--card-border-strong); text-underline-offset: 0.2em; }
 .cta-meta a:hover { color: var(--text-primary); }

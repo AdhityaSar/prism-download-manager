@@ -23,7 +23,8 @@
   <a href="https://prismdl.site/"><b>Website</b></a> ·
   <a href="https://youtu.be/IkZu0XN2lLQ"><b>▶ Watch the film</b></a> ·
   <a href="docs/guide/installation.md">Install guide</a> ·
-  <a href="docs/guide/browser-extension.md">Browser extension</a>
+  <a href="docs/guide/browser-extension.md">Browser extension</a> ·
+  <a href="https://ko-fi.com/prismdownloadmanager"><b>☕ Buy me a beam</b></a>
 </p>
 
 <p align="center">
