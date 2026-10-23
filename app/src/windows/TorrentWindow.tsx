@@ -1,25 +1,33 @@
-import { useEffect, useMemo, useState } from "react";
-import { Checkbox, TextField } from "../components/Controls";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Checkbox, Select, TextField } from "../components/Controls";
+import { openMenuAt } from "../components/MenuHost";
 import { WindowFrame } from "../components/WindowFrame";
 import { Icon } from "../design/icons";
 import { api, type TorrentMeta, type TorrentSource } from "../lib/api";
 import { formatBytes } from "../lib/format";
 import { t } from "../lib/i18n";
-import { fileVisual } from "../lib/present";
+import { folderFor } from "../lib/paths";
+import { categoryForFiles, categoryIcon, displayName, fileVisual } from "../lib/present";
 import { useApp } from "../lib/store";
 import { buildTree, nodeState, type TreeNode } from "../lib/tree";
 import type { StartMode } from "../lib/types";
 import { attempt } from "../lib/ui";
 import { pickFolder, win } from "../lib/win";
 
+/** "Add torrent": the torrent's files, where they go and when they start, laid out like the Download File window. */
 export default function TorrentWindow({ source }: { source: string }) {
+  const categories = useApp((s) => s.categories);
+  const queues = useApp((s) => s.queues);
   const [src, setSrc] = useState<TorrentSource | null>(null);
   const [meta, setMeta] = useState<TorrentMeta | null>(null);
   const [error, setError] = useState("");
   const [sel, setSel] = useState<Set<number>>(new Set());
   const [open, setOpen] = useState<Set<string>>(new Set());
-  const [dir, setDir] = useState(useApp.getState().settings?.downloads.defaultDir ?? "");
+  const [category, setCategory] = useState("other");
+  const [dir, setDir] = useState(() => folderFor("other", useApp.getState().settings?.downloads.defaultDir ?? ""));
+  const [free, setFree] = useState<number | null>(null);
   const [busy, setBusy] = useState(false);
+  const dirTouched = useRef(false);
 
   useEffect(() => {
     void (async () => {
@@ -30,14 +38,25 @@ export default function TorrentWindow({ source }: { source: string }) {
         setMeta(m);
         setSel(new Set(m.files.map((f) => f.index)));
         setOpen(new Set(buildTree(m.files).children.filter((c) => c.children.length).slice(0, 3).map((c) => c.path)));
+        const cat = categoryForFiles(m.files, useApp.getState().categories);
+        setCategory(cat);
+        if (!dirTouched.current) setDir((d) => folderFor(cat, d));
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
     })();
   }, [source]);
 
+  useEffect(() => {
+    if (!dir) return;
+    const timer = window.setTimeout(() => void api.freeSpace(dir).then(setFree, () => setFree(null)), 250);
+    return () => window.clearTimeout(timer);
+  }, [dir]);
+
   const tree = useMemo(() => (meta ? buildTree(meta.files) : null), [meta]);
   const size = meta?.files.filter((f) => sel.has(f.index)).reduce((s, f) => s + f.size, 0) ?? 0;
+  const lowSpace = free != null && size > free;
+  const ready = !!meta && sel.size > 0 && !busy;
 
   const toggle = (node: TreeNode) => {
     const n = new Set(sel);
@@ -50,7 +69,10 @@ export default function TorrentWindow({ source }: { source: string }) {
     if (!src || !meta) return;
     setBusy(true);
     const all = sel.size === meta.files.length;
-    const item = await attempt(api.addTorrent({ source: src, name: meta.name, size, onlyFiles: all ? null : [...sel].sort((a, b) => a - b), saveDir: dir || undefined, mode }), t("Could not add the torrent"));
+    const item = await attempt(
+      api.addTorrent({ source: src, name: meta.name, size, onlyFiles: all ? null : [...sel].sort((a, b) => a - b), saveDir: dir || undefined, category, mode }),
+      t("Could not add the torrent"),
+    );
     setBusy(false);
     if (item) void win.close();
   };
@@ -61,7 +83,7 @@ export default function TorrentWindow({ source }: { source: string }) {
     const st = nodeState(node, sel);
     return (
       <div key={node.path}>
-        <div className="trow" style={{ paddingLeft: 10 + depth * 18 }}>
+        <div className="trow" style={{ paddingInlineStart: 10 + depth * 18 }}>
           {folder ? (
             <button
               type="button"
@@ -118,35 +140,96 @@ export default function TorrentWindow({ source }: { source: string }) {
           </div>
           <div className="big tnum">
             {formatBytes(size || meta?.totalSize)}
-            <small>{meta && sel.size < meta.files.length ? t("of {size}", { size: formatBytes(meta.totalSize) }) : ""}</small>
+            <small className={lowSpace ? "text-danger" : undefined}>
+              {meta && sel.size < meta.files.length ? t("of {size}", { size: formatBytes(meta.totalSize) }) : free != null ? t("{size} free", { size: formatBytes(free) }) : ""}
+            </small>
           </div>
+        </div>
+
+        <div className="tree-head">
+          <span className="field__label">{t("Files")}</span>
+          {meta && <span className="t-small text-tertiary">{t("{count} of {total} selected", { count: sel.size, total: meta.files.length })}</span>}
+          <span className="spacer" />
+          <button type="button" className="btn btn--ghost btn--sm" disabled={!meta} onClick={() => meta && setSel(new Set(meta.files.map((f) => f.index)))}>
+            {t("Select all")}
+          </button>
+          <button type="button" className="btn btn--ghost btn--sm" disabled={!meta} onClick={() => setSel(new Set())}>
+            {t("None")}
+          </button>
         </div>
         <div className="tree" role="tree" aria-label={t("Files")}>
           {tree?.children.map((c) => row(c, 0))}
         </div>
-        <div className="field">
-          <span className="field__label">{t("Save to")}</span>
-          <div className="withbtn">
-            <TextField value={dir} onChange={setDir} icon="folder" label={t("Save folder")} />
-            <button type="button" className="btn" onClick={async () => setDir((await pickFolder(dir)) ?? dir)}>
-              {t("Browse…")}
-            </button>
+
+        <div className="row-save">
+          <div className="field">
+            <span className="field__label">{t("Save to")}</span>
+            <div className="withbtn">
+              <TextField
+                value={dir}
+                onChange={(v) => {
+                  dirTouched.current = true;
+                  setDir(v);
+                }}
+                icon="folder"
+                label={t("Save folder")}
+              />
+              <button
+                type="button"
+                className="btn"
+                onClick={async () => {
+                  const p = await pickFolder(dir);
+                  if (p) {
+                    dirTouched.current = true;
+                    setDir(p);
+                  }
+                }}
+              >
+                {t("Browse…")}
+              </button>
+            </div>
+          </div>
+          <div className="field">
+            <span className="field__label">{t("Category")}</span>
+            <Select
+              label={t("Category")}
+              value={category}
+              onChange={(v) => {
+                setCategory(v);
+                if (!dirTouched.current) setDir(folderFor(v, dir));
+              }}
+              options={categories.map((c) => ({ value: c.id, label: displayName(c.name), icon: categoryIcon(c) }))}
+            />
           </div>
         </div>
       </div>
+
       <footer className="dialog__footer">
-        <button type="button" className="btn btn--ghost btn--sm" disabled={!meta} onClick={() => meta && setSel(new Set(meta.files.map((f) => f.index)))}>
-          {t("Select all")}
-        </button>
-        <button type="button" className="btn btn--ghost btn--sm" disabled={!meta} onClick={() => setSel(new Set())}>
-          {t("None")}
-        </button>
+        <div className="split">
+          <button type="button" className="btn" disabled={!ready} onClick={() => add({ type: "later" })}>
+            <Icon name="status-scheduled" size={15} /> {t("Download later")}
+          </button>
+          <button
+            type="button"
+            className="btn"
+            aria-label={t("More start options")}
+            disabled={!ready}
+            onClick={(e) =>
+              openMenuAt(e.currentTarget, [
+                { label: t("Download later"), icon: "status-scheduled", onSelect: () => void add({ type: "later" }) },
+                { label: t("Add to queue"), icon: "queue", submenu: queues.map((q) => ({ label: displayName(q.name), icon: q.running ? "start-queue" : "queue", onSelect: () => void add({ type: "queue", queueId: q.id }) })) },
+              ])
+            }
+          >
+            <Icon name="chevron-down" size={13} strokeWidth={2.2} />
+          </button>
+        </div>
         <span className="spacer" />
-        <button type="button" className="btn" disabled={!meta || !sel.size || busy} onClick={() => add({ type: "later" })}>
-          {t("Later")}
+        <button type="button" className="btn btn--ghost" onClick={() => void win.close()}>
+          {t("Cancel")}
         </button>
-        <button type="button" className="btn btn--primary" disabled={!meta || !sel.size || busy} onClick={() => add({ type: "now" })}>
-          <Icon name="download" size={15} /> {t("Download")}
+        <button type="button" className="btn btn--primary" disabled={!ready || lowSpace} onClick={() => add({ type: "now" })} data-tip={lowSpace ? t("Not enough free space") : undefined}>
+          <Icon name="download" size={15} /> {t("Start download")}
         </button>
       </footer>
     </WindowFrame>

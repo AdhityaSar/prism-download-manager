@@ -139,7 +139,9 @@ function Header({ cols }: { cols: ColumnDef[] }) {
     const cell = (e.currentTarget as HTMLElement).parentElement!;
     const startW = cell.getBoundingClientRect().width;
     const x0 = e.clientX;
-    const move = (ev: PointerEvent) => useUi.getState().setWidth(col.key, Math.max(col.min, startW + ev.clientX - x0));
+    // The handle sits on the column's end edge: in a right-to-left layout that's its left side.
+    const dir = document.documentElement.dir === "rtl" ? -1 : 1;
+    const move = (ev: PointerEvent) => useUi.getState().setWidth(col.key, Math.max(col.min, startW + (ev.clientX - x0) * dir));
     const up = () => {
       window.removeEventListener("pointermove", move);
       window.removeEventListener("pointerup", up);

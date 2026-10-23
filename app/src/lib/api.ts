@@ -152,6 +152,7 @@ export const api = {
     size?: number;
     onlyFiles?: number[] | null;
     saveDir?: string;
+    category?: string;
     mode?: StartMode;
   }) => invoke<DownloadItem>("add_torrent", { args }),
 

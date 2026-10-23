@@ -134,7 +134,7 @@
   transition: background-color var(--dur-base) var(--ease-standard);
 }
 .switch::after {
-  content: ""; position: absolute; top: 2px; left: 2px;
+  content: ""; position: absolute; top: 2px; inset-inline-start: 2px;
   width: 14px; height: 14px; border-radius: 50%;
   background: #fff;
   box-shadow: 0 1px 3px rgb(0 0 0 / 0.3), 0 0 0 0.5px rgb(0 0 0 / 0.06);
@@ -221,7 +221,7 @@
   overflow: hidden;
 }
 .thumb__dur {
-  position: absolute; right: 2px; bottom: 2px;
+  position: absolute; inset-inline-end: 2px; bottom: 2px;
   padding: 0 3px; border-radius: 3px;
   font: 600 8.5px/12px var(--font-sans);
   color: #fff; background: rgb(0 0 0 / 0.6);
@@ -291,7 +291,7 @@
   font-size: var(--text-base); color: var(--text-primary);
 }
 .menu__item .icon { color: var(--text-secondary); }
-.menu__item > .kbd-hint { margin-left: auto; font-size: var(--text-xs); color: var(--text-tertiary); }
+.menu__item > .kbd-hint { margin-inline-start: auto; font-size: var(--text-xs); color: var(--text-tertiary); }
 .menu__item:hover, .menu__item.is-hover { background: var(--accent-solid); color: var(--accent-contrast); }
 .menu__item:hover .icon, .menu__item.is-hover .icon, .menu__item.is-hover .kbd-hint { color: inherit; opacity: .9; }
 .menu__item--danger { color: var(--danger); }

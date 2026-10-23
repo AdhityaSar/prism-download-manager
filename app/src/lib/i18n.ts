@@ -9,11 +9,13 @@
 // English plural forms. `i18n.test.ts` checks that every catalog covers every key the code uses.
 
 import { createElement, Fragment, type ReactNode } from "react";
+import ar from "../locales/ar.json";
 import cs from "../locales/cs.json";
 import de from "../locales/de.json";
 import en from "../locales/en.json";
 import es from "../locales/es.json";
 import fr from "../locales/fr.json";
+import id from "../locales/id.json";
 import it from "../locales/it.json";
 
 export type PluralEntry = Partial<Record<Intl.LDMLPluralRule, string>>;
@@ -26,12 +28,17 @@ export const LANGUAGES = [
   { code: "de", name: "Deutsch" },
   { code: "es", name: "Español" },
   { code: "fr", name: "Français" },
+  { code: "id", name: "Bahasa Indonesia" },
   { code: "it", name: "Italiano" },
+  { code: "ar", name: "العربية" },
 ] as const;
 
 export type Language = (typeof LANGUAGES)[number]["code"];
 
-export const CATALOGS: Record<Language, Catalog> = { en, cs, de, es, fr, it };
+export const CATALOGS: Record<Language, Catalog> = { en, cs, de, es, fr, id, it, ar };
+
+/** Languages written right to left: the whole layout mirrors (`<html dir="rtl">`). */
+const RTL: readonly Language[] = ["ar"];
 
 let current: Language = "en";
 let plurals = new Intl.PluralRules("en");
@@ -59,12 +66,20 @@ export function setLanguage(setting: string | undefined): Language {
     current = lang;
     plurals = new Intl.PluralRules(lang);
   }
-  if (typeof document !== "undefined") document.documentElement.lang = lang;
+  if (typeof document !== "undefined") {
+    document.documentElement.lang = lang;
+    document.documentElement.dir = RTL.includes(lang) ? "rtl" : "ltr";
+  }
   return lang;
 }
 
 export function getLanguage(): Language {
   return current;
+}
+
+/** Locale for dates and times: the UI language, with Western digits like the rest of the UI. */
+export function getLocale(): string {
+  return current === "ar" ? "ar-u-nu-latn" : current;
 }
 
 type Vars = Record<string, string | number>;

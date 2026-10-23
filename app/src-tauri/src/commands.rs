@@ -213,6 +213,7 @@ pub struct AddTorrentArgs {
     size: Option<u64>,
     only_files: Option<Vec<usize>>,
     save_dir: Option<PathBuf>,
+    category: Option<String>,
     mode: Option<StartMode>,
 }
 
@@ -224,6 +225,7 @@ pub async fn add_torrent(core: State<'_, Core>, args: AddTorrentArgs) -> CmdResu
         args.size,
         args.only_files,
         args.save_dir,
+        args.category,
         args.mode.unwrap_or_default(),
     )
     .map_err(err)

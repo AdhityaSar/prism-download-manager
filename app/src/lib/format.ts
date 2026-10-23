@@ -1,6 +1,6 @@
 // Human-readable formatting helpers (sizes, speeds, durations, dates).
 
-import { getLanguage, t } from "./i18n";
+import { getLocale, t } from "./i18n";
 
 const UNITS = ["B", "KB", "MB", "GB", "TB"];
 
@@ -48,10 +48,10 @@ export function formatDate(ms?: number | null): string {
   const now = new Date();
   const sameDay = d.toDateString() === now.toDateString();
   const yesterday = new Date(now.getTime() - 86_400_000).toDateString() === d.toDateString();
-  const time = d.toLocaleTimeString(getLanguage(), { hour: "2-digit", minute: "2-digit" });
+  const time = d.toLocaleTimeString(getLocale(), { hour: "2-digit", minute: "2-digit" });
   if (sameDay) return t("Today {time}", { time });
   if (yesterday) return t("Yesterday {time}", { time });
-  return d.toLocaleDateString(getLanguage(), { day: "numeric", month: "short", year: d.getFullYear() === now.getFullYear() ? undefined : "numeric" });
+  return d.toLocaleDateString(getLocale(), { day: "numeric", month: "short", year: d.getFullYear() === now.getFullYear() ? undefined : "numeric" });
 }
 
 export function percent(done: number, total?: number | null): number | null {

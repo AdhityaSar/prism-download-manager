@@ -34,13 +34,15 @@ fn lookup(lang: &str, key: &str) -> Option<&'static str> {
         "es" => 3,
         "fr" => 4,
         "it" => 5,
+        "id" => 6,
+        "ar" => 7,
         _ => return None,
     };
     Some(row[column])
 }
 
-/// English, Czech, German, Spanish, French, Italian.
-const TEXTS: &[[&str; 6]] = &[
+/// English, Czech, German, Spanish, French, Italian, Indonesian, Arabic.
+const TEXTS: &[[&str; 8]] = &[
     [
         "Open Prism",
         "Otevřít Prism",
@@ -48,6 +50,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Abrir Prism",
         "Ouvrir Prism",
         "Apri Prism",
+        "Buka Prism",
+        "فتح Prism",
     ],
     [
         "Add URL…",
@@ -56,6 +60,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Añadir URL…",
         "Ajouter une URL…",
         "Aggiungi URL…",
+        "Tambah URL…",
+        "إضافة رابط…",
     ],
     [
         "Pause all",
@@ -64,6 +70,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Pausar todo",
         "Tout suspendre",
         "Metti tutto in pausa",
+        "Jeda semua",
+        "إيقاف الكل مؤقتًا",
     ],
     [
         "Resume all",
@@ -72,6 +80,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Reanudar todo",
         "Tout reprendre",
         "Riprendi tutto",
+        "Lanjutkan semua",
+        "استئناف الكل",
     ],
     [
         "Speed limiter",
@@ -80,6 +90,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Limitador de velocidad",
         "Limiteur de vitesse",
         "Limitatore di velocità",
+        "Pembatas kecepatan",
+        "محدد السرعة",
     ],
     [
         "Mini window",
@@ -88,6 +100,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Mini ventana",
         "Mini-fenêtre",
         "Mini finestra",
+        "Jendela mini",
+        "نافذة مصغرة",
     ],
     [
         "Drop zone",
@@ -96,6 +110,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Zona para soltar",
         "Zone de dépôt",
         "Area di rilascio",
+        "Zona lepas",
+        "منطقة الإفلات",
     ],
     [
         "Quit Prism",
@@ -104,6 +120,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Salir de Prism",
         "Quitter Prism",
         "Esci da Prism",
+        "Keluar dari Prism",
+        "إنهاء Prism",
     ],
     [
         "Prism — idle",
@@ -112,6 +130,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Prism — inactivo",
         "Prism — inactif",
         "Prism — inattivo",
+        "Prism — diam",
+        "Prism — خامل",
     ],
     [
         "Prism — {count} downloading · {speed}",
@@ -120,6 +140,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Prism — {count} descargando · {speed}",
         "Prism — {count} en cours · {speed}",
         "Prism — {count} in download · {speed}",
+        "Prism — {count} mengunduh · {speed}",
+        "Prism — {count} قيد التنزيل · {speed}",
     ],
     [
         "Download added",
@@ -128,6 +150,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Descarga añadida",
         "Téléchargement ajouté",
         "Download aggiunto",
+        "Unduhan ditambahkan",
+        "تمت إضافة التنزيل",
     ],
     [
         "Download complete",
@@ -136,6 +160,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Descarga completada",
         "Téléchargement terminé",
         "Download completato",
+        "Unduhan selesai",
+        "اكتمل التنزيل",
     ],
     [
         "Download failed",
@@ -144,6 +170,8 @@ const TEXTS: &[[&str; 6]] = &[
         "La descarga ha fallado",
         "Échec du téléchargement",
         "Download non riuscito",
+        "Unduhan gagal",
+        "فشل التنزيل",
     ],
     [
         "Queue finished",
@@ -152,6 +180,8 @@ const TEXTS: &[[&str; 6]] = &[
         "Cola terminada",
         "File d’attente terminée",
         "Coda completata",
+        "Antrean selesai",
+        "انتهت قائمة الانتظار",
     ],
     [
         "{name} has no more downloads.",
@@ -160,6 +190,18 @@ const TEXTS: &[[&str; 6]] = &[
         "{name} no tiene más descargas.",
         "{name} n’a plus de téléchargements.",
         "{name} non ha altri download.",
+        "{name} tidak punya unduhan lagi.",
+        "لم يعد في {name} أي تنزيلات.",
+    ],
+    [
+        "Added to the list",
+        "Přidáno do seznamu",
+        "Zur Liste hinzugefügt",
+        "Añadido a la lista",
+        "Ajouté à la liste",
+        "Aggiunto all’elenco",
+        "Ditambahkan ke daftar",
+        "أضيف إلى القائمة",
     ],
 ];
 

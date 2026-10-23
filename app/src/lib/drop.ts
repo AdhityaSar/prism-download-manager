@@ -3,7 +3,8 @@
 import { actions } from "./actions";
 import { api } from "./api";
 import { t } from "./i18n";
-import { bytesToBase64, extractUrls } from "./present";
+import { bytesToBase64, categoryForFiles, extractUrls } from "./present";
+import { useApp } from "./store";
 import { attempt, toast } from "./ui";
 
 /** Shared by the main window and the drop zone. */
@@ -13,7 +14,7 @@ export async function handleDrop(dt: DataTransfer) {
     const value = bytesToBase64(new Uint8Array(await f.arrayBuffer()));
     const meta = await attempt(api.inspectTorrent({ type: "file", value }), t("Could not read {name}", { name: f.name }));
     if (meta) {
-      const item = await attempt(api.addTorrent({ source: { type: "file", value }, name: meta.name, size: meta.totalSize }), t("Could not add the torrent"));
+      const item = await attempt(api.addTorrent({ source: { type: "file", value }, name: meta.name, size: meta.totalSize, category: categoryForFiles(meta.files, useApp.getState().categories) }), t("Could not add the torrent"));
       if (item) toast(t("Torrent added"), { kind: "success", body: meta.name });
     }
   }

@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { gridTemplate, resolveColumns, toggleColumn } from "./columns";
-import { bytesToBase64, extractUrls, fileVisual, isTorrentLink, looksLikeUrl, matchesFilter, middleTruncate, progressOf, statusView } from "./present";
+import { bytesToBase64, categoryForFiles, extractUrls, fileVisual, isTorrentLink, looksLikeUrl, matchesFilter, middleTruncate, progressOf, statusView } from "./present";
 import { Ring, smoothPath } from "./ring";
 import { hexDecode, hexEncode, parseRoute } from "./route";
 import { clickSelect, moveSelect } from "./selection";
@@ -146,5 +146,26 @@ describe("torrent tree", () => {
     expect(nodeState(docs, new Set([0]))).toBe("some");
     expect(nodeState(docs, new Set([0, 1]))).toBe("all");
     expect(nodeState(docs, new Set([2]))).toBe("none");
+  });
+});
+
+describe("categoryForFiles (torrent window)", () => {
+  const cats = [
+    { id: "video", extensions: ["mp4", "mkv"] },
+    { id: "compressed", extensions: [".ISO", "zip"] },
+    { id: "other", extensions: [] },
+  ];
+  it("takes the category of the largest file", () => {
+    const files = [
+      { path: "Show/sample.mkv", size: 20 },
+      { path: "Show/disc.iso", size: 4000 },
+      { path: "Show/info.nfo", size: 1 },
+    ];
+    expect(categoryForFiles(files, cats)).toBe("compressed");
+    expect(categoryForFiles([{ path: "movie.MKV", size: 5 }], cats)).toBe("video");
+  });
+  it("falls back to Other", () => {
+    expect(categoryForFiles([{ path: "readme", size: 5 }], cats)).toBe("other");
+    expect(categoryForFiles([], cats)).toBe("other");
   });
 });

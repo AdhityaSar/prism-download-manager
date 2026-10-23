@@ -136,6 +136,14 @@ const BUILTIN_NAMES = new Set([
 /** A category's or queue's name as shown in the UI. */
 export const displayName = (name: string): string => (BUILTIN_NAMES.has(name) ? t(name) : name);
 
+/** The category of a set of files (a torrent): the one its largest file belongs to, else "other". */
+export function categoryForFiles(files: { path: string; size: number }[], categories: Pick<Category, "id" | "extensions">[]): string {
+  const biggest = files.reduce<{ path: string; size: number } | null>((a, f) => (!a || f.size > a.size ? f : a), null);
+  const ext = biggest ? fileExtension(biggest.path) : "";
+  const match = ext ? categories.find((c) => c.extensions.some((e) => e.replace(/^\./, "").toLowerCase() === ext)) : undefined;
+  return match?.id ?? "other";
+}
+
 export function categoryIcon(c: Pick<Category, "id" | "builtin">): IconName {
   return CATEGORY_ICONS[c.id] ?? "custom-folder";
 }

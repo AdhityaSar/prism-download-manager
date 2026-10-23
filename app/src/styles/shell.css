@@ -43,7 +43,7 @@ code { font-family: var(--font-mono); font-size: 0.92em; padding: 1px 5px; borde
 }
 
 /* ---- extra controls ------------------------------------------------------- */
-button.input { text-align: left; cursor: default; }
+button.input { text-align: start; cursor: default; }
 .input input:focus-visible { box-shadow: none; }
 button.input:focus-visible { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3px rgb(var(--accent-rgb) / 0.22); }
 .input--readonly { background: var(--control-bg); }
@@ -87,8 +87,8 @@ button.input:focus-visible { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3p
 .chip.on { color: var(--accent); background: var(--accent-soft); box-shadow: inset 0 0 0 1px var(--accent-border); }
 .chip.on em { color: var(--accent); opacity: 0.8; }
 .split { display: inline-flex; }
-.split .btn:first-child { border-radius: 8px 0 0 8px; }
-.split .btn:last-child { border-radius: 0 8px 8px 0; width: 28px; padding: 0; margin-left: 1px; }
+.split .btn:first-child { border-start-start-radius: 8px; border-end-start-radius: 8px; border-start-end-radius: 0; border-end-end-radius: 0; }
+.split .btn:last-child { border-start-start-radius: 0; border-end-start-radius: 0; border-start-end-radius: 8px; border-end-end-radius: 8px; width: 28px; padding: 0; margin-inline-start: 1px; }
 .disclose { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--text-tertiary); font-weight: 500; }
 .disclose:hover { color: var(--text-secondary); }
 .banner { display: flex; align-items: center; gap: 12px; padding: 12px 14px; border-radius: 12px; font-size: 13px; }
@@ -108,7 +108,7 @@ button.input:focus-visible { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3p
 .menu__item.is-disabled.is-hover { background: transparent; color: var(--text-primary); }
 .menu__text { flex: 1; }
 .menu__check { width: 15px; display: inline-grid; place-items: center; flex: none; }
-.menu__chev { margin-left: auto; opacity: 0.7; }
+.menu__chev { margin-inline-start: auto; opacity: 0.7; }
 
 /* ---- modal ------------------------------------------------------------------ */
 .modal-scrim {
@@ -142,7 +142,7 @@ button.input:focus-visible { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3p
 .batch-preview { display: grid; gap: 4px; padding: 10px 12px; border-radius: 10px; background: var(--control-bg); font-size: 11.5px; }
 
 /* ---- toasts ----------------------------------------------------------------- */
-.toast-stack { position: fixed; right: 18px; bottom: 44px; z-index: var(--z-toast); display: grid; gap: 8px; justify-items: end; pointer-events: none; }
+.toast-stack { position: fixed; inset-inline-end: 18px; bottom: 44px; z-index: var(--z-toast); display: grid; gap: 8px; justify-items: end; pointer-events: none; }
 .toast { pointer-events: auto; width: 340px; padding: 10px 8px 10px 12px; gap: 10px; align-items: flex-start; }
 .toast__icon { width: 30px; height: 30px; border-radius: 9px; display: grid; place-items: center; flex: none; background: var(--accent-soft); color: var(--accent); }
 .toast--success .toast__icon { background: rgb(var(--success-rgb) / 0.14); color: var(--success); }
@@ -174,7 +174,7 @@ button.input:focus-visible { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3p
   display: flex;
   align-items: center;
   gap: 8px;
-  padding-left: 14px;
+  padding-inline-start: 14px;
   font-size: 12.5px;
   font-weight: 500;
   color: var(--text-secondary);
@@ -223,8 +223,8 @@ button.input:focus-visible { box-shadow: inset 0 0 0 1px var(--accent), 0 0 0 3p
 .lane__fill { position: absolute; inset: 0; border-radius: 3.5px; background: var(--c); box-shadow: 0 0 8px -1px var(--c); transform-origin: left center; transition: transform var(--dur-progress) linear; }
 .lane__head { position: absolute; top: -2px; bottom: -2px; width: 2px; border-radius: 1px; background: #fff; box-shadow: 0 0 6px 1px var(--c); transition: left var(--dur-progress) linear; }
 [data-theme="light"] .lane__head { background: var(--surface-inverse); }
-.lane__range { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary); text-align: right; white-space: nowrap; }
-.lane__speed { text-align: right; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-secondary); white-space: nowrap; }
+.lane__range { font-family: var(--font-mono); font-size: 10.5px; color: var(--text-tertiary); text-align: end; white-space: nowrap; }
+.lane__speed { text-align: end; font-family: var(--font-mono); font-size: 10.5px; color: var(--text-secondary); white-space: nowrap; }
 .lane.is-done .lane__speed { color: var(--success); font-family: var(--font-sans); font-size: 11px; }
 .lane.is-done .lane__fill { box-shadow: none; opacity: 0.5; }
 .lanes__empty, .lanes__more { font-size: 12px; color: var(--text-tertiary); }
@@ -273,3 +273,15 @@ html[data-window="main"] .win::after {
 }
 html[data-window="main"] .modal-scrim { border-radius: var(--win-radius); }
 html[data-window="main"][data-maximized] { --win-radius: 0px; }
+
+/* ---- right-to-left (Arabic) ------------------------------------------------------- */
+/* Layout mirrors through logical properties; these cover what doesn't. */
+[dir="rtl"] .icon:is([data-icon="chevron-right"], [data-icon="chevron-left"], [data-icon="chevrons-right"], [data-icon="arrow-right"], [data-icon="arrow-left"]) { transform: scaleX(-1); }
+[dir="rtl"] .switch[aria-checked="true"]::after { transform: translateX(-14px); }
+/* Addresses, paths and file names keep their own direction inside the mirrored layout. */
+[dir="rtl"] :is(input, textarea, .t-mono, .ellipsis, .fname-static) { unicode-bidi: plaintext; }
+/* Sizes, speeds and times ("4.7 GB / 6.2 GB") read left to right; so do file names, cut at their end. */
+[dir="rtl"] :is(.num, .tnum, .prog__top > span, .kv__v) { unicode-bidi: plaintext; }
+[dir="rtl"] :is(.name__t, .name__m) { direction: ltr; text-align: right; }
+/* Charts and the file map run left to right (time, position in the file). */
+.chart, .segbar { direction: ltr; }

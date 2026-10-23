@@ -18,9 +18,28 @@ type Change = { icon: IconName; title: string; body: string; credit?: string; ac
 const CHANGES: Change[] = [
   {
     icon: "globe",
+    title: tk("Arabic and Indonesian"),
+    body: tk("Prism now speaks 8 languages. In Arabic the whole window is mirrored right to left."),
+    action: "language",
+  },
+  {
+    icon: "clipboard",
+    title: tk("Copied links without popups"),
+    body: tk("Turn off “Ask before adding copied links” in Settings › General: copied links then go straight into the list, to start whenever you want."),
+  },
+  {
+    icon: "torrent",
+    title: tk("A fuller torrent window"),
+    body: tk("Pick a torrent's category and queue like for any download, and its file list fills the window."),
+  },
+];
+
+/** The previous version's changes, shown below the new ones. */
+const PREVIOUS = { version: "1.1.1", changes: [
+  {
+    icon: "globe",
     title: tk("Prism speaks your language"),
     body: tk("Czech, German, Spanish, French and Italian, besides English. Prism follows your system's language; pick another one in Settings › General."),
-    action: "language",
   },
   {
     icon: "torrent",
@@ -31,38 +50,6 @@ const CHANGES: Change[] = [
     icon: "check",
     title: tk("Fixes"),
     body: tk("The portable version works with the browser extension again, Start minimized keeps Prism in the tray, Zen and Firefox with new profiles connect on Linux, and the Fedora package works with ffmpeg from RPM Fusion."),
-  },
-];
-
-/** The previous version's changes, shown below the new ones. */
-const PREVIOUS = { version: "1.1.0", changes: [
-  {
-    icon: "playlist",
-    title: tk("Playlists done right"),
-    body: tk("Every video keeps its own title. Number them (01 - Title) in Settings › Video & streams, or tick “One at a time” in the video window."),
-    credit: "@asalia22",
-  },
-  {
-    icon: "video",
-    title: tk("Your MKV or WebM choice is used"),
-    body: tk("Videos were saved as MP4 whatever you set in Settings › Video & streams."),
-  },
-  {
-    icon: "browser",
-    title: tk("Zen and Helium"),
-    body: tk("Prism connects to them too: Zen like Firefox, Helium from the Chrome Web Store."),
-  },
-  {
-    icon: "sound",
-    title: tk("Pick your “download complete” sound"),
-    body: tk("Ten new sounds, from a soft kalimba to a music box, in Settings › Sounds."),
-    action: "sounds",
-  },
-  {
-    icon: "activity",
-    title: tk("Streams show their real connections"),
-    body: tk("HLS and DASH downloads list the connections actually working and fill the file map as they go."),
-    credit: "@uuc110",
   },
 ] satisfies Change[] };
 
@@ -80,7 +67,7 @@ export function WhatsNewSheet() {
         <BrandTile size={52} />
         <div>
           <h2>{t("Prism {version} is here", { version })}</h2>
-          <p className="text-secondary">{t("Now in your language, with fixes for torrents, the portable version and Linux.")}</p>
+          <p className="text-secondary">{t("Arabic and Indonesian, copied links without popups and a fuller torrent window.")}</p>
         </div>
       </header>
 

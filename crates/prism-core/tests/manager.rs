@@ -733,3 +733,38 @@ async fn stale_extension_reminder_follows_the_install_type() {
     );
     core.shutdown().await;
 }
+
+/// "Ask before adding copied links" off: copied file links go into the list as "Download
+/// later" items, nothing starts and no window opens.
+#[tokio::test]
+async fn copied_links_go_quietly_into_the_list() {
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core_in(tmp.path()).await;
+    let mut rx = core.subscribe();
+    let urls = [
+        "https://example.invalid/files/a.zip".to_string(),
+        "https://example.invalid/b.iso".to_string(),
+    ];
+    let items = core.add_copied_links(&urls).unwrap();
+    let names: Vec<_> = items.iter().map(|i| i.file_name.as_str()).collect();
+    assert_eq!(names, ["a.zip", "b.iso"]);
+    for i in &items {
+        let now = core.item(&i.id).unwrap();
+        assert!(
+            !now.status.is_active() && now.status != Status::Queued,
+            "{:?}",
+            now.status
+        );
+    }
+    tokio::time::sleep(Duration::from_millis(300)).await;
+    while let Ok(ev) = rx.try_recv() {
+        assert!(
+            !matches!(
+                ev,
+                CoreEvent::CaptureRequested(_) | CoreEvent::BatchRequested(_)
+            ),
+            "no window may open: {ev:?}"
+        );
+    }
+    core.shutdown().await;
+}

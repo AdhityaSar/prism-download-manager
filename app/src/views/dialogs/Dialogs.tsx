@@ -230,6 +230,8 @@ function DeleteDialog({ state, onClose }: { state: { ids: string[]; trash: boole
   const n = state?.ids.length ?? 0;
   const permanent = !!state?.trash || !useTrash;
   const name = first?.fileName ?? t("this download");
+  // Chosen as "Delete with files…": the dialog only confirms that (no checkbox asking again).
+  const chosenWithFiles = !!state?.withFiles;
   const run = async () => {
     if (!state) return;
     onClose();
@@ -240,7 +242,7 @@ function DeleteDialog({ state, onClose }: { state: { ids: string[]; trash: boole
       open={!!state}
       onClose={onClose}
       width={460}
-      title={permanent ? t("Delete permanently?") : t("Move to trash?")}
+      title={chosenWithFiles ? t("Delete with files?") : permanent ? t("Delete permanently?") : t("Move to trash?")}
       icon={<Icon name="delete" size={18} className="text-danger" />}
       initialFocus="[data-autofocus]"
       footer={
@@ -257,7 +259,11 @@ function DeleteDialog({ state, onClose }: { state: { ids: string[]; trash: boole
       }
     >
       <p className="dialog-text">
-        {n === 1
+        {chosenWithFiles
+          ? n === 1
+            ? t("“{name}” and its downloaded file will be deleted. The file can't be restored.", { name })
+            : t("{count} downloads and their files will be deleted. The files can't be restored.", { count: n })
+          : n === 1
           ? permanent
             ? t("“{name}” will be removed from the list.", { name })
             : t("“{name}” will move to the trash. You can restore it from there.", { name })
@@ -265,10 +271,12 @@ function DeleteDialog({ state, onClose }: { state: { ids: string[]; trash: boole
             ? t("{count} downloads will be removed from the list.", { count: n })
             : t("{count} downloads will move to the trash. You can restore it from there.", { count: n })}
       </p>
-      <Checkbox checked={files} onChange={setFiles}>
-        {t("Also delete the downloaded files from disk")}
-      </Checkbox>
-      {!state?.trash && (
+      {!chosenWithFiles && (
+        <Checkbox checked={files} onChange={setFiles}>
+          {t("Also delete the downloaded files from disk")}
+        </Checkbox>
+      )}
+      {!state?.trash && !chosenWithFiles && (
         <p className="field__hint">
           {tr("Turn confirmation off in Settings → General → {option}.", { option: <i>{t("Confirm before deleting")}</i> })}
         </p>

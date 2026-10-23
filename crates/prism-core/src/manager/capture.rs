@@ -790,6 +790,34 @@ impl Core {
             .ok_or_else(|| anyhow!("nothing added"))
     }
 
+    /// Copied links with "Ask before adding copied links" off: straight into the list as
+    /// "Download later" items (like JDownloader's link list), no window. Video pages still get
+    /// the quality picker, since they need a choice. Returns what went into the list.
+    pub fn add_copied_links(&self, urls: &[String]) -> Result<Vec<DownloadItem>> {
+        let (pages, files): (Vec<&String>, Vec<&String>) =
+            urls.iter().partition(|u| is_video_page(u));
+        for url in pages {
+            self.capture(
+                NewItem {
+                    url: url.clone(),
+                    ..Default::default()
+                },
+                CaptureSource::Clipboard,
+            );
+        }
+        if files.is_empty() {
+            return Ok(Vec::new());
+        }
+        let entries = files
+            .into_iter()
+            .map(|url| NewItem {
+                url: url.clone(),
+                ..Default::default()
+            })
+            .collect();
+        self.add_items(entries, StartMode::Later)
+    }
+
     // ----- torrent -----------------------------------------------------------------------------
 
     /// Inspect a magnet / .torrent (resolving metadata) for the file-selection dialog.
@@ -801,6 +829,7 @@ impl Core {
         engine.inspect(&source).await
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn add_torrent(
         &self,
         source: prism_torrent::TorrentSource,
@@ -808,8 +837,12 @@ impl Core {
         size: Option<u64>,
         only_files: Option<Vec<usize>>,
         save_dir: Option<PathBuf>,
+        category: Option<String>,
         mode: StartMode,
     ) -> Result<DownloadItem> {
+        let category = category
+            .filter(|c| self.0.state.lock().categories.iter().any(|k| &k.id == c))
+            .unwrap_or_else(|| "other".into());
         let url = match &source {
             prism_torrent::TorrentSource::Url(u) => u.clone(),
             prism_torrent::TorrentSource::File(_) => format!("torrent:{name}"),
@@ -819,7 +852,7 @@ impl Core {
             kind: Some(ItemKind::Torrent),
             file_name: Some(name),
             save_dir,
-            category: Some("other".into()),
+            category: Some(category),
             size,
             request: Some(serde_json::json!({"source": source, "onlyFiles": only_files})),
             ..Default::default()

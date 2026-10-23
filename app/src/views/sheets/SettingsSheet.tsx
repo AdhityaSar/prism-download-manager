@@ -131,7 +131,7 @@ function SectionBody({ id, s }: { id: string; s: Settings }) {
           </Group>
           <Group title={t("Clipboard")}>
             <Toggle title={t("Watch the clipboard for links")} value={s.clipboard.monitor} onChange={(v) => save({ clipboard: { monitor: v } })} />
-            <Toggle title={t("Ask before adding copied links")} value={s.clipboard.ask} onChange={(v) => save({ clipboard: { ask: v } })} />
+            <Toggle title={t("Ask before adding copied links")} hint={t("Off = copied links go straight into the list, to start whenever you want")} value={s.clipboard.ask} onChange={(v) => save({ clipboard: { ask: v } })} />
           </Group>
         </>
       );

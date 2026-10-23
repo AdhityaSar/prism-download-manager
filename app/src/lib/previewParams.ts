@@ -2,7 +2,7 @@
 // UI into a given state for design reviews and automated screenshots, e.g.
 //   /?theme=dark&select=demo0#/              selected row + details pane
 //   /?sheet=settings:appearance#/            open a sheet (settings[:section] | scheduler[:queue] | grabber[:project] | whatsnew)
-//   /?dialog=properties:demo1#/              open a dialog (properties | delete | batch | category | speedLimit | refreshUrl)
+//   /?dialog=properties:demo1#/              open a dialog (properties | delete | deleteFiles | batch | category | speedLimit | refreshUrl)
 //   /?menu=demo2#/                           open the context menu of a row
 //   /?post=sleep#/                           show the post-queue countdown
 //   /?lang=cs#/                              show the UI in another language (cs | de | es | fr | it | en)
@@ -45,6 +45,7 @@ export function applyPreviewParams() {
     const map: Record<string, Dialog | undefined> = {
       properties: { kind: "properties", id: ids[0] },
       delete: { kind: "delete", ids, trash: false },
+      deleteFiles: { kind: "delete", ids, trash: false, withFiles: true },
       batch: { kind: "batch" },
       category: { kind: "category", category: app.categories.find((c) => c.id === arg) },
       speedLimit: { kind: "speedLimit", ids },

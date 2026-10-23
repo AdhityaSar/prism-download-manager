@@ -43,6 +43,15 @@ export function subscribe(handler: (e: CoreEvent) => void): () => void {
   return () => listeners.delete(handler);
 }
 
+const DEMO_EXTENSIONS: Record<string, string[]> = {
+  video: ["mp4", "mkv", "webm", "mov"],
+  music: ["mp3", "flac", "m4a"],
+  documents: ["pdf", "txt", "docx"],
+  programs: ["exe", "msi", "deb", "dmg"],
+  compressed: ["zip", "7z", "rar", "iso", "tar", "gz"],
+  images: ["jpg", "png", "webp"],
+};
+
 const categories: Category[] = [
   ["video", "Video", "cat-video"],
   ["music", "Music", "cat-music"],
@@ -51,7 +60,7 @@ const categories: Category[] = [
   ["compressed", "Compressed", "cat-compressed"],
   ["images", "Images", "cat-images"],
   ["other", "Other", "cat-other"],
-].map(([id, name, icon], position) => ({ id, name, icon, extensions: [], builtin: true, position }));
+].map(([id, name, icon], position) => ({ id, name, icon, extensions: DEMO_EXTENSIONS[id] ?? [], builtin: true, position }));
 
 const schedule = {
   enabled: true,
@@ -168,7 +177,7 @@ const settings: Settings = {
   video: { ytdlpPath: "", ffmpegPath: "", autoUpdate: true, preferredHeight: 1080, container: "mp4", audioFormat: "m4a", embedSubtitles: false, subtitleLangs: "en.*", embedThumbnail: true, embedMetadata: true, embedChapters: true, sponsorblock: "off", accelerate: true, cookiesFromBrowser: "", fileTemplate: "%(title)s [%(id)s].%(ext)s", numberPlaylistVideos: false },
   shortcuts: {},
   // The demo bootstrap version: "What's new" opens with ?sheet=whatsnew, or by itself with ?lastseen=1.0.9 (an update).
-  lastSeenVersion: (typeof location === "undefined" ? null : new URLSearchParams(location.search).get("lastseen")) ?? "1.1.1",
+  lastSeenVersion: (typeof location === "undefined" ? null : new URLSearchParams(location.search).get("lastseen")) ?? "1.1.2",
   onboardingDone: typeof location === "undefined" || !new URLSearchParams(location.search).has("onboarding"),
 };
 
@@ -424,7 +433,7 @@ function details(id: string): ItemDetails | null {
 
 const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
   bootstrap: (): Bootstrap => ({
-    version: "1.1.1",
+    version: "1.1.2",
     items: Object.values(items),
     categories,
     queues,
@@ -720,10 +729,10 @@ const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
   integration_status: () => ({
     hostPath: "C:\\Program Files\\Prism\\prism-native-host.exe",
     extensionConnected: mockExtSeen > 0,
-    extensionVersion: mockExtSeen > 0 ? (demoParam("oldext") ? "1.0.0" : "1.1.1") : null,
+    extensionVersion: mockExtSeen > 0 ? (demoParam("oldext") ? "1.0.0" : "1.1.2") : null,
     extensionInstallType: mockExtSeen > 0 ? (demoParam("exttype") ?? (mockExtFromStore ? "normal" : "development")) : null,
     extensionOutdated: mockExtSeen > 0 && !!demoParam("oldext") && !["normal", "admin"].includes(demoParam("exttype") ?? ""),
-    appVersion: "1.1.1",
+    appVersion: "1.1.2",
     lastSeen: mockExtSeen || null,
     browsers: (
       [

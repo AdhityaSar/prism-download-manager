@@ -492,7 +492,21 @@ fn side_effects(
             tauri::async_runtime::spawn(async move { quit(&app).await });
         }
         CoreEvent::ClipboardUrls(urls) if settings.clipboard.monitor => {
-            if urls.len() == 1 {
+            if !settings.clipboard.ask {
+                // Quietly into the list ("Download later"), with a notification instead of a window.
+                match core.add_copied_links(urls) {
+                    Ok(items) if !items.is_empty() => {
+                        let mut names: Vec<&str> =
+                            items.iter().take(3).map(|i| i.file_name.as_str()).collect();
+                        if items.len() > 3 {
+                            names.push("…");
+                        }
+                        notify("Added to the list", &names.join("\n"));
+                    }
+                    Ok(_) => {}
+                    Err(e) => tracing::error!("could not add the copied links: {e:#}"),
+                }
+            } else if urls.len() == 1 {
                 core.capture(
                     NewItem {
                         url: urls[0].clone(),
