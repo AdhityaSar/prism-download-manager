@@ -221,6 +221,7 @@ export const api = {
   showMain: () => invoke<void>("show_main"),
   mainWindowStartsVisible: () => invoke<boolean>("main_window_starts_visible"),
   setUiLanguage: (language: string) => invoke<void>("set_ui_language", { language }),
+  removeDeletedFiles: () => invoke<number>("remove_deleted_files"),
   setAutostart: (enabled: boolean) => invoke<boolean>("set_autostart", { enabled }),
   quit: () => invoke<void>("quit_app"),
   freeSpace: (path: string) => invoke<number | null>("free_space", { path }),

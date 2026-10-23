@@ -278,6 +278,8 @@ impl Core {
         // HLS/DASH need ffmpeg to join video and audio: find it now, not only after an update.
         let c = core.clone();
         tokio::spawn(async move { c.sync_ffmpeg_path().await });
+        let c = core.clone();
+        tokio::spawn(async move { c.remove_deleted_files().await });
         Ok(core)
     }
 
@@ -622,6 +624,47 @@ impl Core {
                 .collect()
         };
         self.start_items(&ids);
+    }
+
+    /// "Remove downloads whose files were deleted" (Settings › General): finished downloads whose
+    /// file is gone from a folder that's still there leave the list. A missing folder (an
+    /// unplugged drive) keeps them, and so do torrents, whose folder can be named differently.
+    /// Returns how many were removed.
+    pub async fn remove_deleted_files(&self) -> usize {
+        if !self.settings().general.remove_deleted_files {
+            return 0;
+        }
+        let finished: Vec<(String, PathBuf, PathBuf)> = {
+            let st = self.0.state.lock();
+            st.items
+                .values()
+                .filter(|i| {
+                    i.status == Status::Completed
+                        && !i.trashed
+                        && i.kind != ItemKind::Torrent
+                        && !i.file_name.is_empty()
+                })
+                .map(|i| (i.id.clone(), i.save_dir.clone(), i.path()))
+                .collect()
+        };
+        let gone: Vec<String> = finished
+            .into_iter()
+            .filter(|(_, dir, path)| dir.is_dir() && !path.exists())
+            .map(|(id, _, _)| id)
+            .collect();
+        if gone.is_empty() {
+            return 0;
+        }
+        match self.delete_items(&gone, false, true).await {
+            Ok(()) => {
+                tracing::info!("removed {} downloads whose files were deleted", gone.len());
+                gone.len()
+            }
+            Err(e) => {
+                tracing::warn!("could not remove downloads whose files were deleted: {e:#}");
+                0
+            }
+        }
     }
 
     /// Delete items. With `use_trash` (and not `permanent`) they move to Trash and can be

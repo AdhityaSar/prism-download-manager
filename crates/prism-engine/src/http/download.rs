@@ -74,6 +74,7 @@ pub(crate) fn build_ctx(
         sources: Sources::new(url, final_url, &req.mirrors),
         validators: Default::default(),
         probed: Default::default(),
+        expect_file: req.expect_file,
         source_generation: Arc::new(AtomicU64::new(0)),
     }))
 }

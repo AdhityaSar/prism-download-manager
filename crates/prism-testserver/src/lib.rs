@@ -14,6 +14,7 @@
 //! | `/expiring/<key>?ttl_ms=N&opts` | like `/file`, but answers `410 Gone` once `ttl_ms` elapsed since the first request to that path (signed-URL simulation) |
 //! | `/redirect/<hops>?code=302&to=<target>` | redirect chain of `hops` hops ending at `to`; `{n}` in `to` is replaced by a counter, producing a fresh URL each time |
 //! | `/status/<code>` | answers with that status code |
+//! | `/challenge` | a Cloudflare bot check: `403`, `cf-mitigated: challenge`, an HTML page |
 //! | `/hls/...` | [`HlsFixture`] |
 //! | `/dash/...` | [`DashFixture`] |
 //!

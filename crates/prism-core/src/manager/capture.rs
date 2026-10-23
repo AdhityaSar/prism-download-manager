@@ -280,6 +280,17 @@ impl Core {
     /// Open the "Download File" flow for a URL. The server is probed in the background
     /// and the dialog updates when the real name/size arrive.
     pub fn capture(&self, n: NewItem, source: CaptureSource) -> CaptureInfo {
+        self.capture_probed(n, source, None)
+    }
+
+    /// [`Self::capture`] with the link already tried (`probed`), so the dialog doesn't ask the
+    /// server again.
+    fn capture_probed(
+        &self,
+        n: NewItem,
+        source: CaptureSource,
+        probed: Option<std::result::Result<jobs::ProbeResult, jobs::ProbeFailure>>,
+    ) -> CaptureInfo {
         let _rt = crate::rt::enter();
         // A typed or copied link to a video page (YouTube, Vimeo, ...) gets the quality
         // picker instead of the plain file dialog, like IDM's video panel.
@@ -334,9 +345,17 @@ impl Core {
         );
         self.emit(CoreEvent::CaptureRequested(info.clone()));
         if info.probing {
-            let core = self.clone();
-            let id = info.id.clone();
-            tokio::spawn(async move { core.probe_capture(&id).await });
+            match probed {
+                Some(result) => {
+                    let settings = self.settings();
+                    self.apply_probe(&info.id, result, &settings);
+                }
+                None => {
+                    let core = self.clone();
+                    let id = info.id.clone();
+                    tokio::spawn(async move { core.probe_capture(&id).await });
+                }
+            }
         }
         info
     }
@@ -348,6 +367,16 @@ impl Core {
             (p.item.clone(), st.settings.clone())
         };
         let result = jobs::probe(self, &n, &settings).await;
+        self.apply_probe(id, result, &settings);
+    }
+
+    /// Fills the Download File dialog with what the server said.
+    fn apply_probe(
+        &self,
+        id: &str,
+        result: std::result::Result<jobs::ProbeResult, jobs::ProbeFailure>,
+        settings: &Settings,
+    ) {
         let info = {
             let mut st = self.0.state.lock();
             let categories_list = st.categories.clone();
@@ -864,6 +893,36 @@ impl Core {
 
     // ----- browser messages --------------------------------------------------------------------
 
+    /// Tries a browser download's link before Prism takes it over (`None`: not tried, or no
+    /// answer within [`TRY_LINK_TIME`], so the extension's hand-off still answers in time).
+    async fn try_link(
+        &self,
+        n: &NewItem,
+        settings: &Settings,
+    ) -> Option<std::result::Result<jobs::ProbeResult, jobs::ProbeFailure>> {
+        let get = n
+            .method
+            .as_deref()
+            .is_none_or(|m| m.eq_ignore_ascii_case("GET"));
+        let http = n.url.starts_with("https://") || n.url.starts_with("http://");
+        if !get || !http {
+            return None;
+        }
+        let tried = tokio::time::timeout(TRY_LINK_TIME, jobs::probe(self, n, settings))
+            .await
+            .ok();
+        match &tried {
+            Some(Ok(p)) => tracing::info!(
+                "link tried: {} bytes, {}",
+                p.size.map_or("?".into(), |s| s.to_string()),
+                p.mime.as_deref().unwrap_or("no type")
+            ),
+            Some(Err(f)) => tracing::info!("link tried: {}", f.message),
+            None => tracing::info!("link tried: no answer in time"),
+        }
+        tried
+    }
+
     /// Capture rules handed to the extension (protocol v1 `hello` reply `settings`).
     pub fn capture_rules(&self) -> serde_json::Value {
         let s = self.settings();
@@ -957,8 +1016,23 @@ impl Core {
                     ..Default::default()
                 };
                 let settings = self.settings();
+                // Sites behind a bot check (Cloudflare's "Just a moment...", e.g. softpedia.com)
+                // answer Prism with a page only the browser gets past. Try the link first, briefly
+                // so the browser's download isn't held up, and leave such downloads to the browser.
+                let probed = self.try_link(&n, &settings).await;
+                if let Some(Err(f)) = &probed
+                    && f.browser_only
+                {
+                    tracing::info!("left to the browser: {}", f.message);
+                    let host = url::Url::parse(&n.url)
+                        .ok()
+                        .and_then(|u| u.host_str().map(str::to_string))
+                        .unwrap_or_default();
+                    self.emit(CoreEvent::LeftToBrowser { host });
+                    return serde_json::json!({"ok": true, "accepted": false, "reason": "browserOnly"});
+                }
                 if settings.general.show_capture_dialog {
-                    let info = self.capture(n, CaptureSource::Browser);
+                    let info = self.capture_probed(n, CaptureSource::Browser, probed);
                     serde_json::json!({"ok": true, "accepted": true, "downloadId": info.id})
                 } else {
                     let mode = if settings.downloads.auto_start {
@@ -1235,6 +1309,10 @@ impl Core {
 /// Sites where the in-page button asks the app for formats (yt-dlp) instead of only
 /// offering sniffed streams. The extension uses this list once connected (`capture_rules`), and
 /// ships the same one as its default (`DEFAULT_VIDEO_SITES`, kept equal by a test there).
+/// How long a browser download's link is tried before Prism takes it over: well inside the
+/// extension's hand-off timeout (5 s), after which it would keep the download in the browser.
+const TRY_LINK_TIME: std::time::Duration = std::time::Duration::from_millis(2500);
+
 const VIDEO_SITES: &[&str] = &[
     "youtube.com",
     "youtu.be",

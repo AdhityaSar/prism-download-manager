@@ -17,6 +17,20 @@ type Change = { icon: IconName; title: string; body: string; credit?: string; ac
  */
 const CHANGES: Change[] = [
   {
+    icon: "browser",
+    title: tk("Downloads that need the browser"),
+    body: tk("Some sites, like softpedia.com, let only a web browser download (they check for robots). Prism now leaves those downloads to your browser instead of failing or saving an error page."),
+  },
+  {
+    icon: "list",
+    title: tk("A tidier list"),
+    body: tk("Turn on “Remove downloads whose files were deleted” in Settings › General, and downloads you delete from the computer leave the list too."),
+  },
+];
+
+/** The previous version's changes, shown below the new ones. */
+const PREVIOUS = { version: "1.1.2", changes: [
+  {
     icon: "globe",
     title: tk("Arabic and Indonesian"),
     body: tk("Prism now speaks 8 languages. In Arabic the whole window is mirrored right to left."),
@@ -31,25 +45,6 @@ const CHANGES: Change[] = [
     icon: "torrent",
     title: tk("A fuller torrent window"),
     body: tk("Pick a torrent's category and queue like for any download, and its file list fills the window."),
-  },
-];
-
-/** The previous version's changes, shown below the new ones. */
-const PREVIOUS = { version: "1.1.1", changes: [
-  {
-    icon: "globe",
-    title: tk("Prism speaks your language"),
-    body: tk("Czech, German, Spanish, French and Italian, besides English. Prism follows your system's language; pick another one in Settings › General."),
-  },
-  {
-    icon: "torrent",
-    title: tk("Torrents get their own folder"),
-    body: tk("A torrent with several files is saved in a folder named after it instead of spilling into your downloads."),
-  },
-  {
-    icon: "check",
-    title: tk("Fixes"),
-    body: tk("The portable version works with the browser extension again, Start minimized keeps Prism in the tray, Zen and Firefox with new profiles connect on Linux, and the Fedora package works with ffmpeg from RPM Fusion."),
   },
 ] satisfies Change[] };
 
@@ -67,7 +62,7 @@ export function WhatsNewSheet() {
         <BrandTile size={52} />
         <div>
           <h2>{t("Prism {version} is here", { version })}</h2>
-          <p className="text-secondary">{t("Arabic and Indonesian, copied links without popups and a fuller torrent window.")}</p>
+          <p className="text-secondary">{t("Downloads that need the browser work again, and the list can tidy itself.")}</p>
         </div>
       </header>
 

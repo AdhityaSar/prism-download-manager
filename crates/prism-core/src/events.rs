@@ -124,6 +124,11 @@ pub enum CoreEvent {
         title: String,
         body: String,
     },
+    /// A browser download Prism didn't take over: the site lets only a browser download it (a
+    /// bot check), so the browser keeps downloading it.
+    LeftToBrowser {
+        host: String,
+    },
     ClipboardUrls(Vec<String>),
     Grabber {
         project_id: String,

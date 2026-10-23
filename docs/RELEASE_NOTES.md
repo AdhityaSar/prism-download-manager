@@ -1,21 +1,29 @@
-# Prism 1.1.2 — One beam. Many rays.
+# Prism 1.1.3 — One beam. Many rays.
 
 A fast, open-source download manager for Windows, Linux and macOS, with browser integration
 and video downloads.
 
-## What's new in 1.1.2
+## What's new in 1.1.3
 
-* **Arabic and Indonesian:** Prism now speaks 8 languages. In Arabic the whole window is mirrored
-  right to left. Native speakers offered to check the translations: thank you!
-* **Copied links without popups:** turn off *Ask before adding copied links* in Settings ›
-  General and copied links go straight into the list as *Download later*, like JDownloader's
-  link list (a notification says what was added). This setting did nothing before.
-* **A fuller torrent window:** the file list fills the window, the category is picked from the
-  torrent's files (and decides the folder), and *Download later ▾* can add the torrent to a
-  queue, like the Download File window.
-* **Delete with files** asks once, plainly: it no longer shows a checkbox for what you already
-  chose.
+* **Downloads from sites with a robot check work again**
+  ([#14](https://github.com/FortoGraphy/prism-download-manager/issues/14)). Some sites, like
+  softpedia.com, sit behind Cloudflare's check (*Just a moment…*) that only a web browser passes.
+  Prism used to fail with *HTTP 403* or save the check page as your file (11 KB "completed"
+  downloads). Now it tries the link first and leaves such downloads to the browser, with a
+  notification saying so.
+* **Remove downloads whose files were deleted** (Settings › General, off by default): finished
+  downloads leave the list once their file is gone from the computer, checked when Prism starts
+  and whenever its window comes to the front. Downloads on a drive that isn't connected stay.
+  Thanks to ReyvID for the idea!
+* **An error page is never saved as your file:** when a server answers a program, archive, disk
+  image or media download with a small web page instead, the download fails with a clear message.
 * The Chrome Web Store extension (1.1.0) keeps working as it is; nothing to update there.
+
+### Prism 1.1.2
+
+* Arabic (the whole window mirrored right to left) and Indonesian: 8 languages now.
+* Copied links without popups: turn off *Ask before adding copied links* in Settings › General.
+* A fuller torrent window (category, queue, free space) and *Delete with files* asking once.
 
 ### Prism 1.1.1
 
@@ -27,28 +35,16 @@ and video downloads.
   tray; Zen and Firefox with new profiles connect on Linux; the rpm works with RPM Fusion's ffmpeg
   ([#10](https://github.com/FortoGraphy/prism-download-manager/issues/10)).
 
-### Prism 1.1.0
-
-* The browser extension is in the
-  [Chrome Web Store](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl):
-  one click to add it to Chrome, Edge, Brave, Opera, Vivaldi or Helium, and it updates itself.
-* Zen and Helium in Settings › Browser integration; Repair whenever a browser needs it.
-* Playlists: every video under its own title, optional numbering (`01 - Title.mkv`) and
-  *One at a time*. The container from Settings (MKV, WebM) is used. Thanks to
-  [@asalia22](https://github.com/asalia22)!
-* Ten new "download complete" sounds, real connections for HLS and DASH downloads (thanks to
-  [@uuc110](https://github.com/uuc110)) and a *What's new* window after updates.
-
 ## Downloads
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.1.2_x64-setup.exe` (recommended) · `Prism_1.1.2_x64_en-US.msi` (all users) · `Prism-1.1.2-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.1.2_aarch64.dmg` |
-| macOS — Intel | `Prism_1.1.2_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.1.2_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.1.2-1.x86_64.rpm` |
-| Any Linux | `Prism_1.1.2_amd64.AppImage` |
+| Windows 10 / 11 | `Prism_1.1.3_x64-setup.exe` (recommended) · `Prism_1.1.3_x64_en-US.msi` (all users) · `Prism-1.1.3-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.1.3_aarch64.dmg` |
+| macOS — Intel | `Prism_1.1.3_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.1.3_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.1.3-1.x86_64.rpm` |
+| Any Linux | `Prism_1.1.3_amd64.AppImage` |
 | Browser extension | [Chrome Web Store](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl) (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` (Firefox) |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·

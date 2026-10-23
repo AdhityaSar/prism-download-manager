@@ -295,6 +295,29 @@ fn status(code: StatusCode, msg: &str) -> Response<Body> {
     r
 }
 
+/// What Cloudflare answers clients that haven't passed its bot check (a browser has): `403` with
+/// `cf-mitigated: challenge` and a "Just a moment..." page.
+fn challenge() -> Response<Body> {
+    let page =
+        "<!DOCTYPE html><html><head><title>Just a moment...</title></head><body></body></html>";
+    let mut r = Response::new(full(Bytes::from_static(page.as_bytes())));
+    *r.status_mut() = StatusCode::FORBIDDEN;
+    let h = r.headers_mut();
+    h.insert(
+        "cf-mitigated",
+        header::HeaderValue::from_static("challenge"),
+    );
+    h.insert(
+        header::SERVER,
+        header::HeaderValue::from_static("cloudflare"),
+    );
+    h.insert(
+        header::CONTENT_TYPE,
+        header::HeaderValue::from_static("text/html; charset=UTF-8"),
+    );
+    r
+}
+
 fn header_str(req: &Request<Incoming>, name: header::HeaderName) -> Option<String> {
     req.headers()
         .get(name)
@@ -367,6 +390,7 @@ async fn handle(
                 None => status(StatusCode::BAD_REQUEST, "bad status code"),
             }
         }
+        "challenge" => challenge(),
         "hls" => hls_route(&state, &req, rest),
         "dash" => dash_route(&state, &req, rest),
         _ => status(StatusCode::NOT_FOUND, "not found"),

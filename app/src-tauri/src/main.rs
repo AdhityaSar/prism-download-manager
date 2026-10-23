@@ -204,6 +204,7 @@ fn main() {
             commands::show_main,
             commands::main_window_starts_visible,
             commands::set_ui_language,
+            commands::remove_deleted_files,
             commands::set_autostart,
             commands::quit_app,
             commands::free_space,
@@ -486,6 +487,13 @@ fn side_effects(
             &i18n::tr("{name} has no more downloads.", &[("name", name)]),
         ),
         CoreEvent::Notify { title, body } => notify(title, body),
+        CoreEvent::LeftToBrowser { host } => notify(
+            "Downloading in the browser",
+            &i18n::tr(
+                "{host} lets only a web browser download this file, so the browser is downloading it.",
+                &[("host", host)],
+            ),
+        ),
         CoreEvent::ShowMain => windows::show_main(app),
         CoreEvent::ExitRequested => {
             let app = app.clone();

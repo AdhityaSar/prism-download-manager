@@ -190,6 +190,8 @@ pub(crate) struct HttpCtx {
     pub validators: Mutex<Validators>,
     /// A successful response was received (403/410 afterwards mean an expired link).
     pub probed: AtomicBool,
+    /// See [`crate::DownloadRequest::expect_file`].
+    pub expect_file: bool,
     pub source_generation: Arc<AtomicU64>,
 }
 

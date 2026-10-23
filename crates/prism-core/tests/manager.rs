@@ -768,3 +768,124 @@ async fn copied_links_go_quietly_into_the_list() {
     }
     core.shutdown().await;
 }
+
+/// #14 (softpedia.com): a browser download behind a bot check, or answered with a web page
+/// instead of the `.exe`, is left to the browser (`accepted: false`: the extension lets the
+/// browser carry on) and nothing is added; a normal one is taken over as before, and the
+/// Download File dialog already knows the size from that first try.
+#[tokio::test]
+async fn browser_downloads_only_a_browser_can_get_are_left_to_it() {
+    let server = TestServer::start(ServerConfig::default()).await.unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core_in(tmp.path()).await;
+    let mut rx = core.subscribe();
+    let msg = |url: String, name: &str| {
+        serde_json::json!({
+            "id": "1", "type": "download", "url": url, "filename": name,
+            "cookies": "cf_clearance=x", "userAgent": "TestBrowser/1.0", "method": "GET", "source": "capture",
+        })
+    };
+    for dialog in [false, true] {
+        core.update_settings(&serde_json::json!({"general": {"showCaptureDialog": dialog}}))
+            .unwrap();
+        for (url, name) in [
+            (server.url("/challenge"), "Nero-7.11.10.0.exe"),
+            (
+                server.url("/file/x?size=11389&seed=1&type=text/html"),
+                "Visual_Paradigm.exe",
+            ),
+            // A plain 403 for a link the browser itself just got: only the browser is let in.
+            (server.url("/status/403"), "Nero-8.3.2.1.exe"),
+        ] {
+            let reply = core.handle(msg(url, name)).await;
+            assert_eq!(reply["ok"], true, "{reply}");
+            assert_eq!(reply["accepted"], false, "{name}: {reply}");
+        }
+    }
+    assert!(core.bootstrap().items.is_empty(), "nothing added");
+    let mut left = 0;
+    while let Ok(ev) = rx.try_recv() {
+        assert!(
+            !matches!(ev, CoreEvent::CaptureRequested(_)),
+            "no Download File window"
+        );
+        if matches!(ev, CoreEvent::LeftToBrowser { .. }) {
+            left += 1;
+        }
+    }
+    assert_eq!(left, 6);
+
+    // Other answers are Prism's to show, as before (the dialog explains a 404).
+    let reply = core
+        .handle(msg(server.url("/status/404"), "gone.zip"))
+        .await;
+    assert_eq!(reply["accepted"], true, "{reply}");
+
+    // A normal download: taken over, and the dialog has the size right away.
+    let url = server.url("/file/pkg.zip?size=200000&seed=5");
+    let reply = core.handle(msg(url, "pkg.zip")).await;
+    assert_eq!(reply["accepted"], true, "{reply}");
+    let info = core
+        .pending_capture(reply["downloadId"].as_str().unwrap())
+        .unwrap();
+    assert!(!info.probing);
+    assert_eq!(info.size, Some(200_000));
+    core.shutdown().await;
+}
+
+/// Settings › General › "Remove downloads whose files were deleted" (like ABDM): off by default;
+/// when on, a finished download whose file was deleted leaves the list, while one whose whole
+/// folder is gone (an unplugged drive) and one whose file is still there stay.
+#[tokio::test]
+async fn downloads_whose_files_were_deleted_leave_the_list_when_asked() {
+    let server = TestServer::start(ServerConfig::default()).await.unwrap();
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core_in(tmp.path()).await;
+    let drive = tmp.path().join("usb");
+    let new = |name: &str, dir: Option<PathBuf>| NewItem {
+        url: server.url(&format!("/file/{name}?size=4000&seed=2")),
+        save_dir: dir,
+        ..Default::default()
+    };
+    let items = core
+        .add_items(
+            vec![
+                new("deleted.bin", None),
+                new("kept.bin", None),
+                new("on-usb.bin", Some(drive.clone())),
+            ],
+            StartMode::Now,
+        )
+        .unwrap();
+    // All three finish (in any order).
+    let paths: Vec<PathBuf> = tokio::time::timeout(Duration::from_secs(60), async {
+        loop {
+            let now: Vec<DownloadItem> = items.iter().map(|i| core.item(&i.id).unwrap()).collect();
+            if now.iter().all(|i| i.status == Status::Completed) {
+                break now.iter().map(|i| i.path()).collect();
+            }
+            tokio::time::sleep(Duration::from_millis(50)).await;
+        }
+    })
+    .await
+    .expect("the downloads finish");
+    std::fs::remove_file(&paths[0]).unwrap();
+    std::fs::remove_dir_all(&drive).unwrap();
+
+    assert_eq!(core.remove_deleted_files().await, 0, "off by default");
+    assert_eq!(core.bootstrap().items.len(), 3);
+
+    core.update_settings(&serde_json::json!({"general": {"removeDeletedFiles": true}}))
+        .unwrap();
+    assert_eq!(core.remove_deleted_files().await, 1);
+    let left: Vec<String> = core
+        .bootstrap()
+        .items
+        .into_iter()
+        .map(|i| i.file_name)
+        .collect();
+    assert_eq!(left.len(), 2, "{left:?}");
+    assert!(left.contains(&"kept.bin".to_string()) && left.contains(&"on-usb.bin".to_string()));
+    assert!(paths[1].exists(), "files are never touched");
+    core.shutdown().await;
+}

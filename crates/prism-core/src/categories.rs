@@ -65,6 +65,20 @@ const BUILTIN: &[(&str, &str, &str, &[&str])] = &[
     ("other", "Other", "cat-other", &[]),
 ];
 
+/// A file name whose content is never a web page: programs, archives and disk images, media and
+/// binary documents. A small HTML answer for one is an error or check page, not the file.
+pub fn is_binary_file_name(name: &str) -> bool {
+    const TEXT: &[&str] = &["csv", "md", "rtf", "svg", "txt"];
+    let Some(ext) = Path::new(name).extension().and_then(|e| e.to_str()) else {
+        return false;
+    };
+    let ext = ext.to_ascii_lowercase();
+    !TEXT.contains(&ext.as_str())
+        && BUILTIN
+            .iter()
+            .any(|(id, _, _, exts)| *id != OTHER && exts.contains(&ext.as_str()))
+}
+
 pub fn builtin_categories() -> Vec<Category> {
     BUILTIN
         .iter()

@@ -203,6 +203,26 @@ const TEXTS: &[[&str; 8]] = &[
         "Ditambahkan ke daftar",
         "أضيف إلى القائمة",
     ],
+    [
+        "Downloading in the browser",
+        "Stahuje se v prohlížeči",
+        "Download im Browser",
+        "Descargando en el navegador",
+        "Téléchargement dans le navigateur",
+        "Download nel browser",
+        "Mengunduh di browser",
+        "يجري التنزيل في المتصفح",
+    ],
+    [
+        "{host} lets only a web browser download this file, so the browser is downloading it.",
+        "{host} pouští stahování jen webovému prohlížeči, takže soubor stahuje prohlížeč.",
+        "{host} lässt nur Webbrowser diese Datei herunterladen, daher lädt der Browser sie herunter.",
+        "{host} solo deja descargar este archivo a un navegador web, así que lo descarga el navegador.",
+        "{host} ne laisse qu’un navigateur web télécharger ce fichier, c’est donc le navigateur qui le télécharge.",
+        "{host} permette di scaricare questo file solo a un browser web, quindi lo sta scaricando il browser.",
+        "{host} hanya mengizinkan browser web mengunduh file ini, jadi browser yang mengunduhnya.",
+        "يسمح {host} لمتصفح الويب فقط بتنزيل هذا الملف، لذا يتولى المتصفح تنزيله.",
+    ],
 ];
 
 #[cfg(test)]

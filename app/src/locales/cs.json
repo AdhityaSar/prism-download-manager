@@ -781,12 +781,6 @@
   "Thanks to {name}!": "Díky, {name}!",
   "Try them": "Vyzkoušet",
   "Choose a language": "Vybrat jazyk",
-  "Prism speaks your language": "Prism mluví vaším jazykem",
-  "Czech, German, Spanish, French and Italian, besides English. Prism follows your system's language; pick another one in Settings › General.": "Kromě angličtiny i česky, německy, španělsky, francouzsky a italsky. Prism se řídí jazykem systému; jiný vyberete v Nastavení › Obecné.",
-  "Torrents get their own folder": "Torrenty mají vlastní složku",
-  "A torrent with several files is saved in a folder named after it instead of spilling into your downloads.": "Torrent s více soubory se uloží do složky pojmenované podle něj, místo aby se rozsypal mezi ostatní stahování.",
-  "Fixes": "Opravy",
-  "The portable version works with the browser extension again, Start minimized keeps Prism in the tray, Zen and Firefox with new profiles connect on Linux, and the Fedora package works with ffmpeg from RPM Fusion.": "Přenosná verze opět funguje s rozšířením prohlížeče, volba „Spouštět minimalizovaně“ nechá Prism v oznamovací oblasti, Zen a Firefox s novými profily se na Linuxu připojí a balíček pro Fedoru funguje s ffmpeg z RPM Fusion.",
   "Prism {version} is here": "Prism {version} je tu",
   "Add Prism to your browser in one click": "Přidejte Prism do prohlížeče jedním kliknutím",
   "From the Chrome Web Store, for Chrome, Edge, Brave, Opera, Vivaldi and Helium. It updates by itself, so there's nothing to reload after a Prism update.": "Z Chrome Web Store, pro Chrome, Edge, Brave, Operu, Vivaldi a Helium. Aktualizuje se samo, takže po aktualizaci Prismu není co znovu načítat.",
@@ -1014,5 +1008,11 @@
   "Turn off “Ask before adding copied links” in Settings › General: copied links then go straight into the list, to start whenever you want.": "Vypněte „Před přidáním zkopírovaných odkazů se zeptat“ v Nastavení › Obecné: zkopírované odkazy pak půjdou rovnou do seznamu a spustíte je, kdy budete chtít.",
   "A fuller torrent window": "Bohatší okno pro torrenty",
   "Pick a torrent's category and queue like for any download, and its file list fills the window.": "U torrentu vyberete kategorii i frontu jako u každého stahování a seznam souborů vyplní celé okno.",
-  "Arabic and Indonesian, copied links without popups and a fuller torrent window.": "Arabština a indonéština, zkopírované odkazy bez vyskakovacích oken a bohatší okno pro torrenty."
+  "Remove downloads whose files were deleted": "Odebírat stahování, jejichž soubory byly smazány",
+  "Finished downloads leave the list once their file is gone from the computer": "Dokončená stahování zmizí ze seznamu, jakmile jejich soubor v počítači už není",
+  "Downloads that need the browser": "Stahování, která potřebují prohlížeč",
+  "Some sites, like softpedia.com, let only a web browser download (they check for robots). Prism now leaves those downloads to your browser instead of failing or saving an error page.": "Některé weby, třeba softpedia.com, pouštějí stahování jen webovému prohlížeči (kontrolují roboty). Prism teď taková stahování nechá prohlížeči, místo aby selhal nebo uložil chybovou stránku.",
+  "A tidier list": "Uklizenější seznam",
+  "Turn on “Remove downloads whose files were deleted” in Settings › General, and downloads you delete from the computer leave the list too.": "Zapněte „Odebírat stahování, jejichž soubory byly smazány“ v Nastavení › Obecné a stahování, která smažete z počítače, zmizí i ze seznamu.",
+  "Downloads that need the browser work again, and the list can tidy itself.": "Stahování, která potřebují prohlížeč, zase fungují a seznam se umí sám uklidit."
 }

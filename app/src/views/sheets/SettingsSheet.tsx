@@ -127,6 +127,16 @@ function SectionBody({ id, s }: { id: string; s: Settings }) {
           <Group title={t("Deleting")}>
             <Toggle title={t("Confirm before deleting")} value={s.general.confirmDelete} onChange={(v) => save({ general: { confirmDelete: v } })} />
             <Toggle title={t("Use the trash")} hint={t("Deleted downloads can be restored until you empty the trash")} value={s.general.useTrash} onChange={(v) => save({ general: { useTrash: v } })} />
+            <Toggle
+              title={t("Remove downloads whose files were deleted")}
+              hint={t("Finished downloads leave the list once their file is gone from the computer")}
+              value={s.general.removeDeletedFiles}
+              onChange={async (v) => {
+                // Saved first: the core checks the setting before it removes anything.
+                await patchSettings({ general: { removeDeletedFiles: v } });
+                if (v) void api.removeDeletedFiles().catch(() => {});
+              }}
+            />
             <Toggle title={t("Check for updates automatically")} hint={t("Prism asks before installing; it restarts by itself and your downloads continue")} value={s.general.checkUpdates} onChange={(v) => save({ general: { checkUpdates: v } })} />
           </Group>
           <Group title={t("Clipboard")}>

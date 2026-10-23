@@ -456,6 +456,8 @@ pub(crate) struct ProbeResult {
 pub(crate) struct ProbeFailure {
     pub message: String,
     pub needs_auth: bool,
+    /// The site lets only a browser download it (a bot check, or a web page instead of the file).
+    pub browser_only: bool,
 }
 
 pub(crate) async fn probe(
@@ -467,7 +469,12 @@ pub(crate) async fn probe(
     let mut req: DownloadRequest = serde_json::from_value(value).map_err(|_| ProbeFailure {
         message: "Invalid address".into(),
         needs_auth: false,
+        browser_only: false,
     })?;
+    req.expect_file = n
+        .file_name
+        .as_deref()
+        .is_some_and(crate::categories::is_binary_file_name);
     req.proxy = Some(proxy_config(settings));
     req.http = http_preference(settings);
     match tokio::time::timeout(Duration::from_secs(20), core.0.engine.probe(&req)).await {
@@ -480,11 +487,20 @@ pub(crate) async fn probe(
         }),
         Ok(Err(e)) => Err(ProbeFailure {
             needs_auth: matches!(e, EngineError::AuthRequired),
+            // A 403 for a link the browser just downloaded means the server lets only the browser
+            // in (a bot check by browser fingerprint, like Cloudflare's on softpedia.com).
+            browser_only: matches!(
+                e,
+                EngineError::BrowserCheck
+                    | EngineError::WebPage
+                    | EngineError::Http { status: 403 }
+            ),
             message: e.user_message(),
         }),
         Err(_) => Err(ProbeFailure {
             message: "The server did not answer in time".into(),
             needs_auth: false,
+            browser_only: false,
         }),
     }
 }
@@ -521,6 +537,7 @@ fn build_request(item: &DownloadItem, settings: &Settings) -> Result<DownloadReq
     {
         req.destination.file_name = Some(item.file_name.clone());
     }
+    req.expect_file = crate::categories::is_binary_file_name(&item.file_name);
     req.connections = item.connections.max(1);
     req.speed_limit = item.speed_limit;
     req.proxy = Some(proxy_config(settings));

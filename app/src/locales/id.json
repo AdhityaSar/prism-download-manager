@@ -742,12 +742,6 @@
   "Thanks to {name}!": "Terima kasih kepada {name}!",
   "Try them": "Coba sekarang",
   "Choose a language": "Pilih bahasa",
-  "Prism speaks your language": "Prism kini berbahasa Anda",
-  "Czech, German, Spanish, French and Italian, besides English. Prism follows your system's language; pick another one in Settings › General.": "Ceko, Jerman, Spanyol, Prancis, dan Italia, selain Inggris. Prism mengikuti bahasa sistem; pilih bahasa lain di Pengaturan › Umum.",
-  "Torrents get their own folder": "Torrent punya folder sendiri",
-  "A torrent with several files is saved in a folder named after it instead of spilling into your downloads.": "Torrent dengan beberapa file disimpan di folder bernama sama dengan torrent itu, tidak lagi berserakan di antara unduhan Anda.",
-  "Fixes": "Perbaikan",
-  "The portable version works with the browser extension again, Start minimized keeps Prism in the tray, Zen and Firefox with new profiles connect on Linux, and the Fedora package works with ffmpeg from RPM Fusion.": "Versi portabel kembali berfungsi dengan ekstensi browser, Mulai diminimalkan menjaga Prism tetap di baki sistem, Zen dan Firefox dengan profil baru bisa terhubung di Linux, dan paket Fedora berfungsi dengan ffmpeg dari RPM Fusion.",
   "Prism {version} is here": "Prism {version} telah hadir",
   "Add Prism to your browser in one click": "Tambahkan Prism ke browser Anda dengan sekali klik",
   "From the Chrome Web Store, for Chrome, Edge, Brave, Opera, Vivaldi and Helium. It updates by itself, so there's nothing to reload after a Prism update.": "Dari Chrome Web Store, untuk Chrome, Edge, Brave, Opera, Vivaldi, dan Helium. Ekstensi diperbarui otomatis, jadi tidak ada yang perlu dimuat ulang setelah Prism diperbarui.",
@@ -945,5 +939,11 @@
   "Turn off “Ask before adding copied links” in Settings › General: copied links then go straight into the list, to start whenever you want.": "Matikan “Tanya sebelum menambahkan tautan yang disalin” di Pengaturan › Umum: tautan yang disalin langsung masuk ke daftar, dan Anda bisa memulainya kapan saja.",
   "A fuller torrent window": "Jendela torrent yang lebih lengkap",
   "Pick a torrent's category and queue like for any download, and its file list fills the window.": "Pilih kategori dan antrean torrent seperti unduhan lainnya, dan daftar file memenuhi jendela.",
-  "Arabic and Indonesian, copied links without popups and a fuller torrent window.": "Bahasa Arab dan Indonesia, tautan yang disalin tanpa jendela munculan, dan jendela torrent yang lebih lengkap."
+  "Remove downloads whose files were deleted": "Hapus unduhan yang file-nya sudah dihapus",
+  "Finished downloads leave the list once their file is gone from the computer": "Unduhan yang selesai keluar dari daftar setelah file-nya tidak ada lagi di komputer",
+  "Downloads that need the browser": "Unduhan yang memerlukan browser",
+  "Some sites, like softpedia.com, let only a web browser download (they check for robots). Prism now leaves those downloads to your browser instead of failing or saving an error page.": "Beberapa situs, seperti softpedia.com, hanya mengizinkan browser web mengunduh (mereka memeriksa robot). Kini Prism menyerahkan unduhan seperti itu ke browser Anda, alih-alih gagal atau menyimpan halaman galat.",
+  "A tidier list": "Daftar yang lebih rapi",
+  "Turn on “Remove downloads whose files were deleted” in Settings › General, and downloads you delete from the computer leave the list too.": "Aktifkan “Hapus unduhan yang file-nya sudah dihapus” di Pengaturan › Umum, dan unduhan yang Anda hapus dari komputer juga keluar dari daftar.",
+  "Downloads that need the browser work again, and the list can tidy itself.": "Unduhan yang memerlukan browser kembali berfungsi, dan daftar bisa merapikan dirinya sendiri."
 }

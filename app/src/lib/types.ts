@@ -180,6 +180,8 @@ export interface Settings {
     checkUpdates: boolean;
     /** UI language code ("en", "cs", …); "" = the system's language. */
     language: string;
+    /** Finished downloads whose file was deleted from the computer leave the list. */
+    removeDeletedFiles: boolean;
   };
   appearance: {
     theme: Theme;

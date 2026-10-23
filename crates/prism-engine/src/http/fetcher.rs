@@ -283,12 +283,18 @@ impl HttpFetcher {
                 .on_redirected(SourceRef::Primary, resp.url());
             let status = resp.status().as_u16();
             let headers = resp.headers().clone();
+            if is_browser_check(&headers) {
+                return Err(FetchError::fatal(EngineError::BrowserCheck));
+            }
             match status {
                 206 => {
                     let cr = header_string(&headers, header::CONTENT_RANGE)
                         .and_then(|v| parse_content_range(&v));
                     match cr {
                         Some((0, b, Some(total))) => {
+                            if self.ctx.expect_file && is_web_page(&headers, Some(total)) {
+                                return Err(FetchError::fatal(EngineError::WebPage));
+                            }
                             self.ctx.mark_probed();
                             let info = probe_info(&resp, Some(total), true);
                             let mode = if total == 0 {
@@ -316,6 +322,9 @@ impl HttpFetcher {
                         .and_then(|v| v.to_str().ok())
                         .is_some_and(|v| !v.eq_ignore_ascii_case("identity"));
                     let size = if encoded { None } else { resp.content_length() };
+                    if self.ctx.expect_file && is_web_page(&headers, size) {
+                        return Err(FetchError::fatal(EngineError::WebPage));
+                    }
                     let info = probe_info(&resp, size, false);
                     let mode = if size == Some(0) {
                         ProbeMode::Empty
@@ -396,6 +405,9 @@ impl HttpFetcher {
             };
             self.ctx.sources.on_redirected(src, resp.url());
             let status = resp.status().as_u16();
+            if is_browser_check(resp.headers()) {
+                return Err(FetchError::fatal(EngineError::BrowserCheck));
+            }
             let switch = |sw: &mut usize| -> bool {
                 if *sw < max_switches {
                     *sw += 1;
@@ -545,6 +557,25 @@ impl RangeFetcher for HttpFetcher {
     fn bounded(&self) -> bool {
         self.ctx.validators().ranged
     }
+}
+
+/// Cloudflare's bot check ("Just a moment..."): a challenge only a real browser passes, so
+/// retrying (or another connection) can't help.
+fn is_browser_check(headers: &header::HeaderMap) -> bool {
+    headers
+        .get("cf-mitigated")
+        .and_then(|v| v.to_str().ok())
+        .is_some_and(|v| v.trim().eq_ignore_ascii_case("challenge"))
+}
+
+/// A small HTML answer (an error or check page). Big ones are left alone: a large file sent with
+/// a wrong `text/html` type is still the file.
+fn is_web_page(headers: &header::HeaderMap, size: Option<u64>) -> bool {
+    let html = header_string(headers, header::CONTENT_TYPE).is_some_and(|m| {
+        let m = m.trim().to_ascii_lowercase();
+        m.starts_with("text/html") || m.starts_with("application/xhtml")
+    });
+    html && size.is_none_or(|s| s < 2 * 1024 * 1024)
 }
 
 /// Builds [`ProbeInfo`] from a response.

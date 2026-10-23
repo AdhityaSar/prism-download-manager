@@ -45,6 +45,8 @@ pub struct General {
     pub use_trash: bool,
     /// Look for new Prism versions on start and every few hours.
     pub check_updates: bool,
+    /// Finished downloads whose file was deleted from the computer leave the list (off by default).
+    pub remove_deleted_files: bool,
     /// UI language code ("en", "cs", "de", "es", "fr", "it"); empty = the system's language.
     pub language: String,
 }
@@ -62,6 +64,7 @@ impl Default for General {
             confirm_delete: true,
             use_trash: true,
             check_updates: true,
+            remove_deleted_files: false,
             language: String::new(),
         }
     }

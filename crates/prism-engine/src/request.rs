@@ -190,6 +190,11 @@ pub struct DownloadRequest {
     /// Upper bound of a single HTTP range request (e.g. 10 MiB for YouTube formats).
     #[serde(default)]
     pub max_request_size: Option<u64>,
+    /// The download is a file with a non-web name (`setup.exe`, `disc.iso`): a small HTML answer
+    /// is then an error or check page, and fails with [`crate::EngineError::WebPage`] instead of
+    /// being saved under that name.
+    #[serde(default)]
+    pub expect_file: bool,
 }
 
 impl DownloadRequest {
@@ -217,6 +222,7 @@ impl DownloadRequest {
             speed_limit: 0,
             max_retries: None,
             max_request_size: None,
+            expect_file: false,
         }
     }
 }

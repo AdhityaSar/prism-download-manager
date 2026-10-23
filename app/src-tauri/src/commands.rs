@@ -602,6 +602,13 @@ pub async fn set_ui_language(app: AppHandle, language: String) -> CmdResult<()> 
     Ok(())
 }
 
+/// Settings › General › "Remove downloads whose files were deleted" (the main window asks when it
+/// comes to the front). Returns how many were removed.
+#[tauri::command]
+pub async fn remove_deleted_files(core: State<'_, Core>) -> CmdResult<usize> {
+    Ok(core.remove_deleted_files().await)
+}
+
 #[tauri::command]
 pub async fn show_main(app: AppHandle) -> CmdResult<()> {
     windows::show_main(&app);

@@ -50,6 +50,13 @@ pub enum EngineError {
     /// The (signed/temporary) download link is no longer valid; refresh the address.
     #[error("the download link has expired")]
     LinkExpired,
+    /// The site answered with a bot check (Cloudflare's "Just a moment...") that only a web
+    /// browser can pass.
+    #[error("the site only lets a web browser download this file")]
+    BrowserCheck,
+    /// A web page came back where a file was expected (an error or check page).
+    #[error("the server sent a web page instead of the file")]
+    WebPage,
     /// Checksum verification failed after completion. The file is kept at `path`.
     #[error("checksum mismatch: expected {expected}, got {actual}")]
     ChecksumMismatch {
@@ -164,6 +171,12 @@ impl EngineError {
             EngineError::RangeNotSupported => "The server does not support resuming this download.".into(),
             EngineError::LinkExpired => {
                 "The download link has expired. Refresh the download address from the web page.".into()
+            }
+            EngineError::BrowserCheck => {
+                "This site lets only a web browser download the file (it checks for robots). Download it in your browser.".into()
+            }
+            EngineError::WebPage => {
+                "The server sent a web page instead of the file. The link may have expired or may only work in the browser.".into()
             }
             EngineError::ChecksumMismatch { .. } => {
                 "The downloaded file does not match the expected checksum; it may be corrupted.".into()

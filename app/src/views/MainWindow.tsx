@@ -40,6 +40,19 @@ export function MainWindow() {
     api.mainWindowStartsVisible().then((visible) => visible !== false && show(), show);
   }, []);
 
+  // Settings › General › "Remove downloads whose files were deleted": checked again whenever the
+  // window comes to the front (files are usually deleted while Prism is in the background).
+  useEffect(() => {
+    let last = 0;
+    const check = () => {
+      if (!useApp.getState().settings?.general.removeDeletedFiles || Date.now() - last < 10_000) return;
+      last = Date.now();
+      void api.removeDeletedFiles().catch(() => {});
+    };
+    window.addEventListener("focus", check);
+    return () => window.removeEventListener("focus", check);
+  }, []);
+
   // Square corners while maximized / fullscreen, rounded otherwise (see shell.css).
   useEffect(() => {
     const root = document.documentElement;

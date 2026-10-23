@@ -766,12 +766,6 @@
   "Thanks to {name}!": "Grazie a {name}!",
   "Try them": "Provali",
   "Choose a language": "Scegli una lingua",
-  "Prism speaks your language": "Prism parla la tua lingua",
-  "Czech, German, Spanish, French and Italian, besides English. Prism follows your system's language; pick another one in Settings › General.": "Ceco, tedesco, spagnolo, francese e italiano, oltre all’inglese. Prism usa la lingua del sistema; puoi sceglierne un’altra in Impostazioni › Generali.",
-  "Torrents get their own folder": "I torrent hanno una cartella tutta loro",
-  "A torrent with several files is saved in a folder named after it instead of spilling into your downloads.": "Un torrent con più file viene salvato in una cartella con il suo nome, invece di sparpagliarsi tra i tuoi download.",
-  "Fixes": "Correzioni",
-  "The portable version works with the browser extension again, Start minimized keeps Prism in the tray, Zen and Firefox with new profiles connect on Linux, and the Fedora package works with ffmpeg from RPM Fusion.": "La versione portable funziona di nuovo con l’estensione del browser, Avvia ridotto a icona mantiene Prism nell’area di notifica, Zen e Firefox con profili nuovi si collegano su Linux e il pacchetto Fedora funziona con ffmpeg di RPM Fusion.",
   "Prism {version} is here": "È arrivato Prism {version}",
   "Add Prism to your browser in one click": "Aggiungi Prism al browser con un clic",
   "From the Chrome Web Store, for Chrome, Edge, Brave, Opera, Vivaldi and Helium. It updates by itself, so there's nothing to reload after a Prism update.": "Dal Chrome Web Store, per Chrome, Edge, Brave, Opera, Vivaldi e Helium. Si aggiorna da sola, quindi non c’è niente da ricaricare dopo un aggiornamento di Prism.",
@@ -991,5 +985,11 @@
   "Turn off “Ask before adding copied links” in Settings › General: copied links then go straight into the list, to start whenever you want.": "Disattiva “Chiedi prima di aggiungere i link copiati” in Impostazioni › Generali: i link copiati finiranno subito nell’elenco e li avvii quando vuoi.",
   "A fuller torrent window": "Una finestra dei torrent più completa",
   "Pick a torrent's category and queue like for any download, and its file list fills the window.": "Scegli categoria e coda di un torrent come per qualsiasi download, e l’elenco dei file riempie la finestra.",
-  "Arabic and Indonesian, copied links without popups and a fuller torrent window.": "Arabo e indonesiano, link copiati senza popup e una finestra dei torrent più completa."
+  "Remove downloads whose files were deleted": "Rimuovi i download i cui file sono stati eliminati",
+  "Finished downloads leave the list once their file is gone from the computer": "I download completati escono dall’elenco quando il loro file non è più sul computer",
+  "Downloads that need the browser": "Download che richiedono il browser",
+  "Some sites, like softpedia.com, let only a web browser download (they check for robots). Prism now leaves those downloads to your browser instead of failing or saving an error page.": "Alcuni siti, come softpedia.com, permettono di scaricare solo a un browser web (controllano che tu non sia un bot). Ora Prism lascia questi download al tuo browser invece di fallire o salvare una pagina di errore.",
+  "A tidier list": "Un elenco più ordinato",
+  "Turn on “Remove downloads whose files were deleted” in Settings › General, and downloads you delete from the computer leave the list too.": "Attiva “Rimuovi i download i cui file sono stati eliminati” in Impostazioni › Generali, e i download che elimini dal computer escono anche dall’elenco.",
+  "Downloads that need the browser work again, and the list can tidy itself.": "I download che richiedono il browser funzionano di nuovo e l’elenco può riordinarsi da solo."
 }

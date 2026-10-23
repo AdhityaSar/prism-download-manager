@@ -822,12 +822,6 @@
   "Thanks to {name}!": "شكرًا لـ {name}!",
   "Try them": "جرّبها",
   "Choose a language": "اختر لغة",
-  "Prism speaks your language": "يتحدث Prism لغتك",
-  "Czech, German, Spanish, French and Italian, besides English. Prism follows your system's language; pick another one in Settings › General.": "التشيكية والألمانية والإسبانية والفرنسية والإيطالية، إلى جانب الإنجليزية. يتبع Prism لغة نظامك؛ ويمكنك اختيار لغة أخرى من الإعدادات › عام.",
-  "Torrents get their own folder": "مجلد خاص لكل تورنت",
-  "A torrent with several files is saved in a folder named after it instead of spilling into your downloads.": "يُحفظ التورنت متعدد الملفات في مجلد يحمل اسمه بدلًا من أن تتبعثر ملفاته بين تنزيلاتك.",
-  "Fixes": "إصلاحات",
-  "The portable version works with the browser extension again, Start minimized keeps Prism in the tray, Zen and Firefox with new profiles connect on Linux, and the Fedora package works with ffmpeg from RPM Fusion.": "تعمل النسخة المحمولة مع إضافة المتصفح مجددًا، ويُبقي خيار «البدء مصغّرًا» Prism في منطقة الإعلام، ويتصل Zen و Firefox ذوا الملفات الشخصية الجديدة على Linux، وتعمل حزمة Fedora مع ffmpeg من RPM Fusion.",
   "Prism {version} is here": "وصل Prism {version}",
   "Add Prism to your browser in one click": "أضف Prism إلى متصفحك بنقرة واحدة",
   "From the Chrome Web Store, for Chrome, Edge, Brave, Opera, Vivaldi and Helium. It updates by itself, so there's nothing to reload after a Prism update.": "من Chrome Web Store، لـ Chrome و Edge و Brave و Opera و Vivaldi و Helium. تتحدّث تلقائيًا، فلا حاجة لإعادة تحميل أي شيء بعد تحديث Prism.",
@@ -1060,5 +1054,11 @@
   "Turn off “Ask before adding copied links” in Settings › General: copied links then go straight into the list, to start whenever you want.": "أوقف خيار «السؤال قبل إضافة الروابط المنسوخة» من الإعدادات › عام: فتذهب الروابط المنسوخة مباشرة إلى القائمة لتبدأها متى شئت.",
   "A fuller torrent window": "نافذة تورنت أكثر اكتمالًا",
   "Pick a torrent's category and queue like for any download, and its file list fills the window.": "اختر فئة التورنت وقائمة انتظاره كأي تنزيل آخر، وتملأ قائمة ملفاته النافذة.",
-  "Arabic and Indonesian, copied links without popups and a fuller torrent window.": "العربية والإندونيسية، وروابط منسوخة بلا نوافذ منبثقة، ونافذة تورنت أكثر اكتمالًا."
+  "Remove downloads whose files were deleted": "إزالة التنزيلات التي حُذفت ملفاتها",
+  "Finished downloads leave the list once their file is gone from the computer": "تخرج التنزيلات المكتملة من القائمة بمجرد ألا يعود ملفها موجودًا على الكمبيوتر",
+  "Downloads that need the browser": "تنزيلات تحتاج إلى المتصفح",
+  "Some sites, like softpedia.com, let only a web browser download (they check for robots). Prism now leaves those downloads to your browser instead of failing or saving an error page.": "بعض المواقع، مثل softpedia.com، لا تسمح بالتنزيل إلا لمتصفح الويب (فهي تتحقق من أنك لست روبوتًا). أصبح Prism الآن يترك هذه التنزيلات لمتصفحك بدلًا من أن يفشل أو يحفظ صفحة خطأ.",
+  "A tidier list": "قائمة أكثر ترتيبًا",
+  "Turn on “Remove downloads whose files were deleted” in Settings › General, and downloads you delete from the computer leave the list too.": "فعّل خيار «إزالة التنزيلات التي حُذفت ملفاتها» من الإعدادات › عام، فتخرج من القائمة أيضًا التنزيلات التي تحذفها من الكمبيوتر.",
+  "Downloads that need the browser work again, and the list can tidy itself.": "عادت التنزيلات التي تحتاج إلى المتصفح تعمل، ويمكن للقائمة أن ترتب نفسها."
 }

@@ -999,3 +999,62 @@ async fn engine_config_is_live_updatable() {
             .all(|r| r.user_agent.as_deref() == Some("Updated/2"))
     );
 }
+
+/// Cloudflare's bot check (#14, softpedia.com): it fails at once with `BrowserCheck` (no retries,
+/// nothing written), since only the browser can pass it.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn browser_check_fails_at_once_without_a_file() {
+    init_tracing();
+    let srv = default_server().await;
+    let dir = tempfile::tempdir().unwrap();
+    let t = Instant::now();
+    let h = engine().start(request(&srv.url("/challenge"), dir.path(), 8), None, vec![]);
+    assert_eq!(wait(&h, 30).await.unwrap_err(), EngineError::BrowserCheck);
+    assert!(t.elapsed() < Duration::from_secs(3));
+    assert!(
+        std::fs::read_dir(dir.path()).unwrap().next().is_none(),
+        "no file created"
+    );
+    let probe = engine()
+        .probe(&request(&srv.url("/challenge"), dir.path(), 8))
+        .await;
+    assert_eq!(probe.unwrap_err(), EngineError::BrowserCheck);
+}
+
+/// A small web page where a file (`setup.exe`) was expected fails with `WebPage` instead of being
+/// saved as `setup.exe`; without that expectation, and for big files with a wrong `text/html`
+/// type, nothing changes.
+#[tokio::test(flavor = "multi_thread", worker_threads = 4)]
+async fn web_page_instead_of_the_file_is_an_error() {
+    init_tracing();
+    let srv = default_server().await;
+    let dir = tempfile::tempdir().unwrap();
+    let page = srv.url("/file/setup.exe?size=11389&seed=3&type=text/html");
+
+    let mut req = request(&page, dir.path(), 8);
+    req.expect_file = true;
+    let h = engine().start(req, None, vec![]);
+    assert_eq!(wait(&h, 30).await.unwrap_err(), EngineError::WebPage);
+    assert!(!dir.path().join("setup.exe").exists());
+
+    // Same answer, but nothing said it must be a file: downloaded as before.
+    let done = wait(
+        &engine().start(request(&page, dir.path(), 8), None, vec![]),
+        30,
+    )
+    .await
+    .unwrap();
+    assert_eq!(sha256_file(&done.path), expected_sha256(3, 11389));
+    std::fs::remove_file(&done.path).unwrap();
+
+    // A big file sent as text/html is still the file.
+    let size = 3 * MIB;
+    let mut req = request(
+        &srv.url(&format!("/file/big.iso?size={size}&seed=4&type=text/html")),
+        dir.path(),
+        8,
+    );
+    req.expect_file = true;
+    let done = wait(&engine().start(req, None, vec![]), 60).await.unwrap();
+    assert_eq!(sha256_file(&done.path), expected_sha256(4, size));
+}
