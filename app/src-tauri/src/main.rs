@@ -513,6 +513,11 @@ fn side_effects(
                 &[("host", host)],
             ),
         ),
+        CoreEvent::OpenTorrent { source } => {
+            if let Err(e) = windows::open(app, "torrent", Some(&encode_path(source))) {
+                tracing::error!("could not open the Add torrent window: {e}");
+            }
+        }
         CoreEvent::ShowMain => windows::show_main(app),
         CoreEvent::ExitRequested => {
             let app = app.clone();

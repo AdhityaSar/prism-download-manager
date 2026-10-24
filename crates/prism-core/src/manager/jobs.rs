@@ -296,7 +296,7 @@ pub(crate) fn video_options(s: &Settings) -> VideoOptions {
     }
 }
 
-fn http_preference(s: &Settings) -> HttpPreference {
+pub(crate) fn http_preference(s: &Settings) -> HttpPreference {
     match s.connection.http_version {
         HttpVersion::Http1 => HttpPreference::Http1Only,
         HttpVersion::Auto => HttpPreference::Auto,
@@ -1282,8 +1282,16 @@ impl TorrentJob {
             }
             None => {
                 let source: prism_torrent::TorrentSource =
-                    serde_json::from_value(spec.get("source").cloned().unwrap_or_default())
-                        .context("missing torrent source")?;
+                    match spec.get("source").filter(|s| !s.is_null()) {
+                        Some(s) => serde_json::from_value(s.clone())
+                            .context("unreadable torrent source")?,
+                        // A link to a .torrent file added as a download had no torrent of its
+                        // own (#20): the torrent engine reads it from the link.
+                        None if super::capture::is_torrent_link(&item.url) => {
+                            prism_torrent::TorrentSource::Url(item.url.trim().to_string())
+                        }
+                        None => anyhow::bail!("missing torrent source"),
+                    };
                 let only: Option<Vec<usize>> = spec
                     .get("onlyFiles")
                     .cloned()

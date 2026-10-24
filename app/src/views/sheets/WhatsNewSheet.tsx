@@ -17,6 +17,15 @@ type Change = { icon: IconName; title: string; body: string; credit?: string; ac
  */
 const CHANGES: Change[] = [
   {
+    icon: "torrent",
+    title: tk("Torrent links from the browser"),
+    body: tk("A click on a link to a .torrent file now opens “Add torrent”, where you pick its files, instead of failing."),
+  },
+];
+
+/** The previous version's changes, shown below the new ones. */
+const PREVIOUS = { version: "1.1.4", changes: [
+  {
     icon: "sidebar",
     title: tk("Compact view"),
     body: tk("Just the download list, like a classic download manager. Turn it on in Settings › Appearance."),
@@ -32,20 +41,6 @@ const CHANGES: Change[] = [
     title: tk("Better on Linux"),
     body: tk("The window opens from the tray every time, and magnet links and .torrent files open in Prism."),
     credit: "pepopepopepo",
-  },
-];
-
-/** The previous version's changes, shown below the new ones. */
-const PREVIOUS = { version: "1.1.3", changes: [
-  {
-    icon: "browser",
-    title: tk("Downloads that need the browser"),
-    body: tk("Some sites, like softpedia.com, let only a web browser download (they check for robots). Prism now leaves those downloads to your browser instead of failing or saving an error page."),
-  },
-  {
-    icon: "list",
-    title: tk("A tidier list"),
-    body: tk("Turn on “Remove downloads whose files were deleted” in Settings › General, and downloads you delete from the computer leave the list too."),
   },
 ] satisfies Change[] };
 
@@ -63,7 +58,7 @@ export function WhatsNewSheet() {
         <BrandTile size={52} />
         <div>
           <h2>{t("Prism {version} is here", { version })}</h2>
-          <p className="text-secondary">{t("A compact view, a lighter Prism in the tray and fixes for Linux.")}</p>
+          <p className="text-secondary">{t("Links to .torrent files now open in “Add torrent”.")}</p>
         </div>
       </header>
 

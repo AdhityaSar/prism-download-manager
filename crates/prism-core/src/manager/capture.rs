@@ -154,6 +154,43 @@ fn new_id() -> String {
     uuid::Uuid::new_v4().simple().to_string()
 }
 
+/// Largest `.torrent` file Prism reads from a link (big torrents list a lot of pieces).
+const MAX_TORRENT_FILE: usize = 16 << 20;
+
+/// A magnet link, or an http(s) link to a `.torrent` file.
+pub(crate) fn is_torrent_link(url: &str) -> bool {
+    let lower = url.trim().to_ascii_lowercase();
+    ItemKind::from_url(&lower) == ItemKind::Torrent
+        && (lower.starts_with("magnet:")
+            || lower.starts_with("http://")
+            || lower.starts_with("https://"))
+}
+
+/// A plain GET (what a link click is), as opposed to a form the browser posted.
+fn is_get(n: &NewItem) -> bool {
+    n.method
+        .as_deref()
+        .is_none_or(|m| m.eq_ignore_ascii_case("GET"))
+}
+
+/// The bencoded dictionary of a `.torrent` file (not a web page or an error message).
+fn looks_like_torrent(bytes: &[u8]) -> bool {
+    bytes.first() == Some(&b'd') && bytes.windows(6).any(|w| w == b"4:info")
+}
+
+/// Keeps a fetched `.torrent` file where the "Add torrent" window reads it from.
+fn save_torrent_file(name: &str, bytes: &[u8]) -> std::io::Result<PathBuf> {
+    let dir = std::env::temp_dir().join("prism-torrents");
+    std::fs::create_dir_all(&dir)?;
+    let mut name = super::sanitize_name(name);
+    if !name.to_ascii_lowercase().ends_with(".torrent") {
+        name.push_str(".torrent");
+    }
+    let path = dir.join(format!("{}-{name}", &new_id()[..8]));
+    std::fs::write(&path, bytes)?;
+    Ok(path)
+}
+
 /// File name guessed from a URL before the server tells us better.
 pub(crate) fn name_from_url(url: &str) -> String {
     let parsed = url::Url::parse(url).ok();
@@ -203,7 +240,7 @@ impl Core {
             .save_dir
             .clone()
             .unwrap_or_else(|| self.resolve_save_dir(settings, &category));
-        let request = n.request.clone().or_else(|| {
+        let mut request = n.request.clone().or_else(|| {
             let mut req = jobs::request_json(&n, settings);
             // Read back by `jobs::spawn_engine` for HLS/DASH items.
             if let (Some(v), Some(obj)) = (n.variant, req.as_object_mut()) {
@@ -211,6 +248,18 @@ impl Core {
             }
             Some(req)
         });
+        // A torrent link added without its torrent (a batch, quiet copied links): the torrent
+        // engine reads it from the link itself (#20).
+        if kind == ItemKind::Torrent
+            && is_torrent_link(&n.url)
+            && let Some(obj) = request.as_mut().and_then(|r| r.as_object_mut())
+            && obj.get("source").is_none_or(|s| s.is_null())
+        {
+            obj.insert(
+                "source".into(),
+                serde_json::json!(prism_torrent::TorrentSource::Url(n.url.trim().to_string())),
+            );
+        }
         DownloadItem {
             id: new_id(),
             kind,
@@ -301,6 +350,19 @@ impl Core {
                 source,
                 kind: ItemKind::Video,
                 url: n.url,
+                ..Default::default()
+            };
+        }
+        // A torrent link (a magnet, or a link to a .torrent file) opens "Add torrent", where
+        // its files are picked, instead of downloading the link as a file (#20).
+        if n.kind.is_none() && is_get(&n) && is_torrent_link(&n.url) {
+            let url = n.url.clone();
+            self.open_torrent_link(n, source, None);
+            return CaptureInfo {
+                id: new_id(),
+                source,
+                kind: ItemKind::Torrent,
+                url,
                 ..Default::default()
             };
         }
@@ -891,6 +953,97 @@ impl Core {
             .ok_or_else(|| anyhow!("nothing added"))
     }
 
+    /// A torrent link captured like a download (#20): shown in "Add torrent" (`mode: None`), or
+    /// with the Download File dialog off added right away. A `.torrent` file is fetched here,
+    /// with the browser's cookies and referer, which the torrent engine wouldn't send; a link
+    /// that doesn't give a torrent (a web page, an error) is downloaded as a plain file instead.
+    fn open_torrent_link(&self, n: NewItem, source: CaptureSource, mode: Option<StartMode>) {
+        let _rt = crate::rt::enter();
+        let core = self.clone();
+        tokio::spawn(async move {
+            let link = n.url.trim().to_string();
+            if link.to_ascii_lowercase().starts_with("magnet:") {
+                match mode {
+                    None => core.emit(CoreEvent::OpenTorrent { source: link }),
+                    // Named "magnet…" until the metadata brings the torrent's own name.
+                    Some(mode) => {
+                        let src = prism_torrent::TorrentSource::Url(link);
+                        let added =
+                            core.add_torrent(src, "magnet".into(), None, None, None, None, mode);
+                        if let Err(e) = added {
+                            tracing::error!("could not add the magnet link: {e:#}");
+                        }
+                    }
+                }
+                return;
+            }
+            let name = n.file_name.clone().unwrap_or_else(|| name_from_url(&n.url));
+            match core.fetch_torrent_file(&n).await {
+                Ok(bytes) => match mode {
+                    None => match save_torrent_file(&name, &bytes) {
+                        Ok(path) => core.emit(CoreEvent::OpenTorrent {
+                            source: path.to_string_lossy().into_owned(),
+                        }),
+                        Err(e) => tracing::error!("could not keep the .torrent file: {e}"),
+                    },
+                    Some(mode) => {
+                        let name = super::sanitize_name(&name);
+                        let name = name
+                            .strip_suffix(".torrent")
+                            .or_else(|| name.strip_suffix(".TORRENT"))
+                            .unwrap_or(&name)
+                            .to_string();
+                        let src = prism_torrent::TorrentSource::File(bytes);
+                        if let Err(e) = core.add_torrent(src, name, None, None, None, None, mode) {
+                            tracing::error!("could not add the torrent: {e:#}");
+                        }
+                    }
+                },
+                Err(e) => {
+                    tracing::info!("no torrent behind the link, downloading it as a file: {e:#}");
+                    let n = NewItem {
+                        kind: Some(ItemKind::Http),
+                        ..n
+                    };
+                    match mode {
+                        None => {
+                            core.capture_probed(n, source, None);
+                        }
+                        Some(mode) => {
+                            let n = NewItem {
+                                conflict: Some(ConflictAction::Rename),
+                                ..n
+                            };
+                            if let Err(e) = core.add_items(vec![n], mode) {
+                                tracing::error!("could not add the download: {e:#}");
+                            }
+                        }
+                    }
+                }
+            }
+        });
+    }
+
+    /// Reads the `.torrent` file a link points to, with the download's headers and cookies.
+    async fn fetch_torrent_file(&self, n: &NewItem) -> Result<Vec<u8>> {
+        let settings = self.settings();
+        let mut req: prism_engine::DownloadRequest =
+            serde_json::from_value(jobs::request_json(n, &settings))?;
+        req.proxy = Some(jobs::proxy_config(&settings));
+        req.http = jobs::http_preference(&settings);
+        let cfg = jobs::engine_config(&settings);
+        let fetch = prism_engine::fetch_small_file(&cfg, &req, MAX_TORRENT_FILE);
+        let file = tokio::time::timeout(std::time::Duration::from_secs(30), fetch)
+            .await
+            .map_err(|_| anyhow!("the server did not answer in time"))??;
+        anyhow::ensure!(
+            looks_like_torrent(&file.bytes),
+            "the link gave {} instead of a torrent",
+            file.mime.as_deref().unwrap_or("something else")
+        );
+        Ok(file.bytes)
+    }
+
     // ----- browser messages --------------------------------------------------------------------
 
     /// Tries a browser download's link before Prism takes it over (`None`: not tried, or no
@@ -1030,6 +1183,18 @@ impl Core {
                         .unwrap_or_default();
                     self.emit(CoreEvent::LeftToBrowser { host });
                     return serde_json::json!({"ok": true, "accepted": false, "reason": "browserOnly"});
+                }
+                // A link to a .torrent file: "Add torrent" opens (with the dialog off, the torrent
+                // goes straight into the list) instead of downloading the .torrent file (#20).
+                if is_get(&n) && is_torrent_link(&n.url) {
+                    let start = if settings.downloads.auto_start {
+                        StartMode::Now
+                    } else {
+                        StartMode::Later
+                    };
+                    let mode = (!settings.general.show_capture_dialog).then_some(start);
+                    self.open_torrent_link(n, CaptureSource::Browser, mode);
+                    return serde_json::json!({"ok": true, "accepted": true});
                 }
                 if settings.general.show_capture_dialog {
                     let info = self.capture_probed(n, CaptureSource::Browser, probed);

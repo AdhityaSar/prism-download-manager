@@ -129,6 +129,11 @@ pub enum CoreEvent {
     LeftToBrowser {
         host: String,
     },
+    /// Show a torrent in the "Add torrent" window: a magnet link, or the path of a `.torrent`
+    /// file Prism fetched from a link (#20).
+    OpenTorrent {
+        source: String,
+    },
     ClipboardUrls(Vec<String>),
     Grabber {
         project_id: String,

@@ -177,7 +177,7 @@ const settings: Settings = {
   video: { ytdlpPath: "", ffmpegPath: "", autoUpdate: true, preferredHeight: 1080, container: "mp4", audioFormat: "m4a", embedSubtitles: false, subtitleLangs: "en.*", embedThumbnail: true, embedMetadata: true, embedChapters: true, sponsorblock: "off", accelerate: true, cookiesFromBrowser: "", fileTemplate: "%(title)s [%(id)s].%(ext)s", numberPlaylistVideos: false },
   shortcuts: {},
   // The demo bootstrap version: "What's new" opens with ?sheet=whatsnew, or by itself with ?lastseen=1.0.9 (an update).
-  lastSeenVersion: (typeof location === "undefined" ? null : new URLSearchParams(location.search).get("lastseen")) ?? "1.1.4",
+  lastSeenVersion: (typeof location === "undefined" ? null : new URLSearchParams(location.search).get("lastseen")) ?? "1.1.5",
   onboardingDone: typeof location === "undefined" || !new URLSearchParams(location.search).has("onboarding"),
 };
 
@@ -433,7 +433,7 @@ function details(id: string): ItemDetails | null {
 
 const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
   bootstrap: (): Bootstrap => ({
-    version: "1.1.4",
+    version: "1.1.5",
     items: Object.values(items),
     categories,
     queues,
@@ -729,10 +729,10 @@ const commands: Record<string, (args: Record<string, unknown>) => unknown> = {
   integration_status: () => ({
     hostPath: "C:\\Program Files\\Prism\\prism-native-host.exe",
     extensionConnected: mockExtSeen > 0,
-    extensionVersion: mockExtSeen > 0 ? (demoParam("oldext") ? "1.0.0" : "1.1.4") : null,
+    extensionVersion: mockExtSeen > 0 ? (demoParam("oldext") ? "1.0.0" : "1.1.5") : null,
     extensionInstallType: mockExtSeen > 0 ? (demoParam("exttype") ?? (mockExtFromStore ? "normal" : "development")) : null,
     extensionOutdated: mockExtSeen > 0 && !!demoParam("oldext") && !["normal", "admin"].includes(demoParam("exttype") ?? ""),
-    appVersion: "1.1.4",
+    appVersion: "1.1.5",
     lastSeen: mockExtSeen || null,
     browsers: (
       [

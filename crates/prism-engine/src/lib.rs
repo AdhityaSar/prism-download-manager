@@ -39,6 +39,7 @@ mod progress;
 mod request;
 mod resume;
 mod segmented;
+mod small;
 mod speed;
 mod storage;
 mod transfer;
@@ -61,4 +62,5 @@ pub use request::{
     VariantProbeRequest, VariantSelection,
 };
 pub use resume::{MediaResumeState, RESUME_STATE_VERSION, ResumeKind, ResumeState, SegmentState};
+pub use small::{SmallFile, fetch_small_file};
 pub use url::Url;

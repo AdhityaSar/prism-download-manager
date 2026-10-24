@@ -981,17 +981,15 @@
   "Off = copied links go straight into the list, to start whenever you want": "Desactivado = los enlaces copiados van directamente a la lista y los inicias cuando quieras",
   "Remove downloads whose files were deleted": "Quitar las descargas cuyos archivos se eliminaron",
   "Finished downloads leave the list once their file is gone from the computer": "Las descargas terminadas salen de la lista cuando su archivo ya no está en el equipo",
-  "Downloads that need the browser": "Descargas que necesitan el navegador",
-  "Some sites, like softpedia.com, let only a web browser download (they check for robots). Prism now leaves those downloads to your browser instead of failing or saving an error page.": "Algunos sitios, como softpedia.com, solo dejan descargar a un navegador web (comprueban si eres un robot). Prism ahora deja esas descargas a tu navegador en lugar de fallar o guardar una página de error.",
-  "A tidier list": "Una lista más ordenada",
-  "Turn on “Remove downloads whose files were deleted” in Settings › General, and downloads you delete from the computer leave the list too.": "Activa “Quitar las descargas cuyos archivos se eliminaron” en Ajustes › General y las descargas que borres del equipo también saldrán de la lista.",
   "Compact view": "Vista compacta",
   "Just the download list, without the sidebar, details pane and tips": "Solo la lista de descargas, sin barra lateral, panel de detalles ni consejos",
-  "A compact view, a lighter Prism in the tray and fixes for Linux.": "Una vista compacta, un Prism más ligero en la bandeja y correcciones para Linux.",
   "Just the download list, like a classic download manager. Turn it on in Settings › Appearance.": "Solo la lista de descargas, como en un gestor de descargas clásico. Actívala en Ajustes › Apariencia.",
   "Lighter in the tray": "Más ligero en la bandeja",
   "After a minute in the tray, Prism closes its window to free memory. Downloads keep running, and the window is back as soon as you open Prism.": "Tras un minuto en la bandeja, Prism cierra su ventana para liberar memoria. Las descargas siguen en curso y la ventana vuelve en cuanto abres Prism.",
   "Better on Linux": "Mejor en Linux",
   "The window opens from the tray every time, and magnet links and .torrent files open in Prism.": "La ventana se abre desde la bandeja todas las veces, y los enlaces magnet y los archivos .torrent se abren en Prism.",
-  "Try it": "Pruébala"
+  "Try it": "Pruébala",
+  "Torrent links from the browser": "Enlaces a torrents desde el navegador",
+  "A click on a link to a .torrent file now opens “Add torrent”, where you pick its files, instead of failing.": "Al hacer clic en un enlace a un archivo .torrent, ahora se abre “Añadir torrent”, donde eliges sus archivos, en lugar de fallar.",
+  "Links to .torrent files now open in “Add torrent”.": "Los enlaces a archivos .torrent ahora se abren en “Añadir torrent”."
 }

@@ -889,3 +889,163 @@ async fn downloads_whose_files_were_deleted_leave_the_list_when_asked() {
     assert!(paths[1].exists(), "files are never touched");
     core.shutdown().await;
 }
+
+/// A tiny but well-formed `.torrent` file (one 3-byte file).
+fn tiny_torrent() -> Vec<u8> {
+    let mut t = b"d8:announce20:http://tracker.test/4:infod6:lengthi3e4:name5:a.txt12:piece lengthi16384e6:pieces20:".to_vec();
+    t.extend_from_slice(&[7u8; 20]);
+    t.extend_from_slice(b"ee");
+    t
+}
+
+/// A site that hands out its `.torrent` file only with the visitor's cookie (else a web page),
+/// and a "`.torrent`" link that is really a page.
+async fn torrent_site() -> String {
+    use axum::{Router, http::HeaderMap, response::Html, response::IntoResponse, routing::get};
+    let torrent = tiny_torrent();
+    let app = Router::new()
+        .route(
+            "/dl/movie.torrent",
+            get(move |headers: HeaderMap| async move {
+                let cookie = headers
+                    .get("cookie")
+                    .and_then(|c| c.to_str().ok())
+                    .unwrap_or("");
+                if cookie.contains("session=ok") {
+                    ([("content-type", "application/x-bittorrent")], torrent).into_response()
+                } else {
+                    Html("<html>Please log in</html>").into_response()
+                }
+            }),
+        )
+        .route(
+            "/page/fake.torrent",
+            get(|| async { Html("<html>not a torrent</html>") }),
+        );
+    let listener = tokio::net::TcpListener::bind("127.0.0.1:0").await.unwrap();
+    let addr = listener.local_addr().unwrap();
+    tokio::spawn(async move { axum::serve(listener, app).await.unwrap() });
+    format!("http://{addr}")
+}
+
+/// #20: a browser download of a link to a `.torrent` file failed with "missing torrent source".
+/// Now Prism fetches the `.torrent` file with the browser's cookies and opens "Add torrent"; a
+/// link that turns out to be a page is downloaded as a plain file; with the Download File dialog
+/// off the torrent goes straight into the list.
+#[tokio::test]
+async fn a_browser_link_to_a_torrent_file_opens_add_torrent() {
+    let site = torrent_site().await;
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core_in(tmp.path()).await;
+    core.update_settings(&serde_json::json!({"general": {"showCaptureDialog": true}}))
+        .unwrap();
+    let mut rx = core.subscribe();
+    let msg = |url: String, name: &str| {
+        serde_json::json!({
+            "id": "1", "type": "download", "url": url, "filename": name, "cookies": "session=ok",
+            "referrer": "https://site.test/page", "userAgent": "TestBrowser/1.0", "method": "GET",
+        })
+    };
+
+    let reply = core
+        .handle(msg(
+            format!("{site}/dl/movie.torrent"),
+            "Movie Pack.torrent",
+        ))
+        .await;
+    assert_eq!(reply["ok"], true, "{reply}");
+    assert_eq!(reply["accepted"], true, "{reply}");
+    let path = wait_event(&mut rx, 10, |ev| match ev {
+        CoreEvent::OpenTorrent { source } => Some(source.clone()),
+        CoreEvent::CaptureRequested(c) => panic!("no Download File window: {c:?}"),
+        _ => None,
+    })
+    .await;
+    assert!(path.ends_with("Movie Pack.torrent"), "{path}");
+    assert_eq!(
+        std::fs::read(&path).unwrap(),
+        tiny_torrent(),
+        "fetched with the cookie"
+    );
+    assert!(
+        core.bootstrap().items.is_empty(),
+        "nothing added before Add torrent"
+    );
+
+    // A ".torrent" link that is really a web page: the usual Download File dialog, as a file.
+    let reply = core
+        .handle(msg(format!("{site}/page/fake.torrent"), "fake.torrent"))
+        .await;
+    assert_eq!(reply["accepted"], true, "{reply}");
+    let info = wait_event(&mut rx, 10, |ev| match ev {
+        CoreEvent::CaptureRequested(c) => Some(c.clone()),
+        CoreEvent::OpenTorrent { .. } => panic!("not a torrent"),
+        _ => None,
+    })
+    .await;
+    assert_eq!(info.kind, ItemKind::Http);
+    assert_eq!(info.file_name, "fake.torrent");
+
+    // Dialog off: the torrent itself goes into the list, with the fetched .torrent inside.
+    core.update_settings(&serde_json::json!({
+        "general": {"showCaptureDialog": false}, "downloads": {"autoStart": false}
+    }))
+    .unwrap();
+    core.handle(msg(
+        format!("{site}/dl/movie.torrent"),
+        "Movie Pack.torrent",
+    ))
+    .await;
+    let item = wait_event(&mut rx, 10, |ev| match ev {
+        CoreEvent::ItemsAdded(items) => items.first().cloned(),
+        _ => None,
+    })
+    .await;
+    assert_eq!(item.kind, ItemKind::Torrent);
+    assert_eq!(item.file_name, "Movie Pack");
+    assert_eq!(item.status, Status::Idle);
+    let source = &item.request.as_ref().unwrap()["source"];
+    assert_eq!(source["type"], "file", "{source}");
+    core.shutdown().await;
+}
+
+/// Torrent links that skip "Add torrent" still carry their torrent: a magnet copied with
+/// "Ask before adding" on opens the window, and links added straight to the list (batches,
+/// quiet copied links) let the torrent engine read the link itself.
+#[tokio::test]
+async fn torrent_links_always_have_a_torrent_source() {
+    let tmp = tempfile::tempdir().unwrap();
+    let core = core_in(tmp.path()).await;
+    let mut rx = core.subscribe();
+    let magnet = "magnet:?xt=urn:btih:0123456789abcdef0123456789abcdef01234567&dn=x";
+    core.capture(
+        NewItem {
+            url: magnet.into(),
+            ..Default::default()
+        },
+        CaptureSource::Clipboard,
+    );
+    let source = wait_event(&mut rx, 10, |ev| match ev {
+        CoreEvent::OpenTorrent { source } => Some(source.clone()),
+        _ => None,
+    })
+    .await;
+    assert_eq!(source, magnet);
+
+    let url = "https://example.invalid/files/linux.iso.torrent";
+    let items = core
+        .add_items(
+            vec![NewItem {
+                url: url.into(),
+                ..Default::default()
+            }],
+            StartMode::Later,
+        )
+        .unwrap();
+    assert_eq!(items[0].kind, ItemKind::Torrent);
+    assert_eq!(
+        items[0].request.as_ref().unwrap()["source"],
+        serde_json::json!({"type": "url", "value": url})
+    );
+    core.shutdown().await;
+}

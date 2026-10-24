@@ -1,26 +1,27 @@
-# Prism 1.1.4 — One beam. Many rays.
+# Prism 1.1.5 — One beam. Many rays.
 
 A fast, open-source download manager for Windows, Linux and macOS, with browser integration
 and video downloads.
 
-## What's new in 1.1.4
+## What's new in 1.1.5
 
-* **The window opens again on Linux**
-  ([#18](https://github.com/FortoGraphy/prism-download-manager/issues/18)). On some desktops
-  (KDE Plasma) the main window came back from the tray invisible: the taskbar showed it open,
-  but nothing was drawn until Prism was restarted. Prism now opens a fresh window instead.
-* **Lighter in the tray**
-  ([#11](https://github.com/FortoGraphy/prism-download-manager/issues/11)): after a minute in the
-  tray, Prism closes its window so its web view (WebView2 on Windows) frees the memory. Downloads
-  keep running, and the window is back as soon as you open Prism. Thanks to ryee123123 for the idea!
-* **Compact view** (Settings › Appearance): just the download list, without the sidebar,
-  details pane and tips, like a classic download manager.
-* **Magnet links and .torrent files open in Prism on Linux** (the deb and rpm declare them, and
-  the installer no longer changes root's default apps). Thanks to pepopepopepo!
-* With *Close button hides to the tray* turned off, the close button quits Prism. Before, it
-  closed only the window and left Prism running with no way to open it again.
-* Safer release builds: read-only tokens and no caches in the workflows. Thanks to pepopepopepo!
+* **Links to .torrent files work**
+  ([#20](https://github.com/FortoGraphy/prism-download-manager/issues/20)). Clicking a link to a
+  `.torrent` file in the browser failed with *missing torrent source*. Prism now fetches the
+  `.torrent` file itself, with your browser's cookies (some sites hand it out only to signed-in
+  visitors), and opens *Add torrent*, where you pick its files. The same goes for copied links
+  and magnet links. A link that turns out not to be a torrent is downloaded as a plain file, and
+  a torrent that already failed this way starts with *Retry*.
 * The Chrome Web Store extension (1.1.0) keeps working as it is; nothing to update there.
+
+### Prism 1.1.4
+
+* The window opens again on Linux
+  ([#18](https://github.com/FortoGraphy/prism-download-manager/issues/18)).
+* Lighter in the tray ([#11](https://github.com/FortoGraphy/prism-download-manager/issues/11)):
+  after a minute there, Prism closes its window to free the web view's memory.
+* Compact view (Settings › Appearance); magnet links and .torrent files open in Prism on Linux;
+  with *Close button hides to the tray* off, the close button quits Prism.
 
 ### Prism 1.1.3
 
@@ -49,12 +50,12 @@ and video downloads.
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.1.4_x64-setup.exe` (recommended) · `Prism_1.1.4_x64_en-US.msi` (all users) · `Prism-1.1.4-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.1.4_aarch64.dmg` |
-| macOS — Intel | `Prism_1.1.4_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.1.4_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.1.4-1.x86_64.rpm` |
-| Any Linux | `Prism_1.1.4_amd64.AppImage` |
+| Windows 10 / 11 | `Prism_1.1.5_x64-setup.exe` (recommended) · `Prism_1.1.5_x64_en-US.msi` (all users) · `Prism-1.1.5-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.1.5_aarch64.dmg` |
+| macOS — Intel | `Prism_1.1.5_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.1.5_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.1.5-1.x86_64.rpm` |
+| Any Linux | `Prism_1.1.5_amd64.AppImage` |
 | Browser extension | [Chrome Web Store](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl) (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` (Firefox) |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·
