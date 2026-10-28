@@ -295,6 +295,17 @@ pub fn apply_shell_settings(app: &AppHandle, settings: &Settings) {
     tray::refresh(app);
 }
 
+/// Dark or light Mica behind the window. With the theme following the system, it follows what
+/// Windows uses (#21: a light Windows used to get the dark Mica under the light theme).
+#[cfg_attr(not(target_os = "windows"), allow(dead_code))]
+fn mica_dark(theme: prism_core::settings::Theme, system: Option<tauri::Theme>) -> bool {
+    match theme {
+        prism_core::settings::Theme::Light => false,
+        prism_core::settings::Theme::Dark => true,
+        prism_core::settings::Theme::System => !matches!(system, Some(tauri::Theme::Light)),
+    }
+}
+
 pub(crate) fn apply_window_material(window: &tauri::WebviewWindow, settings: &Settings) {
     #[cfg(target_os = "windows")]
     {
@@ -315,10 +326,7 @@ pub(crate) fn apply_window_material(window: &tauri::WebviewWindow, settings: &Se
             }
         }
         if settings.appearance.window_material {
-            let dark = !matches!(
-                settings.appearance.theme,
-                prism_core::settings::Theme::Light
-            );
+            let dark = mica_dark(settings.appearance.theme, window.theme().ok());
             let _ = window_vibrancy::apply_mica(window, Some(dark));
         } else {
             let _ = window_vibrancy::clear_mica(window);
@@ -609,7 +617,18 @@ fn init_logging() -> Option<tracing_appender::non_blocking::WorkerGuard> {
 
 #[cfg(test)]
 mod tests {
-    use super::open_targets;
+    use super::{mica_dark, open_targets};
+    use prism_core::settings::Theme;
+
+    #[test]
+    fn mica_follows_the_theme() {
+        assert!(!mica_dark(Theme::Light, Some(tauri::Theme::Dark)));
+        assert!(mica_dark(Theme::Dark, Some(tauri::Theme::Light)));
+        // #21: following a light Windows gives the light Mica (it was always dark).
+        assert!(!mica_dark(Theme::System, Some(tauri::Theme::Light)));
+        assert!(mica_dark(Theme::System, Some(tauri::Theme::Dark)));
+        assert!(mica_dark(Theme::System, None), "unknown: dark, as before");
+    }
 
     fn args(list: &[&str]) -> Vec<String> {
         std::iter::once("prism")

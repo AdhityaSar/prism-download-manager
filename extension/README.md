@@ -5,7 +5,7 @@ One TypeScript source, two Manifest V3 builds:
 | Build | Background | Download capture |
 |---|---|---|
 | `build/chromium/` (Chrome, Edge, Brave, Opera, Vivaldi, Chromium) | service worker | `downloads.onDeterminingFilename` (before the Save-As dialog) |
-| `build/firefox/` (Firefox ≥ 140, gecko id `prism@prism.dev`) | event page (`background.scripts`) | blocking `webRequest.onHeadersReceived` for `Content-Disposition: attachment`, `downloads.onCreated` + cancel as backstop |
+| `build/firefox/` (Firefox ≥ 140, gecko id `prism@prismdl.site`) | event page (`background.scripts`) | blocking `webRequest.onHeadersReceived` for `Content-Disposition: attachment`, `downloads.onCreated` + cancel as backstop |
 
 **Stable Chromium extension ID: `mmcdeiglkbfbicdjboocmhehodogilfl`** (from the public key in
 `keys/`, see `keys/README.md`). The native host allows this origin by default.

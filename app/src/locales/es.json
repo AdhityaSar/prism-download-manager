@@ -983,13 +983,14 @@
   "Finished downloads leave the list once their file is gone from the computer": "Las descargas terminadas salen de la lista cuando su archivo ya no está en el equipo",
   "Compact view": "Vista compacta",
   "Just the download list, without the sidebar, details pane and tips": "Solo la lista de descargas, sin barra lateral, panel de detalles ni consejos",
-  "Just the download list, like a classic download manager. Turn it on in Settings › Appearance.": "Solo la lista de descargas, como en un gestor de descargas clásico. Actívala en Ajustes › Apariencia.",
-  "Lighter in the tray": "Más ligero en la bandeja",
-  "After a minute in the tray, Prism closes its window to free memory. Downloads keep running, and the window is back as soon as you open Prism.": "Tras un minuto en la bandeja, Prism cierra su ventana para liberar memoria. Las descargas siguen en curso y la ventana vuelve en cuanto abres Prism.",
-  "Better on Linux": "Mejor en Linux",
-  "The window opens from the tray every time, and magnet links and .torrent files open in Prism.": "La ventana se abre desde la bandeja todas las veces, y los enlaces magnet y los archivos .torrent se abren en Prism.",
   "Try it": "Pruébala",
   "Torrent links from the browser": "Enlaces a torrents desde el navegador",
   "A click on a link to a .torrent file now opens “Add torrent”, where you pick its files, instead of failing.": "Al hacer clic en un enlace a un archivo .torrent, ahora se abre “Añadir torrent”, donde eliges sus archivos, en lugar de fallar.",
-  "Links to .torrent files now open in “Add torrent”.": "Los enlaces a archivos .torrent ahora se abren en “Añadir torrent”."
+  "Fixes for the light theme, Brave Origin, VK and YouTube.": "Correcciones para el tema claro, Brave Origin, VK y YouTube.",
+  "Light theme": "Tema claro",
+  "When the theme matches Windows, the glass behind the window is now light in the light theme too.": "Cuando el tema sigue a Windows, el cristal detrás de la ventana ahora también es claro en el tema claro.",
+  "Brave Origin": "Brave Origin",
+  "The browser extension now connects in Brave Origin too.": "La extensión del navegador ahora también se conecta en Brave Origin.",
+  "VK and YouTube videos": "Videos de VK y YouTube",
+  "The Download video button works on vk.ru and vkvideo.ru, and videos from a browser signed in to YouTube no longer fail.": "El botón “Descargar video” funciona en vk.ru y vkvideo.ru, y los videos de un navegador con sesión iniciada en YouTube ya no fallan."
 }

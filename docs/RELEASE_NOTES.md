@@ -1,18 +1,29 @@
-# Prism 1.1.5 — One beam. Many rays.
+# Prism 1.1.6 — One beam. Many rays.
 
 A fast, open-source download manager for Windows, Linux and macOS, with browser integration
 and video downloads.
 
-## What's new in 1.1.5
+## What's new in 1.1.6
 
-* **Links to .torrent files work**
-  ([#20](https://github.com/FortoGraphy/prism-download-manager/issues/20)). Clicking a link to a
-  `.torrent` file in the browser failed with *missing torrent source*. Prism now fetches the
-  `.torrent` file itself, with your browser's cookies (some sites hand it out only to signed-in
-  visitors), and opens *Add torrent*, where you pick its files. The same goes for copied links
-  and magnet links. A link that turns out not to be a torrent is downloaded as a plain file, and
-  a torrent that already failed this way starts with *Retry*.
+* **The light theme is fully light on Windows**
+  ([#21](https://github.com/FortoGraphy/prism-download-manager/issues/21)). With the theme set to
+  match the system, the Mica glass behind the window was always dark, so a light Windows got a
+  dark sidebar and window edge. It now follows Windows.
+* **Brave Origin** connects to Prism on Linux and macOS: Prism registers itself in Brave Origin's
+  own folder too. Thanks to u/CredibleWrong for finding it!
+* **VK videos** ([#25](https://github.com/FortoGraphy/prism-download-manager/issues/25)): the
+  *Download video* button and the quality list work on vk.ru and vkvideo.ru.
+* **YouTube while signed in** ([#23](https://github.com/FortoGraphy/prism-download-manager/pull/23)):
+  when YouTube rejects the signed-in browser's cookies (*The page needs to be reloaded*), Prism
+  tries the video again without them. Thanks to BiparJoy!
+* **Firefox:** Prism is ready for the Firefox Add-ons version of the extension (its own ID,
+  `prism@prismdl.site`). A copy loaded by hand keeps working.
 * The Chrome Web Store extension (1.1.0) keeps working as it is; nothing to update there.
+
+### Prism 1.1.5
+
+* Links to .torrent files open *Add torrent* instead of failing
+  ([#20](https://github.com/FortoGraphy/prism-download-manager/issues/20)).
 
 ### Prism 1.1.4
 
@@ -50,12 +61,12 @@ and video downloads.
 
 | Your system | File |
 |---|---|
-| Windows 10 / 11 | `Prism_1.1.5_x64-setup.exe` (recommended) · `Prism_1.1.5_x64_en-US.msi` (all users) · `Prism-1.1.5-windows-x64-portable.zip` |
-| macOS — Apple Silicon | `Prism_1.1.5_aarch64.dmg` |
-| macOS — Intel | `Prism_1.1.5_x64.dmg` |
-| Ubuntu / Debian / Mint | `Prism_1.1.5_amd64.deb` |
-| Fedora / openSUSE | `Prism-1.1.5-1.x86_64.rpm` |
-| Any Linux | `Prism_1.1.5_amd64.AppImage` |
+| Windows 10 / 11 | `Prism_1.1.6_x64-setup.exe` (recommended) · `Prism_1.1.6_x64_en-US.msi` (all users) · `Prism-1.1.6-windows-x64-portable.zip` |
+| macOS — Apple Silicon | `Prism_1.1.6_aarch64.dmg` |
+| macOS — Intel | `Prism_1.1.6_x64.dmg` |
+| Ubuntu / Debian / Mint | `Prism_1.1.6_amd64.deb` |
+| Fedora / openSUSE | `Prism-1.1.6-1.x86_64.rpm` |
+| Any Linux | `Prism_1.1.6_amd64.AppImage` |
 | Browser extension | [Chrome Web Store](https://chromewebstore.google.com/detail/prism-download-manager/mmcdeiglkbfbicdjboocmhehodogilfl) (Chrome, Edge, Brave, Opera, Vivaldi) · `prism-firefox.zip` (Firefox) |
 
 Step-by-step guides: [installing Prism](https://github.com/FortoGraphy/prism-download-manager/blob/main/docs/guide/installation.md) ·

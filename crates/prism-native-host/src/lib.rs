@@ -35,8 +35,20 @@ pub const HOST_DESCRIPTION: &str = "Prism download manager browser integration";
 /// public key embedded in `extension/manifest` (`key`), see `extension/README.md`.
 pub const CHROME_EXTENSION_ID: &str = "mmcdeiglkbfbicdjboocmhehodogilfl";
 
-/// Gecko ID of the Firefox build (`browser_specific_settings.gecko.id`).
-pub const FIREFOX_EXTENSION_ID: &str = "prism@prism.dev";
+/// Gecko ID of the Firefox build (`browser_specific_settings.gecko.id`), the one listed on
+/// Firefox Add-ons (`prism@prism.dev` was already taken there).
+pub const FIREFOX_EXTENSION_ID: &str = "prism@prismdl.site";
+
+/// Earlier Firefox IDs that may still connect: copies loaded by hand before Prism 1.1.6.
+pub const LEGACY_FIREFOX_EXTENSION_IDS: &[&str] = &["prism@prism.dev"];
+
+/// Every Firefox extension ID the host manifest allows (the current one first).
+pub fn firefox_extension_ids() -> Vec<String> {
+    std::iter::once(FIREFOX_EXTENSION_ID)
+        .chain(LEGACY_FIREFOX_EXTENSION_IDS.iter().copied())
+        .map(String::from)
+        .collect()
+}
 
 /// Version of this host (same as the workspace version).
 pub const VERSION: &str = env!("CARGO_PKG_VERSION");

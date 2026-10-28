@@ -28,7 +28,7 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::str::FromStr;
 
-use crate::{CHROME_EXTENSION_ID, FIREFOX_EXTENSION_ID, HOST_DESCRIPTION, HOST_NAME, paths};
+use crate::{CHROME_EXTENSION_ID, HOST_DESCRIPTION, HOST_NAME, paths};
 
 /// A browser (family member) we can register the host for.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
@@ -146,7 +146,7 @@ pub struct RegisterOptions {
     pub host_path: PathBuf,
     /// Chromium extension IDs allowed to connect (default: [`CHROME_EXTENSION_ID`]).
     pub chrome_extension_ids: Vec<String>,
-    /// Firefox extension IDs allowed to connect (default: [`FIREFOX_EXTENSION_ID`]).
+    /// Firefox extension IDs allowed to connect (default: [`crate::firefox_extension_ids`]).
     pub firefox_extension_ids: Vec<String>,
     pub locations: Locations,
 }
@@ -158,7 +158,7 @@ impl RegisterOptions {
             browsers: Vec::new(),
             host_path: host_path.into(),
             chrome_extension_ids: vec![CHROME_EXTENSION_ID.to_string()],
-            firefox_extension_ids: vec![FIREFOX_EXTENSION_ID.to_string()],
+            firefox_extension_ids: crate::firefox_extension_ids(),
             locations: Locations::default(),
         }
     }
@@ -390,7 +390,14 @@ mod platform {
             }
             Browser::Chromium => local.map(|d| d.join("Chromium\\User Data")),
             Browser::Edge => local.map(|d| d.join("Microsoft\\Edge\\User Data")),
-            Browser::Brave => local.map(|d| d.join("BraveSoftware\\Brave-Browser\\User Data")),
+            // Brave Origin (its own build and folder) reads the same key as Brave.
+            Browser::Brave => {
+                return ["Brave-Browser", "Brave-Origin"].iter().any(|p| {
+                    local
+                        .as_ref()
+                        .is_some_and(|d| d.join("BraveSoftware").join(p).join("User Data").exists())
+                });
+            }
             Browser::Vivaldi => local.map(|d| d.join("Vivaldi\\User Data")),
             Browser::Opera => roaming.map(|d| d.join("Opera Software\\Opera Stable")),
             Browser::Helium => local.map(|d| d.join("imput\\Helium\\User Data")),
@@ -542,10 +549,7 @@ mod platform {
                 ),
                 Browser::Chromium => (base.join("Chromium"), vec![nmh("Chromium")]),
                 Browser::Edge => (base.join("Microsoft Edge"), vec![nmh("Microsoft Edge")]),
-                Browser::Brave => (
-                    base.join("BraveSoftware/Brave-Browser"),
-                    vec![nmh("BraveSoftware/Brave-Browser")],
-                ),
+                Browser::Brave => brave(&base),
                 Browser::Vivaldi => (base.join("Vivaldi"), vec![nmh("Vivaldi")]),
                 // Opera reportedly only works with Chrome's directory on macOS.
                 Browser::Opera => (
@@ -570,10 +574,7 @@ mod platform {
                 ),
                 Browser::Chromium => (config.join("chromium"), vec![nmh("chromium")]),
                 Browser::Edge => (config.join("microsoft-edge"), vec![nmh("microsoft-edge")]),
-                Browser::Brave => (
-                    config.join("BraveSoftware/Brave-Browser"),
-                    vec![nmh("BraveSoftware/Brave-Browser")],
-                ),
+                Browser::Brave => brave(&config),
                 Browser::Vivaldi => (config.join("vivaldi"), vec![nmh("vivaldi")]),
                 // Some Opera builds read Chrome's directory: write both.
                 Browser::Opera => (
@@ -596,6 +597,25 @@ mod platform {
                 ),
             })
         }
+    }
+
+    /// Brave and Brave Origin (a separate Brave build with its own folder, which reads native
+    /// messaging hosts from there): whichever of them exists, plain Brave's folder when neither
+    /// does, so nothing is created for a browser that isn't there.
+    fn brave(base: &Path) -> (PathBuf, Vec<PathBuf>) {
+        let roots = [
+            base.join("BraveSoftware/Brave-Browser"),
+            base.join("BraveSoftware/Brave-Origin"),
+        ];
+        let mut found: Vec<PathBuf> = roots.iter().filter(|r| r.exists()).cloned().collect();
+        if found.is_empty() {
+            found.push(roots[0].clone());
+        }
+        let nmh = found
+            .iter()
+            .map(|r| r.join("NativeMessagingHosts"))
+            .collect();
+        (found.swap_remove(0), nmh)
     }
 
     /// `$XDG_CONFIG_HOME` when set and absolute, else `~/.config` (always the latter in tests,
@@ -827,7 +847,11 @@ mod tests {
         );
         assert_eq!(
             o.firefox_extension_ids,
-            vec![FIREFOX_EXTENSION_ID.to_string()]
+            vec![
+                crate::FIREFOX_EXTENSION_ID.to_string(),
+                "prism@prism.dev".to_string()
+            ],
+            "the Firefox Add-ons ID, and the one copies loaded by hand used before"
         );
         assert!(o.browsers.is_empty());
     }
@@ -869,7 +893,7 @@ mod tests {
             assert!(s.points_to_this_host, "{s:?}");
         }
         let ff = st.iter().find(|s| s.browser == Browser::Firefox).unwrap();
-        assert_eq!(ff.allowed, vec![FIREFOX_EXTENSION_ID.to_string()]);
+        assert_eq!(ff.allowed, crate::firefox_extension_ids());
         // idempotent
         assert_eq!(register(&opts).unwrap(), st);
         // status against a different host path
@@ -917,7 +941,7 @@ mod tests {
             assert!(s.registered && s.points_to_this_host, "{s:?}");
         }
         assert_eq!(helium.allowed, vec![chrome_origin(CHROME_EXTENSION_ID)]);
-        assert_eq!(zen.allowed, vec![FIREFOX_EXTENSION_ID.to_string()]);
+        assert_eq!(zen.allowed, crate::firefox_extension_ids());
         assert_eq!(
             zen.location, firefox.location,
             "Zen reads Firefox's location"
@@ -982,5 +1006,53 @@ mod tests {
                 "{st:?}"
             );
         }
+    }
+
+    /// Brave Origin keeps its own folder (`~/.config/BraveSoftware/Brave-Origin`) and reads its
+    /// NativeMessagingHosts from there; plain Brave's registration is unchanged.
+    #[cfg(target_os = "linux")]
+    #[test]
+    fn brave_origin_is_detected_and_registered() {
+        let dir = tempfile::tempdir().unwrap();
+        let host = dir.path().join(crate::HOST_BINARY_NAME);
+        fs::write(&host, b"").unwrap();
+        let home = dir.path().join("home");
+        let loc = Locations {
+            manifest_dir: None,
+            home: Some(home.clone()),
+            registry_root: None,
+        };
+        let mut opts = RegisterOptions::new(&host);
+        opts.locations = loc.clone();
+        let brave = home.join(".config/BraveSoftware/Brave-Browser");
+        let origin = home.join(".config/BraveSoftware/Brave-Origin");
+        let manifest = |root: &Path| {
+            root.join("NativeMessagingHosts")
+                .join(format!("{HOST_NAME}.json"))
+        };
+
+        // Only Brave Origin: registered there, no Brave folder created.
+        fs::create_dir_all(&origin).unwrap();
+        register(&opts).unwrap();
+        assert!(manifest(&origin).is_file());
+        assert!(!brave.exists(), "nothing created for plain Brave");
+        let st = &status(&[Browser::Brave], &host, &loc)[0];
+        assert!(
+            st.installed && st.registered && st.points_to_this_host,
+            "{st:?}"
+        );
+
+        // Both: both folders get the manifest; unregistering removes both.
+        fs::create_dir_all(&brave).unwrap();
+        register(&opts).unwrap();
+        assert!(manifest(&brave).is_file() && manifest(&origin).is_file());
+        unregister(&[Browser::Brave], &loc).unwrap();
+        assert!(!manifest(&brave).exists() && !manifest(&origin).exists());
+
+        // Only plain Brave: as before, no Brave Origin folder.
+        fs::remove_dir_all(&origin).unwrap();
+        register(&opts).unwrap();
+        assert!(manifest(&brave).is_file());
+        assert!(!origin.exists());
     }
 }

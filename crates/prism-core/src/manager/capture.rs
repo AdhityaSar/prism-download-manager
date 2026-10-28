@@ -1501,6 +1501,8 @@ const VIDEO_SITES: &[&str] = &[
     "nicovideo.jp",
     "odysee.com",
     "vk.com",
+    "vk.ru",
+    "vkvideo.ru",
     "ok.ru",
     "linkedin.com",
 ];
@@ -1720,6 +1722,10 @@ mod tests {
         assert!(is_video_page("https://youtu.be/aqz-KE-bpKQ"));
         assert!(is_video_page("https://vimeo.com/76979871"));
         assert!(is_video_page("https://m.youtube.com/shorts/abc"));
+        // #25: VK serves videos on vk.ru and vkvideo.ru too.
+        assert!(is_video_page("https://vk.ru/video-12345_67890"));
+        assert!(is_video_page("https://vkvideo.ru/video-12345_67890"));
+        assert!(is_video_page("https://ok.ru/video/1234567890"));
         // Privacy-enhanced embeds (the extension's video button inside the embed's frame).
         assert!(is_video_page(
             "https://www.youtube-nocookie.com/embed/aqz-KE-bpKQ"

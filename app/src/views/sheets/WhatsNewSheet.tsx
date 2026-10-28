@@ -17,30 +17,29 @@ type Change = { icon: IconName; title: string; body: string; credit?: string; ac
  */
 const CHANGES: Change[] = [
   {
-    icon: "torrent",
-    title: tk("Torrent links from the browser"),
-    body: tk("A click on a link to a .torrent file now opens “Add torrent”, where you pick its files, instead of failing."),
+    icon: "sun",
+    title: tk("Light theme"),
+    body: tk("When the theme matches Windows, the glass behind the window is now light in the light theme too."),
+  },
+  {
+    icon: "browser",
+    title: tk("Brave Origin"),
+    body: tk("The browser extension now connects in Brave Origin too."),
+  },
+  {
+    icon: "video",
+    title: tk("VK and YouTube videos"),
+    body: tk("The Download video button works on vk.ru and vkvideo.ru, and videos from a browser signed in to YouTube no longer fail."),
+    credit: "BiparJoy",
   },
 ];
 
 /** The previous version's changes, shown below the new ones. */
-const PREVIOUS = { version: "1.1.4", changes: [
+const PREVIOUS = { version: "1.1.5", changes: [
   {
-    icon: "sidebar",
-    title: tk("Compact view"),
-    body: tk("Just the download list, like a classic download manager. Turn it on in Settings › Appearance."),
-    action: "appearance",
-  },
-  {
-    icon: "sleep",
-    title: tk("Lighter in the tray"),
-    body: tk("After a minute in the tray, Prism closes its window to free memory. Downloads keep running, and the window is back as soon as you open Prism."),
-  },
-  {
-    icon: "magnet",
-    title: tk("Better on Linux"),
-    body: tk("The window opens from the tray every time, and magnet links and .torrent files open in Prism."),
-    credit: "pepopepopepo",
+    icon: "torrent",
+    title: tk("Torrent links from the browser"),
+    body: tk("A click on a link to a .torrent file now opens “Add torrent”, where you pick its files, instead of failing."),
   },
 ] satisfies Change[] };
 
@@ -58,7 +57,7 @@ export function WhatsNewSheet() {
         <BrandTile size={52} />
         <div>
           <h2>{t("Prism {version} is here", { version })}</h2>
-          <p className="text-secondary">{t("Links to .torrent files now open in “Add torrent”.")}</p>
+          <p className="text-secondary">{t("Fixes for the light theme, Brave Origin, VK and YouTube.")}</p>
         </div>
       </header>
 

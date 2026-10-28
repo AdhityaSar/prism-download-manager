@@ -1006,13 +1006,14 @@
   "Finished downloads leave the list once their file is gone from the computer": "Dokončená stahování zmizí ze seznamu, jakmile jejich soubor v počítači už není",
   "Compact view": "Kompaktní zobrazení",
   "Just the download list, without the sidebar, details pane and tips": "Jen seznam stahování, bez bočního panelu, panelu podrobností a tipů",
-  "Just the download list, like a classic download manager. Turn it on in Settings › Appearance.": "Jen seznam stahování, jako v klasickém správci stahování. Zapnete ho v Nastavení › Vzhled.",
-  "Lighter in the tray": "Lehčí v oznamovací oblasti",
-  "After a minute in the tray, Prism closes its window to free memory. Downloads keep running, and the window is back as soon as you open Prism.": "Po minutě v oznamovací oblasti Prism zavře své okno, aby uvolnil paměť. Stahování běží dál a okno je zpátky, jakmile Prism otevřete.",
-  "Better on Linux": "Lepší na Linuxu",
-  "The window opens from the tray every time, and magnet links and .torrent files open in Prism.": "Okno se z oznamovací oblasti otevře pokaždé a magnet odkazy i soubory .torrent se otevírají v Prismu.",
   "Try it": "Vyzkoušet",
   "Torrent links from the browser": "Odkazy na torrenty z prohlížeče",
   "A click on a link to a .torrent file now opens “Add torrent”, where you pick its files, instead of failing.": "Kliknutí na odkaz na soubor .torrent teď otevře „Přidat torrent“, kde vyberete jeho soubory, místo aby stahování selhalo.",
-  "Links to .torrent files now open in “Add torrent”.": "Odkazy na soubory .torrent se teď otevírají v okně „Přidat torrent“."
+  "Fixes for the light theme, Brave Origin, VK and YouTube.": "Opravy pro světlý motiv, Brave Origin, VK a YouTube.",
+  "Light theme": "Světlý motiv",
+  "When the theme matches Windows, the glass behind the window is now light in the light theme too.": "Když se motiv řídí podle Windows, je sklo za oknem ve světlém motivu teď také světlé.",
+  "Brave Origin": "Brave Origin",
+  "The browser extension now connects in Brave Origin too.": "Rozšíření prohlížeče se teď připojí i v Brave Origin.",
+  "VK and YouTube videos": "Videa z VK a YouTube",
+  "The Download video button works on vk.ru and vkvideo.ru, and videos from a browser signed in to YouTube no longer fail.": "Tlačítko Stáhnout video funguje na vk.ru a vkvideo.ru a videa z prohlížeče přihlášeného do YouTube už neselhávají."
 }

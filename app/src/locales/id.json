@@ -937,13 +937,14 @@
   "Finished downloads leave the list once their file is gone from the computer": "Unduhan yang selesai keluar dari daftar setelah file-nya tidak ada lagi di komputer",
   "Compact view": "Tampilan ringkas",
   "Just the download list, without the sidebar, details pane and tips": "Hanya daftar unduhan, tanpa bilah samping, panel detail, dan tips",
-  "Just the download list, like a classic download manager. Turn it on in Settings › Appearance.": "Hanya daftar unduhan, seperti pengelola unduhan klasik. Aktifkan di Pengaturan › Tampilan.",
-  "Lighter in the tray": "Lebih ringan di baki sistem",
-  "After a minute in the tray, Prism closes its window to free memory. Downloads keep running, and the window is back as soon as you open Prism.": "Setelah satu menit di baki sistem, Prism menutup jendelanya untuk membebaskan memori. Unduhan tetap berjalan, dan jendelanya kembali begitu Anda membuka Prism.",
-  "Better on Linux": "Lebih baik di Linux",
-  "The window opens from the tray every time, and magnet links and .torrent files open in Prism.": "Jendela selalu terbuka dari baki sistem, dan tautan magnet serta file .torrent terbuka di Prism.",
   "Try it": "Coba sekarang",
   "Torrent links from the browser": "Tautan torrent dari browser",
   "A click on a link to a .torrent file now opens “Add torrent”, where you pick its files, instead of failing.": "Mengeklik tautan ke file .torrent kini membuka “Tambah torrent”, tempat Anda memilih file-nya, alih-alih gagal.",
-  "Links to .torrent files now open in “Add torrent”.": "Tautan ke file .torrent kini terbuka di “Tambah torrent”."
+  "Fixes for the light theme, Brave Origin, VK and YouTube.": "Perbaikan untuk tema terang, Brave Origin, VK, dan YouTube.",
+  "Light theme": "Tema terang",
+  "When the theme matches Windows, the glass behind the window is now light in the light theme too.": "Saat tema mengikuti Windows, kaca di belakang jendela kini juga terang pada tema terang.",
+  "Brave Origin": "Brave Origin",
+  "The browser extension now connects in Brave Origin too.": "Ekstensi browser kini juga terhubung di Brave Origin.",
+  "VK and YouTube videos": "Video VK dan YouTube",
+  "The Download video button works on vk.ru and vkvideo.ru, and videos from a browser signed in to YouTube no longer fail.": "Tombol “Unduh video” berfungsi di vk.ru dan vkvideo.ru, dan video dari browser yang masuk ke YouTube tidak lagi gagal."
 }

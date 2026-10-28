@@ -54,6 +54,8 @@ export const DEFAULT_VIDEO_SITES = [
   'streamable.com',
   'rumble.com',
   'vk.com',
+  'vk.ru',
+  'vkvideo.ru',
   'ok.ru',
   'nicovideo.jp',
   'bandcamp.com',

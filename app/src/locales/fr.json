@@ -983,13 +983,14 @@
   "Finished downloads leave the list once their file is gone from the computer": "Les téléchargements terminés quittent la liste dès que leur fichier n’est plus sur l’ordinateur",
   "Compact view": "Vue compacte",
   "Just the download list, without the sidebar, details pane and tips": "Seulement la liste des téléchargements, sans barre latérale, volet de détails ni astuces",
-  "Just the download list, like a classic download manager. Turn it on in Settings › Appearance.": "Seulement la liste des téléchargements, comme dans un gestionnaire de téléchargements classique. Activez-la dans Paramètres › Apparence.",
-  "Lighter in the tray": "Plus léger dans la zone de notification",
-  "After a minute in the tray, Prism closes its window to free memory. Downloads keep running, and the window is back as soon as you open Prism.": "Après une minute dans la zone de notification, Prism ferme sa fenêtre pour libérer de la mémoire. Les téléchargements continuent, et la fenêtre revient dès que vous ouvrez Prism.",
-  "Better on Linux": "Mieux sous Linux",
-  "The window opens from the tray every time, and magnet links and .torrent files open in Prism.": "La fenêtre s’ouvre à chaque fois depuis la zone de notification, et les liens magnet et fichiers .torrent s’ouvrent dans Prism.",
   "Try it": "L’essayer",
   "Torrent links from the browser": "Liens torrent depuis le navigateur",
   "A click on a link to a .torrent file now opens “Add torrent”, where you pick its files, instead of failing.": "Un clic sur un lien vers un fichier .torrent ouvre maintenant « Ajouter un torrent », où vous choisissez ses fichiers, au lieu d’échouer.",
-  "Links to .torrent files now open in “Add torrent”.": "Les liens vers des fichiers .torrent s’ouvrent maintenant dans « Ajouter un torrent »."
+  "Fixes for the light theme, Brave Origin, VK and YouTube.": "Des correctifs pour le thème clair, Brave Origin, VK et YouTube.",
+  "Light theme": "Thème clair",
+  "When the theme matches Windows, the glass behind the window is now light in the light theme too.": "Quand le thème suit Windows, le verre derrière la fenêtre est maintenant clair aussi dans le thème clair.",
+  "Brave Origin": "Brave Origin",
+  "The browser extension now connects in Brave Origin too.": "L’extension du navigateur se connecte maintenant aussi dans Brave Origin.",
+  "VK and YouTube videos": "Vidéos VK et YouTube",
+  "The Download video button works on vk.ru and vkvideo.ru, and videos from a browser signed in to YouTube no longer fail.": "Le bouton « Télécharger la vidéo » fonctionne sur vk.ru et vkvideo.ru, et les vidéos d’un navigateur connecté à YouTube n’échouent plus."
 }

@@ -13,7 +13,7 @@ const pkg = JSON.parse(readFileSync(join(root, 'package.json'), 'utf8'));
 const PUBLIC_KEY = readFileSync(join(root, 'keys', 'public-key.txt'), 'utf8').trim();
 
 export const CHROME_EXTENSION_ID = 'mmcdeiglkbfbicdjboocmhehodogilfl';
-export const GECKO_ID = 'prism@prism.dev';
+export const GECKO_ID = 'prism@prismdl.site';
 
 const description = 'Hand downloads, videos and links to the Prism download manager.';
 const icons = { 16: 'icons/icon-16.png', 32: 'icons/icon-32.png', 48: 'icons/icon-48.png', 128: 'icons/icon-128.png' };
