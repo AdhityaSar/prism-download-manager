@@ -7,8 +7,8 @@ on:
       - "site/**"
       - ".github/workflows/pages.yml"
   # Refreshes the README badge data (site/release.json, downloads.json, tests.json): after CI and
-  # release builds finish, and every 15 minutes for the download count (GitHub delays or skips
-  # scheduled runs under load: hourly ones left the badge hours behind).
+  # release builds finish, and when badge-refresh.yml sees the download badge is out of date.
+  # The schedule is only a fallback: GitHub runs it here every few hours, not every 15 minutes.
   workflow_run:
     workflows: ["CI", "Release builds"]
     types: [completed]
@@ -58,22 +58,9 @@ jobs:
           tag=$(gh release view --repo "$GITHUB_REPOSITORY" --json tagName --jq .tagName) || tag=""
           if [ -n "$tag" ]; then badge release.json release "$tag" 7c5cff; else keep release.json; fi
 
-          # Downloads of the release files people get (installers, update bundles, extensions), not
-          # latest.json, which every running Prism fetches on each update check, or SHA256SUMS.txt.
-          total=$(gh api --paginate "repos/${GITHUB_REPOSITORY}/releases?per_page=100" \
-            --jq '[.[].assets[] | select(.name != "latest.json" and .name != "SHA256SUMS.txt") | .download_count] | add // 0' \
-            | awk '{ s += $1 } END { print s + 0 }') || total=0
-          if [ "${total:-0}" -gt 0 ]; then
-            message=$(awk -v n="$total" 'BEGIN {
-              if (n < 1000) { printf "%d", n }
-              else if (n < 10000) { s = sprintf("%.1f", n / 1000); sub(/\.0$/, "", s); printf "%sk", s }
-              else if (n < 1000000) { printf "%dk", int(n / 1000) }
-              else { s = sprintf("%.1f", n / 1000000); sub(/\.0$/, "", s); printf "%sM", s }
-            }')
-            badge downloads.json downloads "$message" 3fb8ff
-          else
-            keep downloads.json
-          fi
+          # Downloads: which files count and the rounding are in scripts/downloads-badge.sh.
+          downloads=$(bash scripts/downloads-badge.sh "$GITHUB_REPOSITORY") || downloads=""
+          if [ -n "$downloads" ]; then badge downloads.json downloads "$downloads" 3fb8ff; else keep downloads.json; fi
 
           # The latest finished CI run on main (cancelled runs were superseded by a newer push).
           ci=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow ci.yml --branch main --limit 20 --json status,conclusion \
