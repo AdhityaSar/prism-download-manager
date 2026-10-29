@@ -148,7 +148,15 @@ fn authorized(state: &AppState, headers: &HeaderMap) -> bool {
 }
 
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
-    a.len() == b.len() && a.iter().zip(b).fold(0u8, |acc, (x, y)| acc | (x ^ y)) == 0
+    let len_diff = a.len() ^ b.len();
+    let max_len = a.len().max(b.len());
+    let mut diff = len_diff;
+    for i in 0..max_len {
+        let x = if i < a.len() { a[i] } else { 0 };
+        let y = if i < b.len() { b[i] } else { 0 };
+        diff |= (x ^ y) as usize;
+    }
+    diff == 0
 }
 
 async fn message(
@@ -179,6 +187,17 @@ mod tests {
         fn handle(&self, message: serde_json::Value) -> BoxFuture<serde_json::Value> {
             Box::pin(async move { serde_json::json!({"ok": true, "echo": message["type"]}) })
         }
+    }
+
+    #[test]
+    fn test_constant_time_eq() {
+        assert!(constant_time_eq(b"", b""));
+        assert!(constant_time_eq(b"secret", b"secret"));
+        assert!(!constant_time_eq(b"secret", b"secr"));
+        assert!(!constant_time_eq(b"secr", b"secret"));
+        assert!(!constant_time_eq(b"secret1", b"secret2"));
+        assert!(!constant_time_eq(b"", b"secret"));
+        assert!(!constant_time_eq(b"secret", b""));
     }
 
     #[tokio::test]

@@ -262,6 +262,30 @@ fn proxy_url(s: &Settings) -> Option<String> {
     }
 }
 
+fn parse_dns_overrides(raw: &[String]) -> Vec<(String, std::net::SocketAddr)> {
+    let mut out = Vec::new();
+    for entry in raw {
+        let entry = entry.trim();
+        if entry.is_empty() {
+            continue;
+        }
+        let parts = entry
+            .split_once('=')
+            .or_else(|| entry.split_once("->"))
+            .or_else(|| entry.rsplit_once(':'));
+        if let Some((host, addr_str)) = parts {
+            let host = host.trim().to_string();
+            let addr_str = addr_str.trim();
+            if let Ok(sa) = addr_str.parse::<std::net::SocketAddr>() {
+                out.push((host, sa));
+            } else if let Ok(ip) = addr_str.parse::<std::net::IpAddr>() {
+                out.push((host, std::net::SocketAddr::new(ip, 443)));
+            }
+        }
+    }
+    out
+}
+
 pub(crate) fn engine_config(s: &Settings) -> EngineConfig {
     let user_agent = if s.connection.user_agent.trim().is_empty() {
         crate::DEFAULT_USER_AGENT.to_string()
@@ -280,6 +304,7 @@ pub(crate) fn engine_config(s: &Settings) -> EngineConfig {
             .then(|| s.connection.max_connections_per_host.min(u16::MAX as u32) as u16),
         ffmpeg_path: (!s.video.ffmpeg_path.trim().is_empty())
             .then(|| PathBuf::from(s.video.ffmpeg_path.trim())),
+        default_dns_overrides: parse_dns_overrides(&s.connection.dns_overrides),
         ..EngineConfig::default()
     }
 }
