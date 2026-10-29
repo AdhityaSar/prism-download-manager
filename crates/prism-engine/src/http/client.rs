@@ -91,8 +91,13 @@ pub(crate) fn build_client(spec: &ClientSpec) -> Result<reqwest::Client, EngineE
         .redirect(Policy::limited(MAX_REDIRECTS))
         .referer(false)
         .user_agent(spec.user_agent.clone());
+    let mut grouped: std::collections::HashMap<&str, Vec<std::net::SocketAddr>> =
+        std::collections::HashMap::new();
     for (host, addr) in &spec.dns_overrides {
-        b = b.resolve(host, *addr);
+        grouped.entry(host.as_str()).or_default().push(*addr);
+    }
+    for (host, addrs) in grouped {
+        b = b.resolve_to_addrs(host, &addrs);
     }
     b = match spec.http {
         HttpPreference::Http1Only => b.http1_only(),

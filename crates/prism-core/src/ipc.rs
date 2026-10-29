@@ -9,6 +9,7 @@ use axum::http::{HeaderMap, StatusCode};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use serde::{Deserialize, Serialize};
+use sha2::{Digest, Sha256};
 use std::future::Future;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
@@ -148,13 +149,11 @@ fn authorized(state: &AppState, headers: &HeaderMap) -> bool {
 }
 
 fn constant_time_eq(a: &[u8], b: &[u8]) -> bool {
-    let len_diff = a.len() ^ b.len();
-    let max_len = a.len().max(b.len());
-    let mut diff = len_diff;
-    for i in 0..max_len {
-        let x = if i < a.len() { a[i] } else { 0 };
-        let y = if i < b.len() { b[i] } else { 0 };
-        diff |= (x ^ y) as usize;
+    let hash_a = Sha256::digest(a);
+    let hash_b = Sha256::digest(b);
+    let mut diff = 0u8;
+    for (&x, &y) in hash_a.iter().zip(hash_b.iter()) {
+        diff |= x ^ y;
     }
     diff == 0
 }

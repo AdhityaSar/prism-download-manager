@@ -272,14 +272,17 @@ fn parse_dns_overrides(raw: &[String]) -> Vec<(String, std::net::SocketAddr)> {
         let parts = entry
             .split_once('=')
             .or_else(|| entry.split_once("->"))
-            .or_else(|| entry.rsplit_once(':'));
+            .or_else(|| entry.split_once(':'));
         if let Some((host, addr_str)) = parts {
             let host = host.trim().to_string();
             let addr_str = addr_str.trim();
             if let Ok(sa) = addr_str.parse::<std::net::SocketAddr>() {
                 out.push((host, sa));
-            } else if let Ok(ip) = addr_str.parse::<std::net::IpAddr>() {
-                out.push((host, std::net::SocketAddr::new(ip, 443)));
+            } else {
+                let clean_ip = addr_str.trim_matches(|c| c == '[' || c == ']');
+                if let Ok(ip) = clean_ip.parse::<std::net::IpAddr>() {
+                    out.push((host, std::net::SocketAddr::new(ip, 0)));
+                }
             }
         }
     }
@@ -1637,5 +1640,27 @@ mod tests {
         );
         s.proxy.mode = ProxyMode::None;
         assert_eq!(proxy_config(&s), ProxyConfig::None);
+    }
+
+    #[test]
+    fn test_parse_dns_overrides() {
+        let raw = vec![
+            "example.com=1.1.1.1".to_string(),
+            "custom.org:2.2.2.2:8080".to_string(),
+            "arrow.net->3.3.3.3".to_string(),
+            "ipv6.org=2001:db8::1".to_string(),
+            "bracketed.org=[2001:db8::2]".to_string(),
+            "bracketed-port.org=[2001:db8::3]:8443".to_string(),
+            "".to_string(),
+            "   ".to_string(),
+        ];
+        let parsed = parse_dns_overrides(&raw);
+        assert_eq!(parsed.len(), 6);
+        assert_eq!(parsed[0], ("example.com".into(), "1.1.1.1:0".parse().unwrap()));
+        assert_eq!(parsed[1], ("custom.org".into(), "2.2.2.2:8080".parse().unwrap()));
+        assert_eq!(parsed[2], ("arrow.net".into(), "3.3.3.3:0".parse().unwrap()));
+        assert_eq!(parsed[3], ("ipv6.org".into(), "[2001:db8::1]:0".parse().unwrap()));
+        assert_eq!(parsed[4], ("bracketed.org".into(), "[2001:db8::2]:0".parse().unwrap()));
+        assert_eq!(parsed[5], ("bracketed-port.org".into(), "[2001:db8::3]:8443".parse().unwrap()));
     }
 }

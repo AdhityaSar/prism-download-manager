@@ -136,7 +136,7 @@ fn watch_for_update(exe: PathBuf, out: Out) {
         });
 }
 
-const MAX_CONCURRENT_WORKERS: usize = 16;
+const MAX_CONCURRENT_WORKERS: usize = 4;
 
 /// The loop, generic over its input (used by tests).
 pub fn run_with<R: io::Read>(client: Arc<AppClient>, mut input: R, out: Out) -> i32 {
@@ -160,6 +160,7 @@ pub fn run_with<R: io::Read>(client: Arc<AppClient>, mut input: R, out: Out) -> 
             }
         }));
     }
+    drop(rx);
 
     let code = loop {
         match framing::read_frame(&mut input) {
